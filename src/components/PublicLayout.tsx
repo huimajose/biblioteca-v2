@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Library, ArrowRight, Phone, Mail, MapPin } from 'lucide-react';
+import { ArrowRight, Phone, Mail, MapPin } from 'lucide-react';
 import { cn } from '@/utils/cn.ts';
 
 interface PublicLayoutProps {
@@ -14,8 +14,8 @@ export const PublicLayout = ({ children, hero = false }: PublicLayoutProps) => {
       <header className="sticky top-0 z-20 bg-white/80 backdrop-blur border-b border-lime-100">
         <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
           <Link to="/" className="flex items-center gap-3">
-            <div className="bg-lime-600 text-white p-2 rounded-xl">
-              <Library className="w-6 h-6" />
+            <div className="bg-white p-1 rounded-xl border border-lime-100 shadow-sm">
+              <img src="/logo.png" alt="ISPI" className="w-10 h-10 object-contain" />
             </div>
             <div>
               <p className="font-black text-lg leading-none">Biblioteca Digital</p>
