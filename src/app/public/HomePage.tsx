@@ -8,6 +8,15 @@ export const HomePage = () => {
   const [books, setBooks] = useState<any[]>([]);
   const [members, setMembers] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [bannerIndex, setBannerIndex] = useState(0);
+
+  const banners = [
+    { src: '/1.png', label: 'Biblioteca Digital ISPI' },
+    { src: '/2.png', label: 'Novas colecoes digitais' },
+    { src: '/3.png', label: 'Acesso rapido aos livros' },
+    { src: '/4.png', label: 'Espaco para estudantes' },
+    { src: '/5.png', label: 'Leitura sem barreiras' },
+  ];
 
   useEffect(() => {
     let active = true;
@@ -33,6 +42,13 @@ export const HomePage = () => {
     load();
     return () => { active = false; };
   }, []);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      setBannerIndex((current) => (current + 1) % banners.length);
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [banners.length]);
 
   const availableBooks = useMemo(() => books.length, [books]);
   const weeklyBooks = useMemo(() => books.slice(0, 6), [books]);
@@ -65,16 +81,26 @@ export const HomePage = () => {
             <p className="text-sm font-bold text-gray-700">Instituicao em destaque</p>
             <span className="text-xs uppercase font-bold text-lime-600">Campus Central</span>
           </div>
-          <div className="grid gap-4">
-            <div className="rounded-2xl bg-gradient-to-r from-lime-500 via-emerald-500 to-green-600 text-white p-6">
-              <p className="text-xs uppercase tracking-[0.3em] text-lime-100">Banner</p>
-              <p className="text-2xl font-black mt-2">Semana da Leitura Global</p>
-              <p className="text-sm text-lime-100 mt-2">Eventos, clubes de leitura e descontos em requisicoes fisicas.</p>
+          <div className="rounded-2xl overflow-hidden border border-lime-100">
+            <div className="relative h-56">
+              {banners.map((banner, index) => (
+                <img
+                  key={banner.src}
+                  src={banner.src}
+                  alt={banner.label}
+                  className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${index === bannerIndex ? 'opacity-100' : 'opacity-0'}`}
+                />
+              ))}
+              <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/10 to-transparent" />
+              <div className="absolute left-4 bottom-4 text-white">
+                <p className="text-xs uppercase tracking-[0.3em] text-white/70">Banner</p>
+                <p className="text-2xl font-black">{banners[bannerIndex]?.label}</p>
+              </div>
             </div>
-            <div className="rounded-2xl bg-gray-900 text-white p-6 flex items-center justify-between">
+            <div className="flex items-center justify-between bg-gray-900 text-white px-5 py-4">
               <div>
                 <p className="text-xs uppercase tracking-[0.3em] text-gray-400">Destaque</p>
-                <p className="text-xl font-black mt-1">Novos livros digitais</p>
+                <p className="text-lg font-black">Novos livros digitais</p>
               </div>
               <ArrowRight className="w-6 h-6 text-lime-400" />
             </div>
