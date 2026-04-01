@@ -34,7 +34,7 @@ export const HomePage = () => {
     return () => { active = false; };
   }, []);
 
-  const availableBooks = useMemo(() => books.filter(b => b.availableCopies > 0).length, [books]);
+  const availableBooks = useMemo(() => books.length, [books]);
   const weeklyBooks = useMemo(() => books.slice(0, 6), [books]);
 
   return (
