@@ -1,0 +1,5 @@
+{
+  "name": "BiblioGest Pro",
+  "description": "Advanced library management system with stock control, digital/physical book support, admin dashboard, and user portal.",
+  "requestFramePermissions": []
+}

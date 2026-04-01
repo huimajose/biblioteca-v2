@@ -1,0 +1,456 @@
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Pencil, PlusCircle, FileDown, ChevronDown, Tags } from 'lucide-react';
+import { Card } from '@/components/ui/Card.tsx';
+import { Button } from '@/components/ui/Button.tsx';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
+import { LOGO_WATERMARK } from '@/constants.ts';
+
+export const AdminBooksPage = () => {
+  const [books, setBooks] = useState<any[]>([]);
+  const [search, setSearch] = useState('');
+  const [sortBy, setSortBy] = useState<'title' | 'author' | 'available' | 'created'>('title');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+  const [pdfOpen, setPdfOpen] = useState(false);
+  const [genres, setGenres] = useState<any[]>([]);
+  const [genreFilter, setGenreFilter] = useState<string>('all');
+
+  useEffect(() => {
+    fetch('/api/books')
+      .then(res => res.json())
+      .then(data => setBooks(Array.isArray(data) ? data : data?.data ?? []));
+    fetch('/api/genres')
+      .then(res => res.json())
+      .then(data => setGenres(Array.isArray(data) ? data : []))
+      .catch(() => setGenres([]));
+  }, []);
+
+  const filtered = useMemo(() => {
+    const query = search.toLowerCase();
+    const list = books.filter((b) =>
+      b.title?.toLowerCase().includes(query) ||
+      b.author?.toLowerCase().includes(query) ||
+      b.isbn?.toLowerCase().includes(query)
+    );
+    const genreFiltered = genreFilter === 'all' ? list : list.filter((b) => b.genre === genreFilter);
+    const sorted = [...genreFiltered].sort((a, b) => {
+      const dir = sortOrder === 'asc' ? 1 : -1;
+      if (sortBy === 'available') {
+        return ((a.availableCopies ?? 0) - (b.availableCopies ?? 0)) * dir;
+      }
+      if (sortBy === 'created') {
+        return (new Date(a.createdAt || 0).getTime() - new Date(b.createdAt || 0).getTime()) * dir;
+      }
+      const av = (a[sortBy] || '').toString().toLowerCase();
+      const bv = (b[sortBy] || '').toString().toLowerCase();
+      return av.localeCompare(bv) * dir;
+    });
+    return sorted;
+  }, [books, search, sortBy, sortOrder, genreFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+  const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  const loadLogo = () =>
+    new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => resolve(img);
+      img.onerror = reject;
+      img.src = LOGO_WATERMARK;
+    });
+
+  const addWatermarkToAllPages = (doc: jsPDF, img: HTMLImageElement) => {
+    const pages = doc.getNumberOfPages();
+    for (let i = 1; i <= pages; i += 1) {
+      doc.setPage(i);
+      const pageW = doc.internal.pageSize.getWidth();
+      const pageH = doc.internal.pageSize.getHeight();
+      const targetW = 160;
+      const targetH = targetW * (img.height / img.width);
+      const x = (pageW - targetW) / 2;
+      const y = (pageH - targetH) / 2;
+      if ((doc as any).GState && doc.setGState) {
+        doc.setGState(new (doc as any).GState({ opacity: 0.08 }));
+      }
+      doc.addImage(img, 'PNG', x, y, targetW, targetH);
+      if ((doc as any).GState && doc.setGState) {
+        doc.setGState(new (doc as any).GState({ opacity: 1 }));
+      }
+    }
+  };
+
+  const exportInventoryPdf = async (byGenre: boolean) => {
+    const doc = new jsPDF('p', 'pt');
+    doc.setFontSize(16);
+    doc.text('Inventario de Livros', 40, 40);
+    doc.setFontSize(10);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 40, 58);
+
+    if (byGenre) {
+      const grouped: Record<string, any[]> = {};
+      filtered.forEach((b) => {
+        const key = b.genre || 'Sem curso';
+        grouped[key] = grouped[key] || [];
+        grouped[key].push(b);
+      });
+
+      let y = 80;
+      Object.entries(grouped).forEach(([genre, list]) => {
+        doc.setFontSize(12);
+        doc.text(genre, 40, y);
+        y += 8;
+        autoTable(doc, {
+          startY: y + 8,
+          head: [['Titulo', 'Autor', 'ISBN', 'Disponivel']],
+          body: list.map((b) => [
+            b.title,
+            b.author,
+            b.isbn,
+            b.isDigital ? '-' : `${b.availableCopies}`,
+          ]),
+          styles: { fontSize: 9 },
+          headStyles: { fillColor: [101, 163, 13] },
+        });
+        y = (doc as any).lastAutoTable.finalY + 20;
+      });
+    } else {
+      autoTable(doc, {
+        startY: 80,
+        head: [['Titulo', 'Autor', 'ISBN', 'Disponivel']],
+        body: filtered.map((b) => [
+          b.title,
+          b.author,
+          b.isbn,
+          b.isDigital ? '-' : `${b.availableCopies}`,
+        ]),
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [101, 163, 13] },
+      });
+    }
+
+    try {
+      const logo = await loadLogo();
+      addWatermarkToAllPages(doc, logo);
+    } catch {
+      // ignore watermark if logo fails
+    }
+
+    doc.save(byGenre ? 'inventario-por-curso.pdf' : 'inventario-completo.pdf');
+    setPdfOpen(false);
+  };
+
+  const exportInventoryExcel = (byGenre: boolean) => {
+    const rows = byGenre
+      ? filtered.flatMap((b) => [[b.genre || 'Sem curso', b.title, b.author, b.isbn, b.isDigital ? '-' : `${b.availableCopies}`]])
+      : filtered.map((b) => [b.title, b.author, b.isbn, b.isDigital ? '-' : `${b.availableCopies}`]);
+
+    const header = byGenre
+      ? [['curso', 'Titulo', 'Autor', 'ISBN', 'Disponivel']]
+      : [['Titulo', 'Autor', 'ISBN', 'Disponivel']];
+
+    const worksheet = XLSX.utils.aoa_to_sheet([...header, ...rows]);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventario');
+    XLSX.writeFile(workbook, byGenre ? 'inventario-por-curso.xlsx' : 'inventario-completo.xlsx');
+    setPdfOpen(false);
+  };
+
+  const drawBarcode = (doc: jsPDF, x: number, y: number, width: number, height: number, seed: string) => {
+    const data = seed.replace(/\D/g, '') || '1234567890';
+    const totalBars = 60;
+    const barWidth = width / totalBars;
+    for (let i = 0; i < totalBars; i++) {
+      const digit = parseInt(data[i % data.length], 10);
+      if (digit % 2 === 0) {
+        doc.rect(x + i * barWidth, y, barWidth * 0.7, height, 'F');
+      }
+    }
+  };
+
+  const drawLabel = (doc: jsPDF, x: number, y: number, book: any, watermark?: HTMLImageElement) => {
+    const labelW = 180;
+    const labelH = 120;
+
+    doc.setDrawColor(20);
+    doc.setLineWidth(0.6);
+    doc.roundedRect(x, y, labelW, labelH, 4, 4);
+
+    if (watermark) {
+      const wmW = 80;
+      const wmH = wmW * (watermark.height / watermark.width);
+      const wmX = x + (labelW - wmW) / 2;
+      const wmY = y + (labelH - wmH) / 2;
+      if ((doc as any).GState && doc.setGState) {
+        doc.setGState(new (doc as any).GState({ opacity: 0.08 }));
+      }
+      doc.addImage(watermark, 'PNG', wmX, wmY, wmW, wmH);
+      if ((doc as any).GState && doc.setGState) {
+        doc.setGState(new (doc as any).GState({ opacity: 1 }));
+      }
+    }
+
+    doc.setFillColor(101, 163, 13);
+    doc.rect(x, y, labelW, 18, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Biblioteca Digital', x + 8, y + 12);
+
+    doc.setTextColor(0);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(6);
+
+
+    const leftX = x + 8;
+    const rightX = x + 110;
+    doc.setDrawColor(230);
+    doc.line(x + 104, y + 38, x + 104, y + 84);
+
+    const rawTitle = String(book.title || 'N/D');
+    const rawAuthor = String(book.author || 'N/D');
+
+    const fitText = (text: string, maxWidth: number, maxLines: number, startSize: number, minSize: number) => {
+      let size = startSize;
+      let lines = doc.splitTextToSize(text, maxWidth);
+      while ((lines.length > maxLines) && size > minSize) {
+        size -= 1;
+        doc.setFontSize(size);
+        lines = doc.splitTextToSize(text, maxWidth);
+      }
+      return { size, lines: lines.slice(0, maxLines) };
+    };
+
+    doc.setFontSize(7);
+   
+
+    const titleFit = fitText(rawTitle, 88, 2, 9, 7);
+    doc.setFontSize(titleFit.size);
+    const titleStartY = y + 56;
+    doc.text(titleFit.lines, leftX, titleStartY);
+
+    const titleLineCount = titleFit.lines.length;
+    const authorLabelY = titleStartY + titleLineCount * 10 + 6;
+    const authorValueY = Math.min(authorLabelY + 10, y + 84);
+    doc.setFontSize(7);
+   
+    const authorFit = fitText(rawAuthor, 88, 1, 9, 7);
+    doc.setFontSize(authorFit.size);
+    doc.text(authorFit.lines, leftX, authorValueY);
+
+    doc.setFontSize(7);
+   
+    doc.setFontSize(8);
+    doc.text(String(book.genre || 'N/D'), rightX, y + 56, { maxWidth: 60 });
+
+    doc.setFontSize(7);
+   
+    doc.setFontSize(8);
+    doc.text(String(book.isbn || 'N/D'), rightX, y + 78, { maxWidth: 60 });
+
+    drawBarcode(doc, x + 8, y + 86, 160, 16, String(book.isbn || book.id));
+    doc.setFontSize(7);
+   
+  };
+
+  const exportLabelPdf = async (book: any) => {
+    const doc = new jsPDF('p', 'pt', 'a4');
+    try {
+      const logo = await loadLogo();
+      drawLabel(doc, 40, 40, book, logo);
+    } catch {
+      drawLabel(doc, 40, 40, book);
+    }
+    doc.save(`etiqueta-${book.id}.pdf`);
+  };
+
+  const exportAllLabelsPdf = async () => {
+    const doc = new jsPDF('p', 'pt', 'a4');
+    const cols = 2;
+    const rows = 5;
+    const startX = 40;
+    const startY = 40;
+    const gapX = 10;
+    const gapY = 10;
+    const labelW = 180;
+    const labelH = 120;
+    let index = 0;
+
+    let logo: HTMLImageElement | null = null;
+    try {
+      logo = await loadLogo();
+    } catch {
+      logo = null;
+    }
+
+    filtered.forEach((book) => {
+      const pageIndex = Math.floor(index / (cols * rows));
+      if (index > 0 && index % (cols * rows) === 0) {
+        doc.addPage();
+      }
+      const pos = index % (cols * rows);
+      const col = pos % cols;
+      const row = Math.floor(pos / cols);
+      const x = startX + col * (labelW + gapX);
+      const y = startY + row * (labelH + gapY);
+      drawLabel(doc, x, y, book, logo || undefined);
+      index += 1;
+    });
+
+    doc.save('etiquetas-livros.pdf');
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold">Gestao de livros</h1>
+          <p className="text-sm text-gray-500">Crie, edite e acompanhe o stock.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="relative">
+            <Button variant="secondary" className="flex items-center gap-2" onClick={() => setPdfOpen(!pdfOpen)}>
+              <FileDown className="w-4 h-4" />
+              
+              <ChevronDown className="w-4 h-4" />
+            </Button>
+            {pdfOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-white border border-gray-100 shadow-lg rounded-xl overflow-hidden z-10">
+                <button
+                  className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50"
+                  onClick={() => exportInventoryPdf(false)}
+                >
+                  Inventario completo (PDF)
+                </button>
+                <button
+                  className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50"
+                  onClick={() => exportInventoryPdf(true)}
+                >
+                  Inventario por curso (PDF)
+                </button>
+                <button
+                  className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50"
+                  onClick={() => exportInventoryExcel(false)}
+                >
+                  Inventario completo (Excel)
+                </button>
+                <button
+                  className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50"
+                  onClick={() => exportInventoryExcel(true)}
+                >
+                  Inventario por curso (Excel)
+                </button>
+
+                 <button  className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50" onClick={exportAllLabelsPdf}>
+          Imprimir Etiquetas (todos)
+                </button>
+              </div>
+            )}
+          </div>
+          <Link to="/admin/books/new">
+            <Button className="flex items-center gap-2">
+              <PlusCircle className="w-4 h-4" />
+              Novo
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      <Card className="p-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+          <input
+            className="px-4 py-2 border rounded-lg"
+            placeholder="Pesquisar por titulo, autor ou ISBN"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(1); }}
+          />
+          <select className="px-4 py-2 border rounded-lg" value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
+            <option value="title">Ordenar por titulo</option>
+            <option value="author">Ordenar por autor</option>
+            <option value="available">Ordenar por disponiveis</option>
+            <option value="created">Ordenar por data</option>
+          </select>
+          <select className="px-4 py-2 border rounded-lg" value={sortOrder} onChange={(e) => setSortOrder(e.target.value as any)}>
+            <option value="asc">Ascendente</option>
+            <option value="desc">Descendente</option>
+          </select>
+          <select className="px-4 py-2 border rounded-lg" value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}>
+            {[10, 20, 30, 50].map(size => (
+              <option key={size} value={size}>{size} por pagina</option>
+            ))}
+          </select>
+          <select className="px-4 py-2 border rounded-lg" value={genreFilter} onChange={(e) => { setGenreFilter(e.target.value); setPage(1); }}>
+            <option value="all">Todos cursos</option>
+            {genres.map((g) => (
+              <option key={g.id} value={g.name}>{g.name}</option>
+            ))}
+          </select>
+        </div>
+      </Card>
+
+      <Card className="overflow-hidden">
+        <table className="w-full text-left border-collapse">
+          <thead className="bg-gray-50 border-b border-gray-100">
+            <tr>
+              <th className="p-4 text-xs uppercase text-gray-400">Titulo</th>
+              <th className="p-4 text-xs uppercase text-gray-400">Autor</th>
+              <th className="p-4 text-xs uppercase text-gray-400">ISBN</th>
+              <th className="p-4 text-xs uppercase text-gray-400">Tipo</th>
+              <th className="p-4 text-xs uppercase text-gray-400 text-right">Disponivel</th>
+              <th className="p-4 text-xs uppercase text-gray-400 text-right">Acoes</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-50">
+            {paged.length === 0 ? (
+              <tr>
+                <td colSpan={6} className="p-10 text-center text-sm text-gray-400">
+                  Nenhum livro encontrado.
+                </td>
+              </tr>
+            ) : (
+              paged.map((book) => (
+                <tr key={book.id} className="hover:bg-gray-50">
+                  <td className="p-4 text-sm font-semibold">{book.title}</td>
+                  <td className="p-4 text-sm text-gray-600">{book.author}</td>
+                  <td className="p-4 text-xs font-mono text-gray-400">{book.isbn}</td>
+                  <td className="p-4 text-xs">
+                    {book.isDigital && (book.totalCopies ?? 0) > 0 ? 'Digital + Fisico' : (book.isDigital ? 'Digital' : 'Fisico')}
+                  </td>
+                  <td className="p-4 text-sm text-right font-mono">
+                    {book.isDigital ? 'inf' : `${book.availableCopies} / ${book.totalCopies}`}
+                  </td>
+                  <td className="p-4 text-right">
+                    <div className="flex items-center justify-end gap-2">
+                      <Button variant="secondary" className="inline-flex items-center gap-2" onClick={() => exportLabelPdf(book)}>
+                        <Tags className="w-4 h-4" />
+                        
+                      </Button>
+                      <Link to={`/admin/books/edit?id=${book.id}`}>
+                        <Button variant="secondary" className="inline-flex items-center gap-2">
+                          <Pencil className="w-4 h-4" />
+                          
+                        </Button>
+                      </Link>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </Card>
+
+      <div className="flex items-center justify-between text-sm text-gray-500">
+        <span>Pagina {page} de {totalPages}</span>
+        <div className="flex items-center gap-2">
+          <Button variant="secondary" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>Anterior</Button>
+          <Button variant="secondary" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>Seguinte</Button>
+        </div>
+      </div>
+    </div>
+  );
+};

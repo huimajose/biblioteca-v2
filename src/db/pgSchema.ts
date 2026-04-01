@@ -1,0 +1,128 @@
+import { boolean, date, integer, pgTable, serial, varchar, timestamp } from 'drizzle-orm/pg-core';
+
+export const verifyPending = pgTable('verifyPending', {
+  id: integer().primaryKey().generatedAlwaysAsIdentity(),
+  clerkId: varchar({ length: 255 }).notNull().unique(),
+  email: varchar({ length: 255 }).notNull().unique(),
+});
+
+export const users = pgTable('users', {
+  clerkId: varchar({ length: 255 }).primaryKey(),
+  primaryEmail: varchar({ length: 255 }).notNull(),
+  fullName: varchar('fullName', { length: 255 }).notNull().default(''),
+  role: varchar({ length: 20 }),
+});
+
+export const admin = pgTable('admin', {
+  clerkId: varchar({ length: 255 }).primaryKey().notNull(),
+  primaryEmail: varchar({ length: 255 }).notNull(),
+});
+
+export const systemMetadata = pgTable('systemMetadata', {
+  maxBooks: integer().notNull().default(4),
+  maxDays: integer().notNull().default(15),
+});
+
+export const books = pgTable('books', {
+  id: serial('id').primaryKey(),
+  title: varchar('title', { length: 255 }).notNull(),
+  author: varchar('author', { length: 255 }).notNull(),
+  genre: varchar('genre', { length: 100 }).notNull(),
+  isbn: varchar('isbn', { length: 13 }).notNull().unique(),
+  totalCopies: integer('total_copies').notNull().default(0),
+  availableCopies: integer('available_copies').notNull().default(0),
+  cover: varchar('cover', { length: 255 }).notNull(),
+  editora: varchar('editora', { length: 255 }),
+  cdu: varchar('cdu', { length: 100 }),
+  prateleira: integer('prateleira'),
+  anoEdicao: integer('ano_edicao'),
+  edicao: integer('edicao'),
+  fileUrl: varchar('fileUrl', { length: 255 }),
+  document_type: integer('document_type').notNull().default(1),
+  is_digital: boolean('is_digital').notNull().default(false),
+  created_at: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const genres = pgTable('genres', {
+  id: serial('id').primaryKey(),
+  name: varchar('name', { length: 100 }).notNull(),
+});
+
+export const transactions = pgTable('transactions', {
+  tid: serial('tid').primaryKey(),
+  physicalBookId: integer('physical_book_id').notNull(),
+  userId: varchar('user_id', { length: 255 }).notNull(),
+  adminId: varchar('admin_id', { length: 255 }).notNull(),
+  status: varchar('status', { length: 50 }).notNull(),
+  borrowedDate: date('borrowed_date'),
+  returnedDate: date('returned_date'),
+  user_name: varchar('user_name', { length: 255 }).notNull(),
+  scoreApplied: boolean('score_applied').default(false),
+});
+
+export const physicalBooks = pgTable('physical_books', {
+  pid: serial('pid').primaryKey(),
+  bookId: integer('book_id').notNull(),
+  borrowed: boolean('borrowed').notNull().default(false),
+  returnDate: date('return_date'),
+  userId: varchar('user_id', { length: 255 }),
+  currTransactionId: integer('curr_transaction_id').notNull(),
+});
+
+export const userDigitalBooks = pgTable('user_digital_books', {
+  id: serial('id').primaryKey(),
+  bookId: integer('book_id').notNull(),
+  userId: varchar('user_id', { length: 255 }).notNull(),
+  addedAt: timestamp('added_at').notNull().defaultNow(),
+});
+
+export const userScores = pgTable('user_scores', {
+  userId: varchar('user_id', { length: 255 }).primaryKey(),
+  points: integer('points').notNull().default(100),
+  lastUpdated: timestamp('last_updated').notNull().defaultNow(),
+});
+
+export const notifications = pgTable('notifications', {
+  id: serial().primaryKey(),
+  userId: varchar('user_id', { length: 255 }).notNull(),
+  title: varchar('title', { length: 255 }).notNull(),
+  message: varchar('message', { length: 500 }).notNull(),
+  read: boolean('read').default(false).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const pushSubscriptions = pgTable('push_subscriptions', {
+  id: serial('id').primaryKey(),
+  userId: varchar('user_id', { length: 255 }).notNull(),
+  endpoint: varchar('endpoint', { length: 500 }).notNull(),
+  p256dh: varchar('p256dh', { length: 255 }).notNull(),
+  auth: varchar('auth', { length: 255 }).notNull(),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const notificationSettings = pgTable('notification_settings', {
+  userId: varchar('user_id', { length: 255 }).primaryKey(),
+  pushEnabled: boolean('push_enabled').default(true).notNull(),
+  lastSeenAt: timestamp('last_seen_at'),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
+export const studentVerifications = pgTable('student_verifications', {
+  id: serial('id').primaryKey(),
+  clerkId: varchar('clerk_id', { length: 255 }).notNull(),
+  fullName: varchar('full_name', { length: 255 }),
+  studentNumber: varchar('student_number', { length: 50 }).notNull(),
+  status: varchar('status', { length: 20 }).notNull(),
+  createdAt: timestamp('created_at').notNull(),
+  verifiedAt: timestamp('verified_at'),
+});
+
+export const studentsVerifications = pgTable('student_verifications', {
+  id: serial('id').primaryKey(),
+  clerkId: varchar('clerk_id', { length: 255 }).notNull(),
+  fullName: varchar('full_name', { length: 255 }),
+  studentNumber: varchar('student_number', { length: 50 }).notNull(),
+  status: varchar('status', { length: 20 }).notNull(),
+  createdAt: timestamp('created_at').notNull(),
+  verifiedAt: timestamp('verified_at'),
+});
