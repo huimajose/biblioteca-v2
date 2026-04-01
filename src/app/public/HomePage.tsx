@@ -11,11 +11,11 @@ export const HomePage = () => {
   const [bannerIndex, setBannerIndex] = useState(0);
 
   const banners = [
-    { src: '/1.png', label: 'Biblioteca Digital ISPI' },
-    { src: '/2.png', label: 'Novas colecoes digitais' },
-    { src: '/3.png', label: 'Acesso rapido aos livros' },
-    { src: '/4.png', label: 'Espaco para estudantes' },
-    { src: '/5.png', label: 'Leitura sem barreiras' },
+    { src: '/banners/1.png', label: 'Biblioteca Digital ISPI' },
+    { src: '/banners/2.png', label: 'Novas colecoes digitais' },
+    { src: '/banners/3.png', label: 'Acesso rapido aos livros' },
+    { src: '/banners/4.png', label: 'Espaco para estudantes' },
+    { src: '/banners/5.png', label: 'Leitura sem barreiras' },
   ];
 
   useEffect(() => {
