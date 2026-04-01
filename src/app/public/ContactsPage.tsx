@@ -35,28 +35,37 @@ export const ContactsPage = () => {
 
   return (
     <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
-      <div className="space-y-4">
-        <h1 className="text-3xl font-black">Contactos</h1>
-        <p className="text-gray-600">
-          Estamos prontos para apoiar estudantes e membros externos. Use o formulario
-          ou os contactos diretos.
-        </p>
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card className="p-5 border-lime-100">
-            <Phone className="w-5 h-5 text-lime-600 mb-3" />
-            <p className="text-sm text-gray-500">Telefone</p>
-            <p className="font-bold">+244 900 000 000</p>
-          </Card>
-          <Card className="p-5 border-lime-100">
-            <Mail className="w-5 h-5 text-lime-600 mb-3" />
-            <p className="text-sm text-gray-500">Email</p>
-            <p className="font-bold">biblioteca@instituicao.ao</p>
-          </Card>
-          <Card className="p-5 border-lime-100">
-            <MapPin className="w-5 h-5 text-lime-600 mb-3" />
-            <p className="text-sm text-gray-500">Endereco</p>
-            <p className="font-bold">Campus Central</p>
-          </Card>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-3xl font-black text-lime-700">Contacte-nos</h1>
+          <p className="text-gray-600 mt-2">
+            Tem alguma duvida, sugestao ou precisa de ajuda? Envie-nos uma mensagem
+            e entraremos em contacto o mais breve possivel.
+          </p>
+        </div>
+        <div className="grid gap-4">
+          <div className="flex items-center gap-3">
+            <Mail className="text-lime-600" />
+            <p className="text-gray-700">biblioteca@ispi.edu.ao</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <Phone className="text-lime-600" />
+            <p className="text-gray-700">+244 923 456 789</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <MapPin className="text-lime-600" />
+            <p className="text-gray-700">Estrada Cristo Rei, Huila, Lubango - Angola</p>
+          </div>
+        </div>
+        <div className="overflow-hidden rounded-2xl border border-lime-100">
+          <iframe
+            src="https://www.google.com/maps?q=-14.958230418193224,13.484409623151006&hl=pt&z=17&output=embed"
+            className="w-full h-[300px]"
+            style={{ border: 0 }}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            title="Biblioteca ISPI - Lubango"
+          />
         </div>
       </div>
       <Card className="p-6 border-lime-100">
