@@ -6,8 +6,8 @@ import { Button } from '@/components/ui/Button.tsx';
 import { DEFAULT_BOOK_COVER } from '@/constants.ts';
 import { resolveBookFileUrl } from '@/utils/file.ts';
 
-const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || import.meta.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY || import.meta.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 const supabase = supabaseUrl && supabaseKey ? createClient(supabaseUrl, supabaseKey) : null;
 
 export const BookForm = () => {
@@ -129,12 +129,8 @@ export const BookForm = () => {
     try {
       const authRes = await fetch('/api/auth');
       const auth = await authRes.json();
-      const publicKey =
-        import.meta.env.VITE_IMAGEKIT_PUBLIC_KEY ||
-        import.meta.env.NEXT_PUBLIC_PUBLIC_KEY;
-      const urlEndpoint =
-        import.meta.env.VITE_IMAGEKIT_URL_ENDPOINT ||
-        import.meta.env.NEXT_PUBLIC_URL_ENDPOINT;
+      const publicKey = process.env.NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY;
+      const urlEndpoint = process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT;
 
       if (!publicKey || !urlEndpoint) {
         alert('ImageKit nao configurado.');

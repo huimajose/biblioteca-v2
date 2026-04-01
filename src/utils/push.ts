@@ -11,7 +11,7 @@ const urlBase64ToUint8Array = (base64String: string) => {
 
 export const initPushNotifications = async (userId: string) => {
   if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
-  const vapidPublicKey = import.meta.env.VITE_VAPID_PUBLIC_KEY;
+  const vapidPublicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   if (!vapidPublicKey) return;
 
   const registration = await navigator.serviceWorker.register('/sw.js');

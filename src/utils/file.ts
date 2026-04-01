@@ -6,9 +6,8 @@ export const resolveBookFileUrl = (
   if (fileUrl.startsWith('http')) return fileUrl;
 
   const basePublicUrl =
-    import.meta.env.VITE_PUBLIC_SUPABASE_PUBLIC_URL ||
-    import.meta.env.VITE_SUPABASE_PUBLIC_URL ||
-    import.meta.env.VITE_SUPABASE_BUCKET_URL;
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_BUCKET_URL;
   const publicUrl = basePublicUrl
     ? basePublicUrl.replace(/\/$/, '').endsWith('/public')
       ? `${basePublicUrl.replace(/\/$/, '')}/books`
@@ -33,9 +32,8 @@ export const resolveBookFileFallback = (
   if (fileUrl.startsWith('http')) return { primary: fileUrl, fallback: null };
 
   const basePublicUrl =
-    import.meta.env.VITE_PUBLIC_SUPABASE_PUBLIC_URL ||
-    import.meta.env.VITE_SUPABASE_PUBLIC_URL ||
-    import.meta.env.VITE_SUPABASE_BUCKET_URL;
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLIC_URL ||
+    process.env.NEXT_PUBLIC_SUPABASE_BUCKET_URL;
   const publicUrl = basePublicUrl
     ? basePublicUrl.replace(/\/$/, '').endsWith('/public')
       ? `${basePublicUrl.replace(/\/$/, '')}/books`

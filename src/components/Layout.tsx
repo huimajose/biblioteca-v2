@@ -56,7 +56,11 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
       es.onmessage = (event) => {
         if (!event.data) return;
         try {
-          const payload = JSON.parse(event.data);
+          const text = String(event.data).trim();
+          if (!text) return;
+          const first = text[0];
+          if (first !== "{" && first !== "[") return;
+          const payload = JSON.parse(text);
           if (payload?.title) {
             setToast({ title: payload.title, message: payload.message });
             setUnreadCount((c) => c + 1);
