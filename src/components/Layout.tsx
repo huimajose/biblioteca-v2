@@ -133,8 +133,8 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
         isSidebarOpen ? "w-64" : "w-20"
       )}>
         <div className="p-6 flex items-center gap-3">
-          <div className="bg-lime-600 p-2 rounded-lg text-white">
-            <Library className="w-6 h-6" />
+          <div className="bg-white p-1 rounded-lg border border-lime-100 shadow-sm">
+            <img src="/logo.png" alt="ISPI" className="w-8 h-8 object-contain" />
           </div>
           {isSidebarOpen && <span className="font-bold text-xl tracking-tight">Biblioteca Digital</span>}
         </div>
