@@ -154,6 +154,44 @@ export const HomePage = () => {
         </Card>
       </section>
 
+      <section className="space-y-5">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-black">Galeria em destaque</h2>
+          <span className="text-xs uppercase tracking-[0.3em] text-lime-700 font-bold float-slow">
+            Rotativo
+          </span>
+        </div>
+        <div className="relative">
+          <div className="absolute inset-y-0 left-0 w-10 bg-gradient-to-r from-lime-50 to-transparent pointer-events-none" />
+          <div className="absolute inset-y-0 right-0 w-10 bg-gradient-to-l from-emerald-50 to-transparent pointer-events-none" />
+          <div className="flex gap-4 overflow-x-auto pb-3 snap-x snap-mandatory">
+            {banners.map((banner, index) => (
+              <div
+                key={`carousel-${banner.src}`}
+                className={`min-w-[240px] sm:min-w-[280px] snap-start rounded-3xl overflow-hidden border border-lime-100 bg-white shadow-lg transition-transform duration-300 hover:-translate-y-1 ${index === bannerIndex ? 'ring-2 ring-lime-500' : ''}`}
+              >
+                <div className="relative h-40">
+                  <img
+                    src={banner.src}
+                    alt={banner.label}
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                  <div className="absolute left-4 bottom-4 text-white">
+                    <p className="text-[10px] uppercase tracking-[0.3em] text-white/70">Destaque</p>
+                    <p className="text-lg font-black">{banner.label}</p>
+                  </div>
+                </div>
+                <div className="p-4 flex items-center justify-between">
+                  <p className="text-xs uppercase tracking-[0.3em] text-gray-400">Campanha</p>
+                  <ArrowRight className="w-4 h-4 text-lime-600" />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       <section className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
         <div className="space-y-5">
           <div className="flex items-center justify-between">
