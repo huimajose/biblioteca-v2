@@ -26,19 +26,10 @@
     25% { transform: translateX(-5px); }
     75% { transform: translateX(5px); }
   }
-
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-6px); }
-  }
 }
 
 .animate-shake {
   animation: shake 0.2s ease-in-out 0s 2;
-}
-
-.float-slow {
-  animation: float 6s ease-in-out infinite;
 }
 
 body {
