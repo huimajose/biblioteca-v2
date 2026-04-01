@@ -40,17 +40,17 @@ export const PublicLayout = ({ children, hero = false }: PublicLayoutProps) => {
       <footer className="border-t border-lime-100 bg-white">
         <div className="max-w-6xl mx-auto px-6 py-10 grid gap-8 md:grid-cols-3 text-sm text-gray-600">
           <div>
-            <p className="font-bold text-gray-900 mb-2">Biblioteca Virtual</p>
+            <p className="font-bold text-gray-900 mb-2">Biblioteca Digital ISPI</p>
             <p>Leitura sem barreiras para estudantes, membros externos e equipas administrativas.</p>
           </div>
           <div className="space-y-2">
             <p className="font-bold text-gray-900">Contactos</p>
-            <p className="flex items-center gap-2"><Phone className="w-4 h-4 text-lime-600" /> +244 900 000 000</p>
-            <p className="flex items-center gap-2"><Mail className="w-4 h-4 text-lime-600" /> biblioteca@instituicao.ao</p>
+            <p className="flex items-center gap-2"><Phone className="w-4 h-4 text-lime-600" /> +244 923 456 789</p>
+            <p className="flex items-center gap-2"><Mail className="w-4 h-4 text-lime-600" /> biblioteca@ispi.edu.ao</p>
           </div>
           <div className="space-y-2">
             <p className="font-bold text-gray-900">Endereco</p>
-            <p className="flex items-start gap-2"><MapPin className="w-4 h-4 text-lime-600 mt-0.5" /> Rua Principal, Campus Central</p>
+            <p className="flex items-start gap-2"><MapPin className="w-4 h-4 text-lime-600 mt-0.5" /> Estrada Cristo Rei, Huila, Lubango - Angola</p>
           </div>
         </div>
       </footer>
