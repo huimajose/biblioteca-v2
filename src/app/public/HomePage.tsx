@@ -55,6 +55,26 @@ export const HomePage = () => {
 
   return (
     <div className="space-y-14">
+      <section className="relative left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] w-screen">
+        <div className="bg-white border-y border-lime-100">
+          <div className="relative h-[320px] sm:h-[380px] md:h-[420px]">
+            {banners.map((banner, index) => (
+              <img
+                key={`wide-${banner.src}`}
+                src={banner.src}
+                alt={banner.label}
+                className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${index === bannerIndex ? 'opacity-100' : 'opacity-0'}`}
+              />
+            ))}
+            <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/10 to-transparent" />
+            <div className="absolute left-6 bottom-6 text-white">
+              <p className="text-xs uppercase tracking-[0.3em] text-white/70">Destaque</p>
+              <p className="text-3xl md:text-4xl font-black">{banners[bannerIndex]?.label}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="grid gap-10 lg:grid-cols-[1.1fr_0.9fr] items-center">
         <div className="space-y-6">
           <span className="inline-flex items-center gap-2 bg-lime-100 text-lime-700 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest">
@@ -81,26 +101,16 @@ export const HomePage = () => {
             <p className="text-sm font-bold text-gray-700">Instituicao em destaque</p>
             <span className="text-xs uppercase font-bold text-lime-600">Campus Central</span>
           </div>
-          <div className="rounded-2xl overflow-hidden border border-lime-100">
-            <div className="relative h-56">
-              {banners.map((banner, index) => (
-                <img
-                  key={banner.src}
-                  src={banner.src}
-                  alt={banner.label}
-                  className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-700 ${index === bannerIndex ? 'opacity-100' : 'opacity-0'}`}
-                />
-              ))}
-              <div className="absolute inset-0 bg-gradient-to-r from-black/50 via-black/10 to-transparent" />
-              <div className="absolute left-4 bottom-4 text-white">
-                <p className="text-xs uppercase tracking-[0.3em] text-white/70">Banner</p>
-                <p className="text-2xl font-black">{banners[bannerIndex]?.label}</p>
-              </div>
+          <div className="grid gap-4">
+            <div className="rounded-2xl bg-gradient-to-r from-lime-500 via-emerald-500 to-green-600 text-white p-6">
+              <p className="text-xs uppercase tracking-[0.3em] text-lime-100">Banner</p>
+              <p className="text-2xl font-black mt-2">Semana da Leitura Global</p>
+              <p className="text-sm text-lime-100 mt-2">Eventos, clubes de leitura e descontos em requisicoes fisicas.</p>
             </div>
-            <div className="flex items-center justify-between bg-gray-900 text-white px-5 py-4">
+            <div className="rounded-2xl bg-gray-900 text-white p-6 flex items-center justify-between">
               <div>
                 <p className="text-xs uppercase tracking-[0.3em] text-gray-400">Destaque</p>
-                <p className="text-lg font-black">Novos livros digitais</p>
+                <p className="text-xl font-black mt-1">Novos livros digitais</p>
               </div>
               <ArrowRight className="w-6 h-6 text-lime-400" />
             </div>
