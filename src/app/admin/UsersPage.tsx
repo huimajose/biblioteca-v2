@@ -39,9 +39,13 @@ export const UsersPage = () => {
     };
   }, [pdfOpen]);
 
+  useEffect(() => {
+    setPage(1);
+  }, [roleFilter]);
+
   const filtered = useMemo(() => {
     if (roleFilter === 'all') return users;
-    return users.filter((u) => (u.role || 'external') === roleFilter);
+    return users.filter((u) => String(u.role || 'external').toLowerCase() === roleFilter);
   }, [users, roleFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));

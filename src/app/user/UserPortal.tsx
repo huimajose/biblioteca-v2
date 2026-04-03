@@ -109,10 +109,15 @@ export const UserPortal = ({ user }: UserPortalProps) => {
     navigate(`/reader/${book.id}`);
   };
 
+  useEffect(() => {
+    setPage(1);
+  }, [search, filterType, filterAvailability, genreFilter]);
+
   const filteredBooks = books.filter(b => {
-    const matchesSearch =
-      b.title.toLowerCase().includes(search.toLowerCase()) ||
-      b.author.toLowerCase().includes(search.toLowerCase());
+    const query = search.toLowerCase();
+    const title = String(b.title || '').toLowerCase();
+    const author = String(b.author || '').toLowerCase();
+    const matchesSearch = title.includes(query) || author.includes(query);
     const isDigital = b.isDigital || Boolean(b.fileUrl);
     const matchesType =
       filterType === 'all' ||

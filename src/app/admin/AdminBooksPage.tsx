@@ -29,14 +29,22 @@ export const AdminBooksPage = () => {
       .catch(() => setGenres([]));
   }, []);
 
+  useEffect(() => {
+    setPage(1);
+  }, [search, sortBy, sortOrder, genreFilter]);
+
   const filtered = useMemo(() => {
     const query = search.toLowerCase();
-    const list = books.filter((b) =>
-      b.title?.toLowerCase().includes(query) ||
-      b.author?.toLowerCase().includes(query) ||
-      b.isbn?.toLowerCase().includes(query)
-    );
-    const genreFiltered = genreFilter === 'all' ? list : list.filter((b) => b.genre === genreFilter);
+    const list = books.filter((b) => {
+      const title = String(b.title || '').toLowerCase();
+      const author = String(b.author || '').toLowerCase();
+      const isbn = String(b.isbn || '').toLowerCase();
+      return title.includes(query) || author.includes(query) || isbn.includes(query);
+    });
+    const genreFiltered =
+      genreFilter === 'all'
+        ? list
+        : list.filter((b) => String(b.genre || '').toLowerCase() === String(genreFilter).toLowerCase());
     const sorted = [...genreFiltered].sort((a, b) => {
       const dir = sortOrder === 'asc' ? 1 : -1;
       if (sortBy === 'available') {
