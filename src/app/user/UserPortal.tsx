@@ -198,6 +198,13 @@ export const UserPortal = ({ user }: UserPortalProps) => {
         </select>
       </div>
 
+      {pagedBooks.length === 0 ? (
+        <div className="p-6 text-center text-sm text-gray-500 bg-gray-50 border border-gray-100 rounded-2xl">
+          {filterAvailability === 'available'
+            ? 'Sem livros disponiveis no momento. Tente limpar os filtros ou volte mais tarde.'
+            : 'Nenhum livro encontrado com os filtros atuais.'}
+        </div>
+      ) : (
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
         {pagedBooks.map(book => (
           <motion.div 
@@ -292,6 +299,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
           </motion.div>
         ))}
       </div>
+      )}
       <div className="flex items-center justify-between text-sm text-gray-500">
         <span>Pagina {page} de {totalPages}</span>
         <div className="flex items-center gap-2">
