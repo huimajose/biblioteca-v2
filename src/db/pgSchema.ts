@@ -76,6 +76,13 @@ export const userDigitalBooks = pgTable('user_digital_books', {
   addedAt: timestamp('added_at').notNull().defaultNow(),
 });
 
+export const bookClicks = pgTable('book_clicks', {
+  id: serial('id').primaryKey(),
+  bookId: integer('book_id').notNull(),
+  userId: varchar('user_id', { length: 255 }).notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
 export const userScores = pgTable('user_scores', {
   userId: varchar('user_id', { length: 255 }).primaryKey(),
   points: integer('points').notNull().default(100),

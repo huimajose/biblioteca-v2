@@ -38,6 +38,10 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
       recParams.set('clicked', clickedList.slice(0, 10).join(','));
     }
 
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('userId', user.id);
+    }
+
     Promise.all([
       fetch('/api/user/shelf', { headers: { 'x-user-id': user.id } }).then(r => r.json()),
       fetch('/api/user/history', { headers: { 'x-user-id': user.id } }).then(r => r.json()),
@@ -208,6 +212,9 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
 
       <Card className="p-6">
         <h2 className="text-lg font-bold mb-4">Sugestoes para voce</h2>
+        <p className="text-xs text-gray-400 mb-4">
+          Baseado nos teus cliques, emprestimos e livros na estante.
+        </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {recommendations.length === 0 ? (
             <p className="text-sm text-gray-400">Sem sugestoes neste momento.</p>

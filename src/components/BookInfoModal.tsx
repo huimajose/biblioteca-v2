@@ -20,6 +20,17 @@ export const BookInfoModal = ({ book, onClose }: BookInfoModalProps) => {
       // ignore storage errors
     }
   }, [book?.id]);
+
+  useEffect(() => {
+    if (!book?.id || typeof window === 'undefined') return;
+    const userId = window.localStorage.getItem('userId');
+    if (!userId) return;
+    fetch('/api/books/click', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookId: book.id, userId }),
+    }).catch(() => null);
+  }, [book?.id]);
   const cover = book?.cover || DEFAULT_BOOK_COVER;
   const available = book?.availableCopies ?? book?.available ?? 0;
   const total = book?.totalCopies ?? book?.total ?? 0;

@@ -83,6 +83,13 @@ export default async function handler(
         .from(schema.userDigitalBooks)
         .where(eq(schema.userDigitalBooks.userId, userId));
       userBookIds.push(...digitalRows.map((d) => d.bookId));
+
+      const clickRows = await db
+        .select({ bookId: schema.bookClicks.bookId })
+        .from(schema.bookClicks)
+        .where(eq(schema.bookClicks.userId, userId))
+        .limit(50);
+      userBookIds.push(...clickRows.map((c) => c.bookId));
     }
 
     userBookIds.push(...clickedIds);

@@ -8,6 +8,7 @@ import { DEFAULT_BOOK_COVER } from '@/constants.ts';
 export const HomePage = () => {
   const [books, setBooks] = useState<any[]>([]);
   const [selectedBook, setSelectedBook] = useState<any | null>(null);
+  const [recommendations, setRecommendations] = useState<any[]>([]);
   const [members, setMembers] = useState(0);
   const [loading, setLoading] = useState(true);
   const [bannerIndex, setBannerIndex] = useState(0);
@@ -24,19 +25,23 @@ export const HomePage = () => {
     let active = true;
     const load = async () => {
       try {
-        const [booksRes, usersRes] = await Promise.all([
+        const [booksRes, usersRes, recsRes] = await Promise.all([
           fetch('/api/books'),
-          fetch('/api/user/count')
+          fetch('/api/user/count'),
+          fetch('/api/books/recommendations'),
         ]);
         const booksData = await booksRes.json();
         const usersData = await usersRes.json();
+        const recsData = await recsRes.json();
         if (!active) return;
         setBooks(Array.isArray(booksData) ? booksData : []);
         setMembers(usersData?.count ?? 0);
+        setRecommendations(Array.isArray(recsData) ? recsData : []);
       } catch {
         if (!active) return;
         setBooks([]);
         setMembers(0);
+        setRecommendations([]);
       } finally {
         if (active) setLoading(false);
       }
@@ -205,7 +210,35 @@ export const HomePage = () => {
             </div>
             <p className="text-sm text-gray-600">Podem requisitar livros mediante aprovacao.</p>
           </Card>
-          
+          <Card className="p-5 border-lime-100 space-y-4">
+            <div className="flex items-center justify-between">
+              <p className="font-bold">Recomendados</p>
+              <span className="text-xs text-lime-600 font-semibold">Sugestoes</span>
+            </div>
+            <div className="space-y-3">
+              {recommendations.slice(0, 4).map((book) => (
+                <div
+                  key={book.id}
+                  className="flex items-center gap-3 cursor-pointer"
+                  onClick={() => setSelectedBook(book)}
+                >
+                  <img
+                    src={DEFAULT_BOOK_COVER}
+                    alt={book.title}
+                    className="w-10 h-14 rounded-lg object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div>
+                    <p className="text-sm font-semibold line-clamp-1">{book.title}</p>
+                    <p className="text-xs text-gray-500 line-clamp-1">{book.author}</p>
+                  </div>
+                </div>
+              ))}
+              {recommendations.length === 0 && (
+                <p className="text-xs text-gray-400">Sem sugestoes no momento.</p>
+              )}
+            </div>
+          </Card>
         </div>
       </section>
 

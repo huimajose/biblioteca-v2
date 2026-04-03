@@ -60,6 +60,12 @@ export const UserPortal = ({ user }: UserPortalProps) => {
       .catch(() => setGenres([]));
   }, []);
 
+  useEffect(() => {
+    if (typeof window !== 'undefined' && user?.id) {
+      window.localStorage.setItem('userId', user.id);
+    }
+  }, [user?.id]);
+
   const notify = (title: string, message: string) => setToast({ title, message });
 
   const handleBorrow = async (bookId: number) => {
