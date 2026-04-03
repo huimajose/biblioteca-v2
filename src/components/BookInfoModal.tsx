@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
 import { DEFAULT_BOOK_COVER } from '@/constants.ts';
 
@@ -8,6 +8,18 @@ interface BookInfoModalProps {
 }
 
 export const BookInfoModal = ({ book, onClose }: BookInfoModalProps) => {
+  useEffect(() => {
+    if (!book?.id || typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem('recentBookClicks');
+      const list = raw ? (JSON.parse(raw) as number[]) : [];
+      const cleaned = Array.isArray(list) ? list.filter((v) => Number.isFinite(v)) : [];
+      const next = [book.id, ...cleaned.filter((id) => id !== book.id)].slice(0, 15);
+      window.localStorage.setItem('recentBookClicks', JSON.stringify(next));
+    } catch {
+      // ignore storage errors
+    }
+  }, [book?.id]);
   const cover = book?.cover || DEFAULT_BOOK_COVER;
   const available = book?.availableCopies ?? book?.available ?? 0;
   const total = book?.totalCopies ?? book?.total ?? 0;

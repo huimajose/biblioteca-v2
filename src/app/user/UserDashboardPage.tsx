@@ -31,11 +31,18 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
   const [selectedBook, setSelectedBook] = useState<any | null>(null);
 
   useEffect(() => {
+    const clickedRaw = typeof window !== 'undefined' ? window.localStorage.getItem('recentBookClicks') : null;
+    const clickedList = clickedRaw ? JSON.parse(clickedRaw) as number[] : [];
+    const recParams = new URLSearchParams({ userId: user.id });
+    if (Array.isArray(clickedList) && clickedList.length) {
+      recParams.set('clicked', clickedList.slice(0, 10).join(','));
+    }
+
     Promise.all([
       fetch('/api/user/shelf', { headers: { 'x-user-id': user.id } }).then(r => r.json()),
       fetch('/api/user/history', { headers: { 'x-user-id': user.id } }).then(r => r.json()),
       fetch('/api/user/score', { headers: { 'x-user-id': user.id } }).then(r => r.json()),
-      fetch('/api/books/recommendations').then(r => r.json()),
+      fetch(`/api/books/recommendations?${recParams.toString()}`).then(r => r.json()),
       fetch('/api/user/student-info', { headers: { 'x-user-id': user.id } }).then(r => r.json()),
       fetch(`/api/notifications/${user.id}`).then(r => r.json()),
     ]).then(([shelf, history, score, recs, studentInfo, notes]) => {
