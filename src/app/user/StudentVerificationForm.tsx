@@ -15,13 +15,19 @@ export const StudentVerificationForm = ({ user }: StudentVerificationFormProps) 
   const [status, setStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const [current, setCurrent] = useState<{ status?: string | null; role?: string | null; verifiedAt?: string | null }>({});
-    const [studentInfo, setStudentInfo] = useState<{ fullName?: string | null; studentNumber?: string | null; role?: string | null; status?: string | null }>({});
+  const [studentInfo, setStudentInfo] = useState<{ fullName?: string | null; studentNumber?: string | null; role?: string | null; status?: string | null }>({});
+  const [loadingCurrent, setLoadingCurrent] = useState(true);
   React.useEffect(() => {
+    setLoadingCurrent(true);
     fetch('/api/user/student-info', { headers: { 'x-user-id': user.id } })
       .then(res => res.json())
       .then(data => {
         setCurrent({ status: data?.status, role: data?.role, verifiedAt: data?.verifiedAt });
         setStudentInfo({ fullName: data?.fullName, studentNumber: data?.studentNumber, role: data?.role, status: data?.status });
+        setLoadingCurrent(false);
+      })
+      .catch(() => {
+        setLoadingCurrent(false);
       });
   }, [user.id]);
 
@@ -49,6 +55,19 @@ export const StudentVerificationForm = ({ user }: StudentVerificationFormProps) 
 
   if (current.role === 'student') {
     return <Navigate to="/dashboard" replace />;
+  }
+
+  if (loadingCurrent) {
+    return (
+      <div className="max-w-xl mx-auto">
+        <Card className="p-8 space-y-4">
+          <h1 className="text-2xl font-bold">A verificar dados</h1>
+          <p className="text-sm text-gray-500">
+            Estamos a confirmar o seu estado. Por favor, aguarde alguns segundos.
+          </p>
+        </Card>
+      </div>
+    );
   }
 
   if (current.status === 'pending') {
