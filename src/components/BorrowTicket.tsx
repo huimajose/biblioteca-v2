@@ -42,8 +42,7 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
     const issueDate = new Date(activity.borrowedDate);
     const year = issueDate.getFullYear();
     const serial = `EMP-${year}/${activity.tid}`;
-    const authorizedBy =
-      activity.adminName || activity.adminId || activity.adminEmail || 'Sistema';
+    const authorizedBy = activity.userName || activity.userEmail || activity.userId || 'Sistema';
 
     let logo: HTMLImageElement | null = null;
     try {
@@ -59,7 +58,7 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
     }
 
     doc.setFontSize(format === 'a4' ? 18 : 12);
-    doc.text('Biblioteca Virtual', marginX + (logo ? (format === 'a4' ? 72 : 20) : 0), topY + (format === 'a4' ? 4 : 2));
+    doc.text('Biblioteca Digital', marginX + (logo ? (format === 'a4' ? 72 : 20) : 0), topY + (format === 'a4' ? 4 : 2));
     doc.setFontSize(format === 'a4' ? 9 : 7);
     doc.text('Recibo oficial da biblioteca', marginX + (logo ? (format === 'a4' ? 72 : 20) : 0), topY + (format === 'a4' ? 22 : 6));
 
@@ -69,13 +68,12 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
 
     const rightX = pageW - marginX;
     doc.setFontSize(format === 'a4' ? 9 : 7);
-    doc.text(`Estado: ${statusLabel}`, rightX, topY + (format === 'a4' ? 40 : 14), { align: 'right' });
-    doc.text(`Utilizador: ${activity.userName || activity.userEmail || activity.userId}`, rightX, topY + (format === 'a4' ? 54 : 19), { align: 'right' });
+    doc.text(`Utilizador: ${activity.userName || activity.userEmail || activity.userId}`, rightX, topY + (format === 'a4' ? 40 : 14), { align: 'right' });
 
     const tableTop = topY + (format === 'a4' ? 78 : 30);
     const colWidths = format === 'a4'
-      ? [40, 260, 120, 80]
-      : [10, 34, 18, 12];
+      ? [40, 340, 120]
+      : [10, 46, 18];
     const rowH = format === 'a4' ? 24 : 8;
     const tableW = colWidths.reduce((a, b) => a + b, 0);
 
@@ -93,7 +91,6 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
     doc.text('Qtd', marginX + 4, tableTop + (format === 'a4' ? 16 : 5));
     doc.text('Descricao', marginX + colWidths[0] + 4, tableTop + (format === 'a4' ? 16 : 5));
     doc.text('ISBN', marginX + colWidths[0] + colWidths[1] + 4, tableTop + (format === 'a4' ? 16 : 5));
-    doc.text('Estado', marginX + colWidths[0] + colWidths[1] + colWidths[2] + 4, tableTop + (format === 'a4' ? 16 : 5));
 
     const bodyTop = tableTop + rowH;
     doc.rect(marginX, bodyTop, tableW, rowH);
@@ -111,7 +108,6 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
     const desc = author ? `${title} — ${author}` : title;
     doc.text(desc, marginX + colWidths[0] + 4, bodyTop + (format === 'a4' ? 16 : 5), { maxWidth: colWidths[1] - 8 });
     doc.text(String(activity.isbn || 'N/D'), marginX + colWidths[0] + colWidths[1] + 4, bodyTop + (format === 'a4' ? 16 : 5), { maxWidth: colWidths[2] - 8 });
-    doc.text(statusLabel, marginX + colWidths[0] + colWidths[1] + colWidths[2] + 4, bodyTop + (format === 'a4' ? 16 : 5), { maxWidth: colWidths[3] - 8 });
 
     const qrPayload = JSON.stringify({
       tid: activity.tid,
@@ -137,6 +133,20 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
     doc.setFontSize(format === 'a4' ? 7 : 6);
     doc.text(`Autorizado por: ${authorizedBy}`, marginX, pageH - (format === 'a4' ? 56 : 16));
     doc.text(`Data: ${issueDate.toLocaleDateString()}`, marginX, pageH - (format === 'a4' ? 44 : 10));
+
+    if (logo) {
+      const wmW = format === 'a4' ? 260 : 45;
+      const wmH = wmW * (logo.height / logo.width);
+      const wmX = (pageW - wmW) / 2;
+      const wmY = (pageH - wmH) / 2;
+      if ((doc as any).GState && doc.setGState) {
+        doc.setGState(new (doc as any).GState({ opacity: 0.08 }));
+      }
+      doc.addImage(logo, 'PNG', wmX, wmY, wmW, wmH);
+      if ((doc as any).GState && doc.setGState) {
+        doc.setGState(new (doc as any).GState({ opacity: 1 }));
+      }
+    }
 
     return doc;
   };

@@ -245,16 +245,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
         >
           Esgotado
         </button>
-        <select
-          className="px-3 py-1 rounded-full text-xs font-bold border border-gray-200 text-gray-600 bg-white"
-          value={genreFilter}
-          onChange={(e) => { setGenreFilter(e.target.value); setPage(1); }}
-        >
-          <option value="all">Todos cursos</option>
-          {genres.map((g) => (
-            <option key={g.id} value={g.name}>{g.name}</option>
-          ))}
-        </select>
+        {/* categorias ocultas no portal do utilizador */}
       </div>
 
       {pagedBooks.length === 0 ? (
