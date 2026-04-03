@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { FileDown, ChevronDown } from 'lucide-react';
+import { FileDown, ChevronDown, Pencil } from 'lucide-react';
 import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
 import jsPDF from 'jspdf';
@@ -14,6 +14,14 @@ export const UsersPage = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
   const pdfMenuRef = useRef<HTMLDivElement | null>(null);
+  const [editingUser, setEditingUser] = useState<any | null>(null);
+  const [savingUser, setSavingUser] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState({
+    fullName: '',
+    primaryEmail: '',
+    role: 'external',
+  });
 
   useEffect(() => {
     fetch('/api/admin/users')
@@ -61,8 +69,8 @@ export const UsersPage = () => {
     doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 40, 58);
     autoTable(doc, {
       startY: 80,
-      head: [['Nome', 'Email', 'ID', 'Role']],
-      body: list.map((u) => [u.fullName || 'N/D', u.primaryEmail, u.clerkId, u.role || 'external']),
+      head: [['Nome', 'Email', 'Tipo']],
+      body: list.map((u) => [u.fullName || 'N/D', u.primaryEmail, u.role || 'external']),
       styles: { fontSize: 9 },
       headStyles: { fillColor: [101, 163, 13] },
     });
@@ -74,6 +82,76 @@ export const UsersPage = () => {
     }
     doc.save(role === 'all' ? 'usuarios.pdf' : `usuarios-${role}.pdf`);
     setPdfOpen(false);
+  };
+
+  const openEdit = (user: any) => {
+    setSaveError(null);
+    setEditingUser(user);
+    setEditDraft({
+      fullName: user.fullName || '',
+      primaryEmail: user.primaryEmail || '',
+      role: user.role || 'external',
+    });
+  };
+
+  const saveEdit = async () => {
+    if (!editingUser) return;
+    setSavingUser(true);
+    setSaveError(null);
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clerkId: editingUser.clerkId,
+          fullName: editDraft.fullName.trim(),
+          primaryEmail: editDraft.primaryEmail.trim(),
+          role: editDraft.role,
+        }),
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        setSaveError(payload?.error || 'Falha ao atualizar utilizador.');
+        return;
+      }
+      setUsers((prev) =>
+        prev.map((u) =>
+          u.clerkId === editingUser.clerkId
+            ? { ...u, fullName: editDraft.fullName.trim(), primaryEmail: editDraft.primaryEmail.trim(), role: editDraft.role }
+            : u
+        )
+      );
+      setEditingUser(null);
+    } finally {
+      setSavingUser(false);
+    }
+  };
+
+  const changeRoleInline = async (user: any, nextRole: string) => {
+    setSaveError(null);
+    setSavingUser(true);
+    try {
+      const res = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          clerkId: user.clerkId,
+          fullName: user.fullName || '',
+          primaryEmail: user.primaryEmail || '',
+          role: nextRole,
+        }),
+      });
+      if (!res.ok) {
+        const payload = await res.json().catch(() => ({}));
+        setSaveError(payload?.error || 'Falha ao atualizar utilizador.');
+        return;
+      }
+      setUsers((prev) =>
+        prev.map((u) => (u.clerkId === user.clerkId ? { ...u, role: nextRole } : u))
+      );
+    } finally {
+      setSavingUser(false);
+    }
   };
 
   return (
@@ -125,8 +203,8 @@ export const UsersPage = () => {
             <tr>
               <th className="p-4 text-xs uppercase text-gray-400">Nome</th>
               <th className="p-4 text-xs uppercase text-gray-400">Email</th>
-              <th className="p-4 text-xs uppercase text-gray-400">ID</th>
-              <th className="p-4 text-xs uppercase text-gray-400">Role</th>
+              <th className="p-4 text-xs uppercase text-gray-400">Tipo</th>
+              <th className="p-4 text-xs uppercase text-gray-400 text-right">Acoes</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -141,8 +219,28 @@ export const UsersPage = () => {
                 <tr key={user.clerkId} className="hover:bg-gray-50">
                   <td className="p-4 text-sm font-semibold">{user.fullName || 'N/D'}</td>
                   <td className="p-4 text-sm">{user.primaryEmail}</td>
-                  <td className="p-4 text-xs font-mono text-gray-400">{user.clerkId}</td>
-                  <td className="p-4 text-xs uppercase text-gray-500">{user.role || 'external'}</td>
+                  <td className="p-4">
+                    <select
+                      className="px-3 py-1 border rounded-lg text-xs uppercase text-gray-600"
+                      value={user.role || 'external'}
+                      onChange={(e) => changeRoleInline(user, e.target.value)}
+                      disabled={savingUser}
+                    >
+                      <option value="external">Externo</option>
+                      <option value="student">Estudante</option>
+                      <option value="admin">Administrador</option>
+                    </select>
+                  </td>
+                  <td className="p-4 text-right">
+                    <Button
+                      variant="secondary"
+                      className="inline-flex items-center gap-2"
+                      onClick={() => openEdit(user)}
+                    >
+                      <Pencil className="w-4 h-4" />
+                      Editar
+                    </Button>
+                  </td>
                 </tr>
               ))
             )}
@@ -162,6 +260,56 @@ export const UsersPage = () => {
           <button className="px-3 py-1 border rounded-lg" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>Seguinte</button>
         </div>
       </div>
+
+      {editingUser && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl overflow-hidden">
+            <div className="p-6 border-b border-gray-100">
+              <h3 className="text-lg font-bold">Editar utilizador</h3>
+              <p className="text-xs text-gray-500 mt-1">Atualize os dados principais e o tipo de conta.</p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="text-xs uppercase text-gray-400">Nome completo</label>
+                <input
+                  className="w-full px-4 py-2 border rounded-lg"
+                  value={editDraft.fullName}
+                  onChange={(e) => setEditDraft((d) => ({ ...d, fullName: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs uppercase text-gray-400">Email</label>
+                <input
+                  className="w-full px-4 py-2 border rounded-lg"
+                  value={editDraft.primaryEmail}
+                  onChange={(e) => setEditDraft((d) => ({ ...d, primaryEmail: e.target.value }))}
+                />
+              </div>
+              <div>
+                <label className="text-xs uppercase text-gray-400">Role</label>
+                <select
+                  className="w-full px-4 py-2 border rounded-lg"
+                  value={editDraft.role}
+                  onChange={(e) => setEditDraft((d) => ({ ...d, role: e.target.value }))}
+                >
+                  <option value="external">Externo</option>
+                  <option value="student">Estudante</option>
+                  <option value="admin">Administrador</option>
+                </select>
+              </div>
+              {saveError && <p className="text-xs text-red-600">{saveError}</p>}
+            </div>
+            <div className="p-6 bg-gray-50 flex gap-3">
+              <Button variant="secondary" className="flex-1" onClick={() => setEditingUser(null)} disabled={savingUser}>
+                Cancelar
+              </Button>
+              <Button className="flex-1" onClick={saveEdit} disabled={savingUser || !editDraft.fullName.trim()}>
+                {savingUser ? 'A guardar...' : 'Guardar alteracoes'}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

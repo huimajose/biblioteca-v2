@@ -97,15 +97,14 @@ export const ReportsPage = () => {
         new Date(act.borrowedDate).toLocaleDateString(),
         act.userName || act.userEmail || 'N/D',
         act.bookTitle,
-        String(act.physicalBookId ?? ''),
         statusLabel,
       ];
     });
 
     autoTable(doc, {
       startY: 90,
-      head: [['Data', 'Utilizador', 'Livro', 'ID fisico', 'Estado']],
-      body: rows.length ? rows : [['-', '-', '-', '-', '-']],
+      head: [['Data', 'Utilizador', 'Livro', 'Estado']],
+      body: rows.length ? rows : [['-', '-', '-', '-']],
       styles: { fontSize: 9 },
       headStyles: { fillColor: [101, 163, 13] },
     });
@@ -342,7 +341,6 @@ export const ReportsPage = () => {
                       <td className="p-4 text-sm font-medium">{act.userName || act.userEmail || 'N/D'}</td>
                       <td className="p-4 text-sm">
                         <p className="font-bold">{act.bookTitle}</p>
-                        <p className="text-[10px] text-gray-400 uppercase">ID: {act.physicalBookId}</p>
                       </td>
                       <td className="p-4">
                         {(() => {
@@ -585,7 +583,6 @@ export const ReportsPage = () => {
                       <td className="p-4">
                         <p className="text-sm font-bold">{user.fullName || user.primaryEmail}</p>
                         <p className="text-[10px] text-gray-400">{user.primaryEmail}</p>
-                        <p className="text-[10px] text-gray-400 font-mono uppercase">ID: {user.clerkId}</p>
                       </td>
                       <td className="p-4">
                         <span className={cn(
