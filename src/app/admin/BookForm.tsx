@@ -42,7 +42,13 @@ export const BookForm = () => {
 
   useEffect(() => {
     fetch('/api/genres')
-      .then(res => res.json())
+      .then(async (res) => {
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          throw new Error(text || 'Falha ao carregar cursos.');
+        }
+        return res.json();
+      })
       .then(data => setGenres(Array.isArray(data) ? data : []))
       .catch(() => setGenres([]));
   }, []);
@@ -50,7 +56,13 @@ export const BookForm = () => {
   useEffect(() => {
     if (!isEdit) return;
     fetch(`/api/books/${bookId}`)
-      .then(res => res.json())
+      .then(async (res) => {
+        if (!res.ok) {
+          const text = await res.text().catch(() => '');
+          throw new Error(text || 'Falha ao carregar o livro.');
+        }
+        return res.json();
+      })
       .then(data => {
         const apiFileUrl = data.fileUrl ?? data.file_url ?? '';
         const apiTotalCopies = data.totalCopies ?? data.total_copies ?? 1;
@@ -79,6 +91,9 @@ export const BookForm = () => {
           edicao: apiEdicao?.toString() ?? '',
           addCopies: 0,
         });
+      })
+      .catch(() => {
+        alert('Falha ao carregar os dados do livro.');
       });
   }, [bookId, isEdit]);
 
@@ -197,9 +212,13 @@ export const BookForm = () => {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
     });
-    if (!res.ok) return;
+    if (!res.ok) {
+      const text = await res.text().catch(() => '');
+      alert(text || 'Falha ao guardar o livro.');
+      return;
+    }
 
-    const created = await res.json();
+    const created = await res.json().catch(() => ({}));
     const resolvedBookId = isEdit ? Number(bookId) : Number(created?.id || created?.data?.id);
 
     if (pendingPdf && resolvedBookId) {

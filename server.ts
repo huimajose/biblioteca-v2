@@ -204,8 +204,12 @@ async function startServer() {
   });
 
   app.get('/api/genres', async (_req, res) => {
-    const genres = await db.select().from(schema.genres).orderBy(asc(schema.genres.name));
-    res.json(genres);
+    try {
+      const genres = await db.select().from(schema.genres).orderBy(asc(schema.genres.name));
+      res.json(genres);
+    } catch (error: any) {
+      res.status(500).json({ error: error?.message || 'Erro ao carregar cursos' });
+    }
   });
 
   app.get('/api/books/recommendations', async (_req, res) => {
@@ -1050,18 +1054,24 @@ async function startServer() {
       includePending?: string;
       status?: string;
     };
-    let query = db.select({
-      tid: schema.transactions.tid,
-      physicalBookId: schema.transactions.physicalBookId,
-      userId: schema.transactions.userId,
-      adminId: schema.transactions.adminId,
-      status: schema.transactions.status,
-      borrowedDate: schema.transactions.borrowedDate,
-      returnedDate: schema.transactions.returnedDate,
-      scoreApplied: schema.transactions.scoreApplied,
-    }).from(schema.transactions).orderBy(desc(schema.transactions.borrowedDate));
-    if (start) query = query.where(gte(schema.transactions.borrowedDate, start));
-    if (end) query = query.where(lte(schema.transactions.borrowedDate, end));
+      const borrowedDateOnly = sql<string>`date(${schema.transactions.borrowedDate})`;
+      let query = db.select({
+        tid: schema.transactions.tid,
+        physicalBookId: schema.transactions.physicalBookId,
+        userId: schema.transactions.userId,
+        adminId: schema.transactions.adminId,
+        status: schema.transactions.status,
+        borrowedDate: schema.transactions.borrowedDate,
+        returnedDate: schema.transactions.returnedDate,
+        scoreApplied: schema.transactions.scoreApplied,
+      }).from(schema.transactions).orderBy(desc(schema.transactions.borrowedDate));
+      const dateFilters = [
+        start ? gte(borrowedDateOnly, start) : undefined,
+        end ? lte(borrowedDateOnly, end) : undefined,
+      ].filter(Boolean);
+      if (dateFilters.length > 0) {
+        query = query.where(and(...dateFilters));
+      }
 
     let data: any[] = [];
     try {
@@ -1087,17 +1097,22 @@ async function startServer() {
       const pbook = await db.select().from(schema.physicalBooks).where(eq(schema.physicalBooks.pid, t.physicalBookId)).limit(1);
       const book = pbook[0] ? await db.select().from(schema.books).where(eq(schema.books.id, pbook[0].bookId)).limit(1) : [];
       const userInfo = usersMap.get(t.userId);
+      const adminInfo = usersMap.get(t.adminId);
       return {
         tid: t.tid,
         userId: t.userId,
         userName: userInfo?.fullName || null,
         userEmail: userInfo?.primaryEmail || null,
+        adminId: t.adminId,
+        adminName: adminInfo?.fullName || null,
+        adminEmail: adminInfo?.primaryEmail || null,
         borrowedDate: t.borrowedDate,
         status: normalizeStatus(t.status),
         physicalBookId: t.physicalBookId,
         bookTitle: book[0]?.title ?? 'N/D',
         bookAuthor: book[0]?.author ?? 'N/D',
         isbn: book[0]?.isbn ?? 'N/D',
+        bookGenre: book[0]?.genre ?? null,
       };
     }));
     res.json(activities);
