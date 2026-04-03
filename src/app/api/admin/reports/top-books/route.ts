@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { gte, lte, sql } from "drizzle-orm";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
@@ -9,9 +10,15 @@ export const dynamic = "force-dynamic";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const limit = Math.max(1, Number(searchParams.get("limit") || 10));
+  const start = searchParams.get("start");
+  const end = searchParams.get("end");
 
   const db = getDb();
-  const transactions = await db.select().from(schema.transactions);
+  const borrowedDateOnly = sql<string>`date(${schema.transactions.borrowedDate})`;
+  let txQuery = db.select().from(schema.transactions);
+  if (start) txQuery = txQuery.where(gte(borrowedDateOnly, start));
+  if (end) txQuery = txQuery.where(lte(borrowedDateOnly, end));
+  const transactions = await txQuery;
   const physicalBooks = await db.select().from(schema.physicalBooks);
   const books = await db.select().from(schema.books);
 

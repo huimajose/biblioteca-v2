@@ -14,6 +14,8 @@ export const ReportsPage = () => {
   const [books, setBooks] = useState<any[]>([]);
   const [userReports, setUserReports] = useState<any[]>([]);
   const [topBooks, setTopBooks] = useState<any[]>([]);
+  const [topRange, setTopRange] = useState({ start: '', end: '' });
+  const [topLimit, setTopLimit] = useState(10);
   const [dates, setDates] = useState({ start: '', end: '' });
   const [statusFilter, setStatusFilter] = useState<'all' | 'borrowed' | 'returned' | 'pending' | 'rejected'>('all');
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
@@ -32,9 +34,7 @@ export const ReportsPage = () => {
       fetch('/api/admin/reports/users').then(res => res.json()).then(setUserReports);
     }
     if (reportType === 'top-books') {
-      fetch('/api/admin/reports/top-books')
-        .then(res => res.json())
-        .then(setTopBooks);
+      fetchTopBooks();
     }
   }, [reportType]);
 
@@ -115,7 +115,8 @@ export const ReportsPage = () => {
     doc.setFontSize(16);
     doc.text('Relatorio de livros mais requisitados', 40, 40);
     doc.setFontSize(10);
-    doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 40, 58);
+    doc.text(`Intervalo: ${topRange.start || 'Todos'} - ${topRange.end || 'Todos'}`, 40, 58);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 40, 72);
 
     const rows = (topBooks || []).map((b: any, index: number) => ([
       String(index + 1),
@@ -126,7 +127,7 @@ export const ReportsPage = () => {
     ]));
 
     autoTable(doc, {
-      startY: 80,
+      startY: 90,
       head: [['#', 'Titulo', 'Autor', 'ISBN', 'Requisicoes']],
       body: rows.length ? rows : [['-', '-', '-', '-', '-']],
       styles: { fontSize: 9 },
@@ -134,6 +135,32 @@ export const ReportsPage = () => {
     });
 
     doc.save('relatorio-livros-mais-requisitados.pdf');
+  };
+
+  const fetchTopBooks = async () => {
+    const params = new URLSearchParams();
+    if (topRange.start) params.set('start', topRange.start);
+    if (topRange.end) params.set('end', topRange.end);
+    params.set('limit', String(topLimit || 10));
+    const res = await fetch(`/api/admin/reports/top-books?${params.toString()}`);
+    setTopBooks(await res.json());
+  };
+
+  const applyTopRange = (range: 'today' | 'week' | 'month' | '30d') => {
+    const now = new Date();
+    const end = now.toISOString().slice(0, 10);
+    let startDate = new Date(now);
+    if (range === 'today') {
+      startDate = new Date(now);
+    } else if (range === 'week') {
+      startDate.setDate(startDate.getDate() - 6);
+    } else if (range === 'month') {
+      startDate = new Date(now.getFullYear(), now.getMonth(), 1);
+    } else {
+      startDate.setDate(startDate.getDate() - 29);
+    }
+    const start = startDate.toISOString().slice(0, 10);
+    setTopRange({ start, end });
   };
 
   const handleReturn = async () => {
@@ -582,19 +609,45 @@ export const ReportsPage = () => {
 
       {reportType === 'top-books' && (
         <div className="space-y-6">
-          <Card className="p-6 print:hidden flex justify-between items-center">
+          <Card className="p-6 print:hidden flex flex-wrap gap-4 items-end justify-between">
             <div>
               <h2 className="text-xl font-bold">Livros mais requisitados</h2>
               <p className="text-sm text-gray-500">Ranking dos titulos com mais requisicoes.</p>
             </div>
-            <Button variant="secondary" onClick={exportTopBooksPdf} className="flex items-center gap-2">
-              <Printer className="w-4 h-4" /> Baixar PDF
-            </Button>
+            <div className="flex flex-wrap gap-3 items-end">
+              <div>
+                <label className="block text-sm font-medium mb-1">Data de inicio</label>
+                <input type="date" className="px-4 py-2 border rounded-lg" value={topRange.start} onChange={e => setTopRange({ ...topRange, start: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Data de fim</label>
+                <input type="date" className="px-4 py-2 border rounded-lg" value={topRange.end} onChange={e => setTopRange({ ...topRange, end: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Top</label>
+                <select className="px-4 py-2 border rounded-lg" value={topLimit} onChange={(e) => setTopLimit(Number(e.target.value))}>
+                  {[5, 10, 20, 30].map(v => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="secondary" onClick={() => applyTopRange('today')}>Hoje</Button>
+                <Button variant="secondary" onClick={() => applyTopRange('week')}>Esta semana</Button>
+                <Button variant="secondary" onClick={() => applyTopRange('month')}>Este mes</Button>
+                <Button variant="secondary" onClick={() => applyTopRange('30d')}>Ultimos 30 dias</Button>
+              </div>
+              <Button onClick={fetchTopBooks}>Filtrar</Button>
+              <Button variant="secondary" onClick={exportTopBooksPdf} className="flex items-center gap-2">
+                <Printer className="w-4 h-4" /> Baixar PDF
+              </Button>
+            </div>
           </Card>
 
           <Card className="overflow-hidden print:border-none print:shadow-none">
             <div className="p-6 border-b border-gray-100 hidden print:block">
               <h1 className="text-2xl font-bold">Relatorio de livros mais requisitados</h1>
+              <p className="text-sm text-gray-500">Intervalo: {topRange.start || 'Todos'} - {topRange.end || 'Todos'}</p>
               <p className="text-sm text-gray-500">Gerado em {new Date().toLocaleDateString()}</p>
             </div>
             <table className="w-full text-left border-collapse">
