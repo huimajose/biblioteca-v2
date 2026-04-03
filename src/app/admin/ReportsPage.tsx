@@ -204,23 +204,7 @@ export const ReportsPage = () => {
       doc.setTextColor(0);
     };
 
-    if (trend.length) {
-      doc.setFontSize(11);
-      doc.text('Tendencia de requisicoes', 40, 120);
-      drawBarChart(40, 130, 240, 70, trend, [101, 163, 13]);
-    }
-
-    doc.setFontSize(11);
-    doc.text('Estados das requisicoes', 320, 120);
-    drawBarChart(320, 130, 240, 70, statusData, [132, 204, 22]);
-
-    if (topGenres.length) {
-      doc.setFontSize(11);
-      doc.text('Top generos', 40, 220);
-      drawBarChart(40, 230, 520, 70, topGenres, [99, 102, 241]);
-    }
-
-    let tableStartY = topGenres.length ? 330 : 230;
+    let tableStartY = 120;
 
     if (groupBy !== 'none' && groupedActivity.length) {
       autoTable(doc, {
@@ -255,6 +239,39 @@ export const ReportsPage = () => {
       styles: { fontSize: 9 },
       headStyles: { fillColor: [101, 163, 13] },
     });
+
+    let chartY = (doc as any).lastAutoTable?.finalY || tableStartY;
+    chartY += 30;
+
+    const ensureSpace = (height: number) => {
+      const pageHeight = doc.internal.pageSize.getHeight();
+      if (chartY + height > pageHeight - 40) {
+        doc.addPage();
+        chartY = 60;
+      }
+    };
+
+    const drawChartBlock = (title: string, data: { label: string; value: number }[], color: [number, number, number]) => {
+      if (!data.length) return;
+      ensureSpace(90);
+      doc.setFontSize(10);
+      doc.text(title, 40, chartY);
+      drawBarChart(40, chartY + 10, 220, 50, data, color);
+      chartY += 80;
+    };
+
+    const drawWideChartBlock = (title: string, data: { label: string; value: number }[], color: [number, number, number]) => {
+      if (!data.length) return;
+      ensureSpace(90);
+      doc.setFontSize(10);
+      doc.text(title, 40, chartY);
+      drawBarChart(40, chartY + 10, 520, 50, data, color);
+      chartY += 80;
+    };
+
+    drawChartBlock('Tendencia de requisicoes', trend, [101, 163, 13]);
+    drawChartBlock('Estados das requisicoes', statusData, [132, 204, 22]);
+    drawWideChartBlock('Top generos', topGenres, [99, 102, 241]);
 
     try {
       const logo = await loadWatermarkImage(LOGO_WATERMARK);
@@ -790,17 +807,26 @@ export const ReportsPage = () => {
                         {user.activeBorrows.length === 0 ? (
                           <span className="text-xs text-gray-400 italic">Sem emprestimos ativos</span>
                         ) : (
-                          <div className="space-y-2">
-                            {user.activeBorrows.map((borrow: any) => (
-                              <div key={borrow.tid} className="bg-lime-50/50 p-2 rounded-lg border border-lime-100/50">
-                                <p className="text-xs font-bold text-lime-900">{borrow.bookTitle}</p>
-                                <div className="flex justify-between items-center mt-1">
-                                  <span className="text-[9px] text-lime-400 font-mono">PID: {borrow.physicalBookId}</span>
-                                  <span className="text-[9px] text-lime-400">{new Date(borrow.borrowedDate).toLocaleDateString()}</span>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
+                          <table className="w-full text-left border-collapse">
+                            <thead className="bg-lime-50/60">
+                              <tr>
+                                <th className="p-2 text-[9px] uppercase text-lime-500">Livro</th>
+                                <th className="p-2 text-[9px] uppercase text-lime-500">PID</th>
+                                <th className="p-2 text-[9px] uppercase text-lime-500 text-right">Data</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-lime-50">
+                              {user.activeBorrows.map((borrow: any) => (
+                                <tr key={borrow.tid} className="bg-lime-50/30">
+                                  <td className="p-2 text-[10px] font-semibold text-lime-900">{borrow.bookTitle}</td>
+                                  <td className="p-2 text-[9px] font-mono text-lime-500">{borrow.physicalBookId}</td>
+                                  <td className="p-2 text-[9px] text-right text-lime-500">
+                                    {new Date(borrow.borrowedDate).toLocaleDateString()}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
                         )}
                       </td>
                     </tr>
