@@ -16,6 +16,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
   const [step, setStep] = useState<'user' | 'books' | 'confirm'>('user');
   const [userSearch, setUserSearch] = useState('');
   const [bookSearch, setBookSearch] = useState('');
+  const [bookGenreFilter, setBookGenreFilter] = useState('all');
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [selectedBooks, setSelectedBooks] = useState<any[]>([]);
@@ -63,9 +64,11 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
   console.log('users:', allUsers);
 
   const safeBooks = Array.isArray(books) ? books : [];
+  const genreOptions = Array.from(new Set(safeBooks.map((b) => b.genre).filter(Boolean))).sort();
   const filteredBooks = safeBooks.filter(b => 
     !b.isDigital && 
     b.availableCopies > 0 &&
+    (bookGenreFilter === 'all' || b.genre === bookGenreFilter) &&
     (b.title.toLowerCase().includes(bookSearch.toLowerCase()) || 
      b.author.toLowerCase().includes(bookSearch.toLowerCase()) ||
      b.isbn.toLowerCase().includes(bookSearch.toLowerCase()))
@@ -229,6 +232,19 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
                             value={bookSearch}
                             onChange={e => setBookSearch(e.target.value)}
                           />
+                        </div>
+                        <div className="mt-3">
+                          <label className="text-xs uppercase text-gray-400">Curso</label>
+                          <select
+                            className="w-full px-4 py-3 border-2 border-gray-100 rounded-2xl focus:border-lime-500 outline-none transition-all text-sm"
+                            value={bookGenreFilter}
+                            onChange={(e) => setBookGenreFilter(e.target.value)}
+                          >
+                            <option value="all">Todos cursos</option>
+                            {genreOptions.map((g) => (
+                              <option key={g} value={g}>{g}</option>
+                            ))}
+                          </select>
                         </div>
                       </div>
 

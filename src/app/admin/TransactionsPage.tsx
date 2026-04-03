@@ -1,8 +1,12 @@
 import React, { useEffect, useState } from 'react';
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw, Printer } from 'lucide-react';
 import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
 import { cn } from '@/utils/cn.ts';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { LOGO_WATERMARK } from '@/constants.ts';
+import { addCenteredWatermarkToAllPages, loadWatermarkImage } from '@/utils/pdfWatermark.ts';
 
 export const TransactionsPage = () => {
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -37,6 +41,47 @@ export const TransactionsPage = () => {
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
+
+  const exportTransactionsPdf = async () => {
+    const doc = new jsPDF('p', 'pt');
+    doc.setFontSize(16);
+    doc.text('Relatorio de transacoes', 40, 40);
+    doc.setFontSize(10);
+    doc.text(`Intervalo: ${startDate || 'Todos'} - ${endDate || 'Todos'}`, 40, 58);
+    doc.text(`Estado: ${statusFilter === 'all' ? 'Todos' : statusFilter}`, 40, 72);
+
+    const rows = filtered.map((t) => {
+      const status = (t.status || '').toLowerCase();
+      const statusLabel =
+        status === 'borrowed' ? 'emprestado' :
+        status === 'returned' ? 'devolvido' :
+        status === 'rejected' ? 'rejeitado' :
+        status;
+      return [
+        t.borrowedDate ? new Date(t.borrowedDate).toLocaleDateString() : 'N/D',
+        t.userName || t.userId || 'N/D',
+        t.bookTitle || 'N/D',
+        statusLabel,
+      ];
+    });
+
+    autoTable(doc, {
+      startY: 90,
+      head: [['Data', 'Utilizador', 'Livro', 'Estado']],
+      body: rows.length ? rows : [['-', '-', '-', '-']],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [101, 163, 13] },
+    });
+
+    try {
+      const logo = await loadWatermarkImage(LOGO_WATERMARK);
+      addCenteredWatermarkToAllPages(doc, logo, { width: 160 });
+    } catch {
+      // ignore watermark if logo fails
+    }
+
+    doc.save('transacoes.pdf');
+  };
 
   const handleReturn = async (tid: number) => {
     setLoading(true);
@@ -90,7 +135,7 @@ export const TransactionsPage = () => {
       </div>
 
       <Card className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
           <div>
             <label className="text-xs uppercase text-gray-400">Data inicio</label>
             <input className="w-full px-4 py-2 border rounded-lg" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
@@ -110,6 +155,11 @@ export const TransactionsPage = () => {
           </div>
           <div>
             <Button className="w-full" onClick={fetchTransactions}>Filtrar</Button>
+          </div>
+          <div>
+            <Button variant="secondary" className="w-full flex items-center justify-center gap-2" onClick={exportTransactionsPdf}>
+              <Printer className="w-4 h-4" /> Imprimir PDF
+            </Button>
           </div>
         </div>
       </Card>

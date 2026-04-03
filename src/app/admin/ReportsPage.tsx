@@ -20,10 +20,51 @@ export const ReportsPage = () => {
   const [topLimit, setTopLimit] = useState(10);
   const [dates, setDates] = useState({ start: '', end: '' });
   const [statusFilter, setStatusFilter] = useState<'all' | 'borrowed' | 'returned' | 'pending' | 'rejected'>('all');
+  const [groupBy, setGroupBy] = useState<'none' | 'user' | 'week' | 'day'>('none');
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [confirmReturn, setConfirmReturn] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [filtering, setFiltering] = useState(false);
+
+  const topAdmin = useMemo(() => {
+    const counts = activities.reduce((acc: Record<string, number>, a: any) => {
+      const key = a.adminName || a.adminEmail || a.adminId || 'Sistema';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    const entry = Object.entries(counts).sort((a, b) => b[1] - a[1])[0];
+    return entry ? { name: entry[0], count: entry[1] } : null;
+  }, [activities]);
+
+  const groupedActivity = useMemo(() => {
+    if (groupBy === 'none') return [];
+    const map = new Map<string, number>();
+    activities.forEach((a: any) => {
+      if (groupBy === 'user') {
+        const key = a.userName || a.userEmail || a.userId || 'N/D';
+        map.set(key, (map.get(key) || 0) + 1);
+        return;
+      }
+      const raw = a.borrowedDate;
+      if (!raw) return;
+      const d = new Date(raw);
+      if (Number.isNaN(d.getTime())) return;
+      if (groupBy === 'day') {
+        const key = d.toISOString().slice(0, 10);
+        map.set(key, (map.get(key) || 0) + 1);
+        return;
+      }
+      const day = d.getDay();
+      const diff = (day + 6) % 7;
+      const monday = new Date(d);
+      monday.setDate(d.getDate() - diff);
+      const key = monday.toISOString().slice(0, 10);
+      map.set(key, (map.get(key) || 0) + 1);
+    });
+    return Array.from(map.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([label, count]) => ({ label, count }));
+  }, [activities, groupBy]);
 
 
   useEffect(() => {
@@ -87,6 +128,112 @@ export const ReportsPage = () => {
     doc.text(`Intervalo: ${dates.start || 'Todos'} - ${dates.end || 'Todos'}`, 40, 58);
     doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 40, 72);
 
+    const adminCounts = activities.reduce((acc: Record<string, number>, a: any) => {
+      const key = a.adminName || a.adminEmail || a.adminId || 'Sistema';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    const topAdmin = Object.entries(adminCounts).sort((a, b) => b[1] - a[1])[0];
+    if (topAdmin) {
+      doc.setFontSize(10);
+      doc.text(`Admin com mais atividades: ${topAdmin[0]} (${topAdmin[1]})`, 40, 90);
+    }
+
+    const trendMap = new Map<string, number>();
+    activities.forEach((a: any) => {
+      const raw = a.borrowedDate;
+      if (!raw) return;
+      const d = new Date(raw);
+      if (Number.isNaN(d.getTime())) return;
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      trendMap.set(key, (trendMap.get(key) || 0) + 1);
+    });
+    const trend = Array.from(trendMap.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .slice(-6)
+      .map(([key, value]) => {
+        const [y, m] = key.split('-');
+        return { label: `${m}/${y}`, value };
+      });
+
+    const statusCounts = activities.reduce((acc: Record<string, number>, a: any) => {
+      const s = String(a.status || '').toLowerCase();
+      if (s === 'borrowed') acc.borrowed += 1;
+      else if (s === 'returned') acc.returned += 1;
+      else if (s === 'pending') acc.pending += 1;
+      return acc;
+    }, { borrowed: 0, returned: 0, pending: 0 });
+    const statusData = [
+      { label: 'Emprestado', value: statusCounts.borrowed },
+      { label: 'Devolvido', value: statusCounts.returned },
+      { label: 'Pendente', value: statusCounts.pending },
+    ];
+
+    const genreCounts = activities.reduce((acc: Record<string, number>, a: any) => {
+      const key = a.bookGenre || 'Sem curso';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    const topGenres = Object.entries(genreCounts)
+      .map(([label, value]) => ({ label, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 6);
+
+    const drawBarChart = (
+      x: number,
+      y: number,
+      width: number,
+      height: number,
+      data: { label: string; value: number }[],
+      color: [number, number, number]
+    ) => {
+      const max = Math.max(1, ...data.map((d) => d.value));
+      const gap = 6;
+      const barW = (width - gap * (data.length - 1)) / data.length;
+      data.forEach((d, i) => {
+        const barH = Math.round((d.value / max) * height);
+        const bx = x + i * (barW + gap);
+        const by = y + (height - barH);
+        doc.setFillColor(color[0], color[1], color[2]);
+        doc.rect(bx, by, barW, barH, 'F');
+        doc.setFontSize(7);
+        doc.setTextColor(80);
+        doc.text(String(d.value), bx + barW / 2, by - 4, { align: 'center' });
+        doc.text(d.label, bx + barW / 2, y + height + 10, { align: 'center' });
+      });
+      doc.setTextColor(0);
+    };
+
+    if (trend.length) {
+      doc.setFontSize(11);
+      doc.text('Tendencia de requisicoes', 40, 120);
+      drawBarChart(40, 130, 240, 70, trend, [101, 163, 13]);
+    }
+
+    doc.setFontSize(11);
+    doc.text('Estados das requisicoes', 320, 120);
+    drawBarChart(320, 130, 240, 70, statusData, [132, 204, 22]);
+
+    if (topGenres.length) {
+      doc.setFontSize(11);
+      doc.text('Top generos', 40, 220);
+      drawBarChart(40, 230, 520, 70, topGenres, [99, 102, 241]);
+    }
+
+    let tableStartY = topGenres.length ? 330 : 230;
+
+    if (groupBy !== 'none' && groupedActivity.length) {
+      autoTable(doc, {
+        startY: tableStartY,
+        head: [[groupBy === 'user' ? 'Utilizador' : groupBy === 'week' ? 'Semana' : 'Dia', 'Total']],
+        body: groupedActivity.map((row: any) => [row.label, String(row.count)]),
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [101, 163, 13] },
+      });
+      const last = (doc as any).lastAutoTable?.finalY || tableStartY;
+      tableStartY = last + 20;
+    }
+
     const rows = activities.map((act) => {
       const statusLabel =
         act.status === 'borrowed' ? 'emprestado' :
@@ -102,7 +249,7 @@ export const ReportsPage = () => {
     });
 
     autoTable(doc, {
-      startY: 90,
+      startY: tableStartY,
       head: [['Data', 'Utilizador', 'Livro', 'Estado']],
       body: rows.length ? rows : [['-', '-', '-', '-']],
       styles: { fontSize: 9 },
@@ -293,6 +440,19 @@ export const ReportsPage = () => {
                   <option value="rejected">Rejeitado</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Agrupar por</label>
+                <select
+                  className="px-4 py-2 border rounded-lg"
+                  value={groupBy}
+                  onChange={(e) => setGroupBy(e.target.value as any)}
+                >
+                  <option value="none">Nenhum</option>
+                  <option value="user">Utilizador</option>
+                  <option value="week">Semana</option>
+                  <option value="day">Dia</option>
+                </select>
+              </div>
               <div className="flex flex-wrap gap-2">
                 <Button variant="secondary" onClick={() => applyQuickRange('today')}>Hoje</Button>
                 <Button variant="secondary" onClick={() => applyQuickRange('week')}>Esta semana</Button>
@@ -306,8 +466,39 @@ export const ReportsPage = () => {
               {filtering && (
                 <span className="text-xs text-gray-400">A filtrar...</span>
               )}
+              {topAdmin && (
+                <span className="text-xs text-gray-500">
+                  Admin com mais atividades: <span className="font-semibold">{topAdmin.name}</span> ({topAdmin.count})
+                </span>
+              )}
             </div>
           </Card>
+
+          {groupBy !== 'none' && (
+            <Card className="p-6">
+              <h2 className="text-lg font-bold mb-4">Resumo por {groupBy === 'user' ? 'utilizador' : groupBy === 'week' ? 'semana' : 'dia'}</h2>
+              {groupedActivity.length === 0 ? (
+                <p className="text-sm text-gray-400">Sem dados para agrupar.</p>
+              ) : (
+                <table className="w-full text-left border-collapse">
+                  <thead className="bg-gray-50 border-b border-gray-100">
+                    <tr>
+                      <th className="p-3 text-xs uppercase text-gray-400">{groupBy === 'user' ? 'Utilizador' : groupBy === 'week' ? 'Semana' : 'Dia'}</th>
+                      <th className="p-3 text-xs uppercase text-gray-400 text-right">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {groupedActivity.map((row) => (
+                      <tr key={row.label}>
+                        <td className="p-3 text-sm">{row.label}</td>
+                        <td className="p-3 text-sm text-right font-semibold">{row.count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </Card>
+          )}
 
           <Card className="overflow-hidden print:border-none print:shadow-none">
             <div className="p-6 border-b border-gray-100 hidden print:block">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   BookOpen, 
@@ -32,6 +32,18 @@ const AdminDashboard: React.FC = () => {
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
   const [books, setBooks] = useState<any[]>([]);
   const [isInstantOpen, setIsInstantOpen] = useState(false);
+
+  const topGenres = useMemo(() => {
+    const counts = (books || []).reduce((acc: Record<string, number>, b: any) => {
+      const key = b.genre || 'Sem curso';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    return Object.entries(counts)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 6);
+  }, [books]);
 
   useEffect(() => {
     fetchStats();
@@ -150,6 +162,24 @@ const AdminDashboard: React.FC = () => {
           </div>
         </Card>
       </div>
+
+      <Card className="p-6">
+        <h2 className="text-lg font-bold mb-4">Top generos</h2>
+        <div className="h-[260px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={topGenres}>
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} />
+              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} />
+              <Tooltip 
+                cursor={{ fill: '#f9fafb' }}
+                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+              />
+              <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={40} fill="#65a30d" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </Card>
 
       <div className="grid grid-cols-1 gap-8">
         <Card className="p-6">

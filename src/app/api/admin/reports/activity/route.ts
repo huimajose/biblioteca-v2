@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
 
@@ -35,8 +35,14 @@ export async function GET(req: NextRequest) {
     .from(schema.transactions)
     .orderBy(desc(schema.transactions.borrowedDate));
 
-  if (start) query = query.where(gte(borrowedDateOnly, start));
-  if (end) query = query.where(lte(borrowedDateOnly, end));
+  const dateFilters = [
+    start ? gte(borrowedDateOnly, start) : undefined,
+    end ? lte(borrowedDateOnly, end) : undefined,
+  ].filter(Boolean);
+
+  if (dateFilters.length > 0) {
+    query = query.where(and(...dateFilters));
+  }
 
   let data: any[] = [];
   try {
@@ -74,17 +80,22 @@ export async function GET(req: NextRequest) {
             .limit(1)
         : [];
       const userInfo = usersMap.get(t.userId);
+      const adminInfo = usersMap.get(t.adminId);
       return {
         tid: t.tid,
         userId: t.userId,
         userName: userInfo?.fullName || null,
         userEmail: userInfo?.primaryEmail || null,
+        adminId: t.adminId,
+        adminName: adminInfo?.fullName || null,
+        adminEmail: adminInfo?.primaryEmail || null,
         borrowedDate: t.borrowedDate,
         status: normalizeStatus(t.status),
         physicalBookId: t.physicalBookId,
         bookTitle: book[0]?.title ?? "N/D",
         bookAuthor: book[0]?.author ?? "N/D",
         isbn: book[0]?.isbn ?? "N/D",
+        bookGenre: book[0]?.genre ?? null,
       };
     })
   );
