@@ -33,7 +33,10 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
         const verifications = Array.isArray(verificationsResp) ? verificationsResp : [];
         const approvedIds = new Set(
           verifications
-            .filter((v: any) => String(v.status || '').toLowerCase() === 'approved')
+            .filter((v: any) => {
+              const status = String(v.status || '').toLowerCase();
+              return status === 'approved' || status === 'aprroved';
+            })
             .map((v: any) => v.clerkId)
         );
         const filtered = list.filter((u: any) => approvedIds.size === 0
@@ -56,6 +59,8 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
     u.clerkId.toLowerCase().includes(userSearch.toLowerCase()) ||
     (u.fullName || '').toLowerCase().includes(userSearch.toLowerCase())
   );
+
+  console.log('users:', allUsers);
 
   const safeBooks = Array.isArray(books) ? books : [];
   const filteredBooks = safeBooks.filter(b => 

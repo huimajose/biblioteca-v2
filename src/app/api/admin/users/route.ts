@@ -17,14 +17,24 @@ export async function GET(req: NextRequest) {
     const verifications = await db.select().from(schema.studentVerifications);
     const approvedIds = new Set(
       verifications
-        .filter((s) => String(s.status || "").toLowerCase() === "approved")
+        .filter((s) => {
+          const status = String(s.status || "").toLowerCase();
+          return status === "approved" || status === "aprroved";
+        })
         .map((s) => s.clerkId)
     );
-    users = users.filter(
-      (u) =>
-        approvedIds.has(u.clerkId) &&
-        String(u.role || "").toLowerCase() === "student"
-    );
+
+    if (approvedIds.size > 0) {
+      users = users.filter(
+        (u) =>
+          approvedIds.has(u.clerkId) &&
+          String(u.role || "").toLowerCase() === "student"
+      );
+    } else {
+      users = users.filter(
+        (u) => String(u.role || "").toLowerCase() === "student"
+      );
+    }
   }
 
   const mapped = users.map((u) => ({
