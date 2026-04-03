@@ -118,10 +118,11 @@ export const UserPortal = ({ user }: UserPortalProps) => {
       filterType === 'all' ||
       (filterType === 'digital' && isDigital) ||
       (filterType === 'physical' && !isDigital);
+    const copies = b.availableCopies ?? 0;
     const matchesAvailability =
       filterAvailability === 'all' ||
-      (filterAvailability === 'available' && (isDigital || b.availableCopies > 0)) ||
-      (filterAvailability === 'unavailable' && !isDigital && b.availableCopies <= 0);
+      (filterAvailability === 'available' && copies > 0) ||
+      (filterAvailability === 'unavailable' && copies <= 0);
     const matchesGenre = genreFilter === 'all' || b.genre === genreFilter;
     return matchesSearch && matchesType && matchesAvailability && matchesGenre;
   });
