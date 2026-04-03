@@ -204,7 +204,28 @@ export const ReportsPage = () => {
       doc.setTextColor(0);
     };
 
+    const userCounts = activities.reduce((acc: Record<string, number>, a: any) => {
+      const key = a.userName || a.userEmail || a.userId || 'N/D';
+      acc[key] = (acc[key] || 0) + 1;
+      return acc;
+    }, {});
+    const topUsers = Object.entries(userCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, count]) => ({ name, count }));
+
     let tableStartY = 120;
+
+    if (topUsers.length) {
+      autoTable(doc, {
+        startY: tableStartY,
+        head: [['Utilizador', 'Total de atividades']],
+        body: topUsers.map((row) => [row.name, String(row.count)]),
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [101, 163, 13] },
+      });
+      const last = (doc as any).lastAutoTable?.finalY || tableStartY;
+      tableStartY = last + 20;
+    }
 
     if (groupBy !== 'none' && groupedActivity.length) {
       autoTable(doc, {
@@ -272,6 +293,22 @@ export const ReportsPage = () => {
     drawChartBlock('Tendencia de requisicoes', trend, [101, 163, 13]);
     drawChartBlock('Estados das requisicoes', statusData, [132, 204, 22]);
     drawWideChartBlock('Top generos', topGenres, [99, 102, 241]);
+
+    const filterSummary = [
+      `Intervalo: ${dates.start || 'Todos'} - ${dates.end || 'Todos'}`,
+      `Estado: ${statusFilter === 'all' ? 'Todos' : statusFilter}`,
+      `Grupo: ${groupBy === 'none' ? 'Nenhum' : groupBy}`,
+    ].join(' | ');
+
+    const totalPages = doc.getNumberOfPages();
+    for (let i = 1; i <= totalPages; i += 1) {
+      doc.setPage(i);
+      const pageHeight = doc.internal.pageSize.getHeight();
+      doc.setFontSize(9);
+      doc.setTextColor(120);
+      doc.text(filterSummary, 40, pageHeight - 24);
+      doc.setTextColor(0);
+    }
 
     try {
       const logo = await loadWatermarkImage(LOGO_WATERMARK);
