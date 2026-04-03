@@ -11,6 +11,7 @@ import { StudentSticker } from '@/components/StudentSticker.tsx';
 import { BookDetailsModal } from '@/components/BookDetailsModal.tsx';
 import { useNavigate } from 'react-router-dom';
 import { resolveBookFileUrl } from '@/utils/file.ts';
+import { Toast } from '@/components/Toast.tsx';
 
 interface UserPortalProps {
   user: User;
@@ -31,6 +32,11 @@ export const UserPortal = ({ user }: UserPortalProps) => {
   const [filterAvailability, setFilterAvailability] = useState<'all' | 'available' | 'unavailable'>('all');
   const [genres, setGenres] = useState<any[]>([]);
   const [genreFilter, setGenreFilter] = useState<string>('all');
+  const [shelfIds, setShelfIds] = useState<Set<number>>(new Set());
+  const [borrowLoading, setBorrowLoading] = useState<Record<number, boolean>>({});
+  const [reserveLoading, setReserveLoading] = useState<Record<number, boolean>>({});
+  const [shelfLoading, setShelfLoading] = useState<Record<number, boolean>>({});
+  const [toast, setToast] = useState<{ title: string; message: string } | null>(null);
 
   useEffect(() => {
     fetch('/api/books').then(res => res.json()).then(setBooks);
@@ -40,64 +46,108 @@ export const UserPortal = ({ user }: UserPortalProps) => {
     fetch('/api/user/student-info', { headers: { 'x-user-id': user.id } })
       .then(res => res.json())
       .then(data => setStudentInfo({ fullName: data?.fullName, studentNumber: data?.studentNumber, role: data?.role, status: data?.status }));
+    fetch('/api/user/shelf', { headers: { 'x-user-id': user.id } })
+      .then(res => res.json())
+      .then(data => {
+        const list = Array.isArray(data) ? data : data?.data ?? [];
+        const ids = new Set<number>(list.map((entry: any) => entry?.book?.id).filter(Boolean));
+        setShelfIds(ids);
+      })
+      .catch(() => setShelfIds(new Set()));
     fetch('/api/genres')
       .then(res => res.json())
       .then(data => setGenres(Array.isArray(data) ? data : []))
       .catch(() => setGenres([]));
   }, []);
 
+  const notify = (title: string, message: string) => setToast({ title, message });
+
   const handleBorrow = async (bookId: number) => {
-    const res = await fetch('/api/transactions/borrow', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'x-user-id': user.id
-      },
-      body: JSON.stringify({ bookId, userId: user.id })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      if (data?.status === 'borrowed' && data?.tid) {
-        setTicket(data);
+    if (borrowLoading[bookId]) return;
+    const book = books.find((b) => b.id === bookId);
+    const isDigital = Boolean(book?.fileUrl) || Boolean(book?.isDigital);
+    if (isDigital && shelfIds.has(bookId)) {
+      notify('Ja esta na estante', 'Este livro ja esta na sua estante digital.');
+      return;
+    }
+    setBorrowLoading((prev) => ({ ...prev, [bookId]: true }));
+    try {
+      const res = await fetch('/api/transactions/borrow', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-id': user.id
+        },
+        body: JSON.stringify({ bookId, userId: user.id })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        if (data?.status === 'borrowed' && data?.tid) {
+          setTicket(data);
+          notify('Emprestimo aprovado', 'Livro requisitado com sucesso.');
+        } else {
+          notify('Pedido enviado', data?.message || 'Pedido enviado para aprovacao.');
+        }
+        fetch('/api/books').then(res => res.json()).then(setBooks);
       } else {
-        alert(data?.message || 'Pedido enviado para aprovacao.');
+        notify('Erro ao requisitar', data?.error || 'Nao foi possivel requisitar.');
       }
-      fetch('/api/books').then(res => res.json()).then(setBooks);
-    } else {
-      alert(data.error);
+    } finally {
+      setBorrowLoading((prev) => ({ ...prev, [bookId]: false }));
     }
   };
 
   const handleReserve = async (bookId: number) => {
-    const res = await fetch('/api/reservations', {
-      method: 'POST',
-      headers: { 
-        'Content-Type': 'application/json',
-        'x-user-id': user.id
-      },
-      body: JSON.stringify({ bookId })
-    });
-    const data = await res.json();
-    if (res.ok) {
-      alert('Reserva efetuada com sucesso! Vamos avisar quando o livro estiver disponivel.');
-    } else {
-      alert(data.error);
+    if (reserveLoading[bookId]) return;
+    setReserveLoading((prev) => ({ ...prev, [bookId]: true }));
+    try {
+      const res = await fetch('/api/reservations', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'x-user-id': user.id
+        },
+        body: JSON.stringify({ bookId })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        notify('Reserva criada', 'Reserva efetuada com sucesso! Vamos avisar quando estiver disponivel.');
+      } else {
+        notify('Erro ao reservar', data?.error || 'Nao foi possivel reservar.');
+      }
+    } finally {
+      setReserveLoading((prev) => ({ ...prev, [bookId]: false }));
     }
   };
 
   const handleAddToShelf = async (bookId: number) => {
-    const res = await fetch(`/api/books/${bookId}/add-to-shelf`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-user-id': user.id,
-      },
-    });
-    const data = await res.json();
-    if (!res.ok) {
-      alert(data.message || 'Nao foi possivel adicionar.');
-    } else {
-      alert(data.message || 'Livro adicionado a estante.');
+    if (shelfIds.has(bookId)) {
+      notify('Ja esta na estante', 'Este livro ja se encontra na sua estante.');
+      return;
+    }
+    if (shelfLoading[bookId]) return;
+    setShelfLoading((prev) => ({ ...prev, [bookId]: true }));
+    try {
+      const res = await fetch(`/api/books/${bookId}/add-to-shelf`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user.id,
+        },
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        notify('Erro ao adicionar', data?.message || 'Nao foi possivel adicionar.');
+      } else {
+        notify('Adicionado a estante', data?.message || 'Livro adicionado a estante.');
+        setShelfIds((prev) => {
+          const next = new Set(prev);
+          next.add(bookId);
+          return next;
+        });
+      }
+    } finally {
+      setShelfLoading((prev) => ({ ...prev, [bookId]: false }));
     }
   };
 
@@ -134,6 +184,10 @@ export const UserPortal = ({ user }: UserPortalProps) => {
 
   const totalPages = Math.max(1, Math.ceil(filteredBooks.length / pageSize));
   const pagedBooks = filteredBooks.slice((page - 1) * pageSize, page * pageSize);
+
+  const isBorrowing = (bookId: number) => Boolean(borrowLoading[bookId]);
+  const isReserving = (bookId: number) => Boolean(reserveLoading[bookId]);
+  const isAddingShelf = (bookId: number) => Boolean(shelfLoading[bookId]);
 
   return (
     <div className="space-y-8">
@@ -260,9 +314,15 @@ export const UserPortal = ({ user }: UserPortalProps) => {
                       )}
                       <button
                         onClick={(e) => { e.stopPropagation(); handleAddToShelf(book.id); }}
-                        className="text-[10px] bg-lime-600 text-white px-3 py-1.5 rounded-lg hover:bg-lime-700 transition-colors font-bold uppercase"
+                        disabled={isAddingShelf(book.id) || shelfIds.has(book.id)}
+                        className={cn(
+                          "text-[10px] px-3 py-1.5 rounded-lg transition-colors font-bold uppercase",
+                          (isAddingShelf(book.id) || shelfIds.has(book.id))
+                            ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                            : "bg-lime-600 text-white hover:bg-lime-700"
+                        )}
                       >
-                        Adicionar a estante
+                        {shelfIds.has(book.id) ? 'Na estante' : isAddingShelf(book.id) ? 'A processar...' : 'Adicionar a estante'}
                       </button>
                     </div>
                   ) : (
@@ -283,16 +343,28 @@ export const UserPortal = ({ user }: UserPortalProps) => {
                       {book.availableCopies > 0 ? (
                         <button 
                           onClick={(e) => { e.stopPropagation(); handleBorrow(book.id); }}
-                          className="text-[10px] bg-lime-600 text-white px-2 py-1 rounded hover:bg-lime-700 transition-colors font-bold uppercase"
+                          disabled={isBorrowing(book.id)}
+                          className={cn(
+                            "text-[10px] px-2 py-1 rounded transition-colors font-bold uppercase",
+                            isBorrowing(book.id)
+                              ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                              : "bg-lime-600 text-white hover:bg-lime-700"
+                          )}
                         >
-                          Requisitar
+                          {isBorrowing(book.id) ? 'A processar...' : 'Requisitar'}
                         </button>
                       ) : (
                         <button 
                           onClick={(e) => { e.stopPropagation(); handleReserve(book.id); }}
-                          className="text-[10px] bg-orange-500 text-white px-2 py-1 rounded hover:bg-orange-600 transition-colors font-bold uppercase"
+                          disabled={isReserving(book.id) || (book.availableCopies ?? 0) <= 0}
+                          className={cn(
+                            "text-[10px] px-2 py-1 rounded transition-colors font-bold uppercase",
+                            (isReserving(book.id) || (book.availableCopies ?? 0) <= 0)
+                              ? "bg-gray-200 text-gray-500 cursor-not-allowed"
+                              : "bg-orange-500 text-white hover:bg-orange-600"
+                          )}
                         >
-                          Reservar
+                          {(book.availableCopies ?? 0) <= 0 ? 'Esgotado' : isReserving(book.id) ? 'A processar...' : 'Reservar'}
                         </button>
                       )}
                     </div>
@@ -343,9 +415,18 @@ export const UserPortal = ({ user }: UserPortalProps) => {
             onAddToShelf={handleAddToShelf}
             resolveFileUrl={(fileUrl) => resolveFileUrl(fileUrl, selectedBook?.id)}
             onReadPdf={openReader}
+            borrowLoading={isBorrowing(selectedBook?.id)}
+            reserveLoading={isReserving(selectedBook?.id)}
+            shelfLoading={isAddingShelf(selectedBook?.id)}
+            shelfDisabled={shelfIds.has(selectedBook?.id)}
           />
         )}
       </AnimatePresence>
+      {toast && (
+        <div className="fixed bottom-6 right-6 z-50">
+          <Toast title={toast.title} message={toast.message} onClose={() => setToast(null)} />
+        </div>
+      )}
     </div>
   );
 };

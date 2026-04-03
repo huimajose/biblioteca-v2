@@ -28,35 +28,37 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
     activity.status === 'returned' ? 'devolvido' :
     activity.status;
 
-  const buildTicketPdf = async () => {
-    const doc = new jsPDF('p', 'mm', [80, 200]);
+  const buildTicketPdf = async (format: 'ticket' | 'a4') => {
+    const doc = format === 'a4'
+      ? new jsPDF('p', 'pt', 'a4')
+      : new jsPDF('p', 'mm', [80, 200]);
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
-    const marginX = 6;
-    const topY = 10;
+    const marginX = format === 'a4' ? 60 : 6;
+    const topY = format === 'a4' ? 60 : 10;
 
-    doc.setFontSize(12);
+    doc.setFontSize(format === 'a4' ? 18 : 12);
     doc.text('Biblioteca Virtual', marginX, topY);
-    doc.setFontSize(7);
-    doc.text('Recibo oficial da biblioteca', marginX, topY + 5);
+    doc.setFontSize(format === 'a4' ? 9 : 7);
+    doc.text('Recibo oficial da biblioteca', marginX, topY + (format === 'a4' ? 18 : 5));
 
-    doc.setFontSize(8);
-    doc.text('Titulo do livro', marginX, topY + 16);
-    doc.setFontSize(9);
-    doc.text(String(activity.bookTitle || 'N/D'), marginX, topY + 23, { maxWidth: pageW - marginX * 2 });
-    doc.setFontSize(7);
-    doc.text(String(activity.bookAuthor || ''), marginX, topY + 30);
+    doc.setFontSize(format === 'a4' ? 10 : 8);
+    doc.text('Titulo do livro', marginX, topY + (format === 'a4' ? 48 : 16));
+    doc.setFontSize(format === 'a4' ? 13 : 9);
+    doc.text(String(activity.bookTitle || 'N/D'), marginX, topY + (format === 'a4' ? 70 : 23), { maxWidth: pageW - marginX * 2 });
+    doc.setFontSize(format === 'a4' ? 9 : 7);
+    doc.text(String(activity.bookAuthor || ''), marginX, topY + (format === 'a4' ? 86 : 30));
 
-    doc.setFontSize(7);
-    doc.text(`Utilizador: ${activity.userName || activity.userEmail || activity.userId}`, marginX, topY + 40);
-    doc.text(`ISBN: ${activity.isbn || 'N/D'}`, marginX, topY + 46);
-    doc.text(`Data: ${new Date(activity.borrowedDate).toLocaleDateString()}`, marginX, topY + 52);
-    doc.text(`Estado: ${statusLabel}`, marginX, topY + 58);
+    doc.setFontSize(format === 'a4' ? 9 : 7);
+    doc.text(`Utilizador: ${activity.userName || activity.userEmail || activity.userId}`, marginX, topY + (format === 'a4' ? 118 : 40));
+    doc.text(`ISBN: ${activity.isbn || 'N/D'}`, marginX, topY + (format === 'a4' ? 134 : 46));
+    doc.text(`Data: ${new Date(activity.borrowedDate).toLocaleDateString()}`, marginX, topY + (format === 'a4' ? 150 : 52));
+    doc.text(`Estado: ${statusLabel}`, marginX, topY + (format === 'a4' ? 166 : 58));
 
-    doc.setFontSize(7);
-    doc.text('ID da transacao', marginX, topY + 68);
-    doc.setFontSize(6);
-    doc.text(`#${activity.tid}`, marginX, topY + 73, { maxWidth: pageW - marginX * 2 });
+    doc.setFontSize(format === 'a4' ? 9 : 7);
+    doc.text('ID da transacao', marginX, topY + (format === 'a4' ? 198 : 68));
+    doc.setFontSize(format === 'a4' ? 8 : 6);
+    doc.text(`#${activity.tid}`, marginX, topY + (format === 'a4' ? 214 : 73), { maxWidth: pageW - marginX * 2 });
 
     const qrPayload = JSON.stringify({
       tid: activity.tid,
@@ -69,23 +71,23 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
 
     try {
       const qr = await QRCode.toDataURL(qrPayload, { margin: 1, width: 140 });
-      const qrSize = 28;
+      const qrSize = format === 'a4' ? 110 : 28;
       const qrX = pageW - marginX - qrSize;
-      const qrY = topY + 78;
+      const qrY = topY + (format === 'a4' ? 190 : 78);
       doc.addImage(qr, 'PNG', qrX, qrY, qrSize, qrSize);
-      doc.setFontSize(6);
-      doc.text('Validar talao', qrX, qrY + qrSize + 6);
+      doc.setFontSize(format === 'a4' ? 7 : 6);
+      doc.text('Validar talao', qrX, qrY + qrSize + (format === 'a4' ? 14 : 6));
     } catch {
       // ignore qr failure
     }
 
-    doc.setFontSize(6);
-    doc.text('Guarde este talao para os seus registos.', marginX, pageH - 16);
-    doc.text('Devolva o livro no prazo indicado.', marginX, pageH - 10);
+    doc.setFontSize(format === 'a4' ? 7 : 6);
+    doc.text('Guarde este talao para os seus registos.', marginX, pageH - (format === 'a4' ? 56 : 16));
+    doc.text('Devolva o livro no prazo indicado.', marginX, pageH - (format === 'a4' ? 44 : 10));
 
     try {
       const imgLoaded = await loadWatermarkImage(LOGO_WATERMARK);
-      const wmW = 45;
+      const wmW = format === 'a4' ? 260 : 45;
       const wmH = wmW * (imgLoaded.height / imgLoaded.width);
       const wmX = (pageW - wmW) / 2;
       const wmY = (pageH - wmH) / 2;
@@ -103,13 +105,13 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
     return doc;
   };
 
-  const exportTicketPdf = async () => {
-    const doc = await buildTicketPdf();
-    doc.save(`talao-${activity.tid}-ticket.pdf`);
+  const exportTicketPdf = async (format: 'ticket' | 'a4') => {
+    const doc = await buildTicketPdf(format);
+    doc.save(`talao-${activity.tid}-${format}.pdf`);
   };
 
-  const printTicket = async () => {
-    const doc = await buildTicketPdf();
+  const printTicket = async (format: 'ticket' | 'a4') => {
+    const doc = await buildTicketPdf(format);
     doc.autoPrint();
     const url = doc.output('bloburl');
     window.open(url, '_blank');
@@ -176,11 +178,19 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
             <Button variant="secondary" className="flex-1" onClick={onClose}>Fechar</Button>
           </div>
           <div className="flex gap-3">
-            <Button variant="secondary" className="flex-1 flex items-center justify-center gap-2" onClick={printTicket}>
-              <Printer className="w-4 h-4" /> Imprimir talao
+            <Button variant="secondary" className="flex-1 flex items-center justify-center gap-2" onClick={() => printTicket('ticket')}>
+              <Printer className="w-4 h-4" /> Imprimir ticket
             </Button>
-            <Button className="flex-1 flex items-center justify-center gap-2" onClick={exportTicketPdf}>
-              <Printer className="w-4 h-4" /> Baixar PDF
+            <Button variant="secondary" className="flex-1 flex items-center justify-center gap-2" onClick={() => printTicket('a4')}>
+              <Printer className="w-4 h-4" /> Imprimir A4
+            </Button>
+          </div>
+          <div className="flex gap-3">
+            <Button className="flex-1 flex items-center justify-center gap-2" onClick={() => exportTicketPdf('ticket')}>
+              <Printer className="w-4 h-4" /> Baixar ticket
+            </Button>
+            <Button className="flex-1 flex items-center justify-center gap-2" onClick={() => exportTicketPdf('a4')}>
+              <Printer className="w-4 h-4" /> Baixar A4
             </Button>
           </div>
         </div>

@@ -11,6 +11,10 @@ interface BookDetailsModalProps {
   onAddToShelf: (bookId: number) => void;
   resolveFileUrl: (fileUrl?: string | null) => string | null;
   onReadPdf: (book: any) => void;
+  borrowLoading?: boolean;
+  reserveLoading?: boolean;
+  shelfLoading?: boolean;
+  shelfDisabled?: boolean;
 }
 
 export const BookDetailsModal = ({
@@ -21,11 +25,16 @@ export const BookDetailsModal = ({
   onAddToShelf,
   resolveFileUrl,
   onReadPdf,
+  borrowLoading = false,
+  reserveLoading = false,
+  shelfLoading = false,
+  shelfDisabled = false,
 }: BookDetailsModalProps) => {
   const cover = book.cover || DEFAULT_BOOK_COVER;
   const pdfUrl = resolveFileUrl(book.fileUrl);
   const hasPhysical = (book.availableCopies ?? 0) > 0;
   const hasDigital = Boolean(pdfUrl);
+  const isOutOfStock = !hasPhysical && !hasDigital && (book.availableCopies ?? 0) <= 0;
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -86,21 +95,28 @@ export const BookDetailsModal = ({
                   <Button
                     className="text-xs uppercase"
                     onClick={() => onAddToShelf(book.id)}
+                    disabled={shelfLoading || shelfDisabled}
                   >
-                    <BookmarkPlus className="w-4 h-4" /> Adicionar a estante
+                    <BookmarkPlus className="w-4 h-4" />
+                    {shelfDisabled ? 'Ja na estante' : shelfLoading ? 'A processar...' : 'Adicionar a estante'}
                   </Button>
                 </>
               )}
               {hasPhysical && (
                 book.availableCopies > 0 ? (
-                  <Button className="text-xs uppercase" onClick={() => onBorrow(book.id)}>
-                    Requisitar emprestimo
+                  <Button className="text-xs uppercase" onClick={() => onBorrow(book.id)} disabled={borrowLoading}>
+                    {borrowLoading ? 'A processar...' : 'Requisitar emprestimo'}
                   </Button>
                 ) : (
-                  <Button className="text-xs uppercase" variant="secondary" onClick={() => onReserve(book.id)}>
-                    Reservar
+                  <Button className="text-xs uppercase" variant="secondary" onClick={() => onReserve(book.id)} disabled={reserveLoading || isOutOfStock}>
+                    {isOutOfStock ? 'Esgotado' : reserveLoading ? 'A processar...' : 'Reservar'}
                   </Button>
                 )
+              )}
+              {!hasPhysical && !hasDigital && (
+                <Button className="text-xs uppercase" variant="secondary" disabled>
+                  Esgotado
+                </Button>
               )}
             </div>
           </div>
