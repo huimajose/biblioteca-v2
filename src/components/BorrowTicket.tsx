@@ -3,7 +3,7 @@ import { Printer, Ticket, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Button } from '../components/ui/Button.tsx';
 import jsPDF from 'jspdf';
-import { LOGO_WATERMARK } from '@/constants.ts';
+import { LOGO_WATERMARK, RETURN_POLICY_NOTE } from '@/constants.ts';
 import QRCode from 'qrcode';
 import { loadWatermarkImage } from '@/utils/pdfWatermark.ts';
 
@@ -15,6 +15,7 @@ interface BorrowTicketProps {
     bookTitle: string;
     bookAuthor: string;
     borrowedDate: string;
+    returnedDate?: string | null;
     status: string;
     isbn?: string;
     fullName?: string;
@@ -68,7 +69,10 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
 
     const rightX = pageW - marginX;
     doc.setFontSize(format === 'a4' ? 9 : 7);
-    doc.text(`Utilizador: ${activity.userName || activity.userEmail || activity.userId}`, rightX, topY + (format === 'a4' ? 40 : 14), { align: 'right' });
+    doc.text(`Estudante/Cliente: ${activity.userName || activity.userEmail || activity.userId}`, rightX, topY + (format === 'a4' ? 40 : 14), { align: 'right' });
+    if (activity.returnedDate) {
+      doc.text(`Devolucao: ${new Date(activity.returnedDate).toLocaleDateString()}`, rightX, topY + (format === 'a4' ? 54 : 19), { align: 'right' });
+    }
 
     const tableTop = topY + (format === 'a4' ? 78 : 30);
     const colWidths = format === 'a4'
@@ -131,6 +135,7 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
     }
 
     doc.setFontSize(format === 'a4' ? 7 : 6);
+    doc.text(RETURN_POLICY_NOTE, marginX, pageH - (format === 'a4' ? 68 : 22), { maxWidth: pageW - marginX * 2 });
     doc.text(`Autorizado por: ${authorizedBy}`, marginX, pageH - (format === 'a4' ? 56 : 16));
     doc.text(`Data: ${issueDate.toLocaleDateString()}`, marginX, pageH - (format === 'a4' ? 44 : 10));
 
