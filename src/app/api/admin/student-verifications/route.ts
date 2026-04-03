@@ -7,11 +7,18 @@ export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 export async function GET() {
-  const db = getDb();
-  const pending = await db
-    .select()
-    .from(schema.studentVerifications)
-    .orderBy(desc(schema.studentVerifications.createdAt));
+  try {
+    const db = getDb();
+    const pending = await db
+      .select()
+      .from(schema.studentVerifications)
+      .orderBy(desc(schema.studentVerifications.createdAt));
 
-  return NextResponse.json(pending);
+    return NextResponse.json(pending);
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error?.message || "Erro ao carregar pedidos" },
+      { status: 500 }
+    );
+  }
 }
