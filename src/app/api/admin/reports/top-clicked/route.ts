@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { desc, eq, inArray, sql } from "drizzle-orm";
+import { desc, eq, gte, inArray, sql } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
 import { DEFAULT_BOOK_COVER } from "@/constants";
@@ -27,10 +27,18 @@ const mapBookRow = (row: any) => ({
   createdAt: row.created_at ?? row.createdAt,
 });
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
     const db = getDb();
-    const raw = await db
+    const { searchParams } = new URL(req.url);
+    const rawDays = searchParams.get("days");
+    const days = rawDays ? Number(rawDays) : null;
+    const hasRange = Number.isFinite(days) && (days as number) > 0;
+    const rangeStart = hasRange
+      ? sql`now() - ${days} * interval '1 day'`
+      : null;
+
+    const baseQuery = db
       .select({
         bookId: schema.bookClicks.bookId,
         total: sql<number>`count(*)`,
@@ -39,6 +47,10 @@ export async function GET() {
       .groupBy(schema.bookClicks.bookId)
       .orderBy(desc(sql<number>`count(*)`))
       .limit(10);
+
+    const raw = rangeStart
+      ? await baseQuery.where(gte(schema.bookClicks.createdAt, rangeStart))
+      : await baseQuery;
 
     const ids = raw.map((r) => r.bookId).filter(Boolean) as number[];
     if (!ids.length) return NextResponse.json([]);

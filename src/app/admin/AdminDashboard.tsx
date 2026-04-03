@@ -35,6 +35,7 @@ const AdminDashboard: React.FC = () => {
   const [isInstantOpen, setIsInstantOpen] = useState(false);
   const [topClicked, setTopClicked] = useState<any[]>([]);
   const [selectedBook, setSelectedBook] = useState<any | null>(null);
+  const [clickRange, setClickRange] = useState<'7' | '30' | '90' | 'all'>('30');
 
   const topGenres = useMemo(() => {
     const counts = (books || []).reduce((acc: Record<string, number>, b: any) => {
@@ -52,7 +53,7 @@ const AdminDashboard: React.FC = () => {
     fetchStats();
     fetchPending();
     fetchBooks();
-    fetchTopClicked();
+    fetchTopClicked('30');
   }, []);
 
   const fetchStats = async () => {
@@ -72,8 +73,9 @@ const AdminDashboard: React.FC = () => {
     setPendingUsers(Array.isArray(data) ? data : data?.data ?? []);
   };
 
-  const fetchTopClicked = async () => {
-    const res = await fetch('/api/admin/reports/top-clicked');
+  const fetchTopClicked = async (days: string = clickRange) => {
+    const query = days === 'all' ? '' : `?days=${days}`;
+    const res = await fetch(`/api/admin/reports/top-clicked${query}`);
     const data = await res.json();
     setTopClicked(Array.isArray(data) ? data : []);
   };
@@ -194,6 +196,24 @@ const AdminDashboard: React.FC = () => {
 
         <Card className="p-6">
           <h2 className="text-lg font-bold mb-4">Livros mais clicados</h2>
+          <div className="flex items-center gap-2 mb-3">
+            {(['7', '30', '90', 'all'] as const).map((range) => (
+              <button
+                key={range}
+                className={`px-2 py-1 rounded-full text-[10px] font-bold ${
+                  clickRange === range
+                    ? 'bg-lime-600 text-white'
+                    : 'bg-white border border-gray-200 text-gray-600'
+                }`}
+                onClick={() => {
+                  setClickRange(range);
+                  fetchTopClicked(range);
+                }}
+              >
+                {range === 'all' ? 'Todos' : `Ultimos ${range} dias`}
+              </button>
+            ))}
+          </div>
           <div className="overflow-hidden rounded-xl border border-gray-100">
             <table className="w-full text-left border-collapse">
               <thead className="bg-gray-50 border-b border-gray-100">

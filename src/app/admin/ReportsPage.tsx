@@ -185,6 +185,14 @@ export const ReportsPage = () => {
     }
 
     const trend = summary?.trend || [];
+    const clicksRes = await fetch(`/api/admin/reports/top-clicked?days=30`);
+    const clicksData = clicksRes.ok ? await clicksRes.json() : [];
+    const topClicks = Array.isArray(clicksData)
+      ? clicksData.slice(0, 6).map((b: any) => ({
+          label: String(b.title || 'N/D').slice(0, 10),
+          value: Number(b.totalClicks || 0),
+        }))
+      : [];
     const statusCounts = summary?.statusCounts || activities.reduce((acc: Record<string, number>, a: any) => {
       const s = String(a.status || '').toLowerCase();
       if (s === 'borrowed') acc.borrowed += 1;
@@ -352,6 +360,7 @@ export const ReportsPage = () => {
     drawChartBlock('Tendencia de requisicoes', trend, [101, 163, 13]);
     drawChartBlock('Estados das requisicoes', statusData, [132, 204, 22]);
     drawWideChartBlock('Top generos', topGenres, [99, 102, 241]);
+    drawWideChartBlock('Cliques por livro', topClicks, [244, 114, 182]);
 
     ensureSpace(30);
     doc.setFontSize(8);
