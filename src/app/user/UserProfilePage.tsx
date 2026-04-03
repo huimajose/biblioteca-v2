@@ -40,7 +40,7 @@ export const UserProfilePage = ({ user }: UserProfilePageProps) => {
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Perfil</h1>
-        <p className="text-sm text-gray-500">Atualize os seus dados e a sua palavra-passe.</p>
+        <p className="text-sm text-gray-500">Atualize o seu nome e a sua palavra-passe.</p>
       </div>
 
       <Card className="p-6 space-y-4">
@@ -54,14 +54,6 @@ export const UserProfilePage = ({ user }: UserProfilePageProps) => {
               placeholder="Ex: Maria Joao Silva"
             />
           </div>
-          <div>
-            <label className="text-xs uppercase text-gray-400">Email</label>
-            <input
-              className="w-full px-4 py-2 border rounded-lg bg-gray-50"
-              value={user.email || ''}
-              readOnly
-            />
-          </div>
         </div>
         <div className="flex items-center gap-3">
           <Button onClick={handleSave} disabled={saving || !fullName.trim()}>
@@ -73,7 +65,16 @@ export const UserProfilePage = ({ user }: UserProfilePageProps) => {
 
       <Card className="p-6">
         <h2 className="text-lg font-bold mb-4">Seguranca e acesso</h2>
-        <UserProfile routing="path" path="/profile" />
+        <UserProfile
+          routing="path"
+          path="/profile"
+          appearance={{
+            elements: {
+              profileSection__emailAddresses: 'hidden',
+              profileSection__connectedAccounts: 'hidden',
+            },
+          }}
+        />
       </Card>
     </div>
   );
