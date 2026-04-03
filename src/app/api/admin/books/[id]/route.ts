@@ -39,8 +39,12 @@ const createPhysicalCopies = async (db: ReturnType<typeof getDb>, bookId: number
   await db.insert(schema.physicalBooks).values(rows);
 };
 
-export async function PUT(req: NextRequest, { params }: { params: { id: string } }) {
-  const bookId = Number(params?.id);
+export async function PUT(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params;
+  const bookId = Number(id);
   if (Number.isNaN(bookId)) {
     return NextResponse.json({ error: 'Livro invalido' }, { status: 400 });
   }
