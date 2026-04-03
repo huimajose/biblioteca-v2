@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Printer, Ticket, X, ListFilter, History, Package, RotateCcw, AlertTriangle, Users } from 'lucide-react';
+import { Printer, Ticket, X, ListFilter, History, Package, RotateCcw, AlertTriangle, Users, TrendingUp } from 'lucide-react';
 import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
 import { cn } from '@/utils/cn.ts';
@@ -9,10 +9,11 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 export const ReportsPage = () => {
-  const [reportType, setReportType] = useState<'activity' | 'genre' | 'inventory' | 'users'>('activity');
+  const [reportType, setReportType] = useState<'activity' | 'genre' | 'inventory' | 'users' | 'top-books'>('activity');
   const [activities, setActivities] = useState<any[]>([]);
   const [books, setBooks] = useState<any[]>([]);
   const [userReports, setUserReports] = useState<any[]>([]);
+  const [topBooks, setTopBooks] = useState<any[]>([]);
   const [dates, setDates] = useState({ start: '', end: '' });
   const [statusFilter, setStatusFilter] = useState<'all' | 'borrowed' | 'returned' | 'pending' | 'rejected'>('all');
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
@@ -29,6 +30,11 @@ export const ReportsPage = () => {
     }
     if (reportType === 'users') {
       fetch('/api/admin/reports/users').then(res => res.json()).then(setUserReports);
+    }
+    if (reportType === 'top-books') {
+      fetch('/api/admin/reports/top-books')
+        .then(res => res.json())
+        .then(setTopBooks);
     }
   }, [reportType]);
 
@@ -102,6 +108,32 @@ export const ReportsPage = () => {
     });
 
     doc.save('relatorio-atividade.pdf');
+  };
+
+  const exportTopBooksPdf = () => {
+    const doc = new jsPDF('p', 'pt');
+    doc.setFontSize(16);
+    doc.text('Relatorio de livros mais requisitados', 40, 40);
+    doc.setFontSize(10);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 40, 58);
+
+    const rows = (topBooks || []).map((b: any, index: number) => ([
+      String(index + 1),
+      b.title || 'N/D',
+      b.author || 'N/D',
+      b.isbn || 'N/D',
+      String(b.totalBorrows ?? 0),
+    ]));
+
+    autoTable(doc, {
+      startY: 80,
+      head: [['#', 'Titulo', 'Autor', 'ISBN', 'Requisicoes']],
+      body: rows.length ? rows : [['-', '-', '-', '-', '-']],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [101, 163, 13] },
+    });
+
+    doc.save('relatorio-livros-mais-requisitados.pdf');
   };
 
   const handleReturn = async () => {
@@ -179,6 +211,15 @@ export const ReportsPage = () => {
           )}
         >
           <Users className="w-4 h-4" /> Utilizadores e emprestimos
+        </button>
+        <button 
+          onClick={() => setReportType('top-books')}
+          className={cn(
+            "px-6 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2",
+            reportType === 'top-books' ? "bg-lime-600 text-white shadow-lg" : "bg-white text-gray-500 hover:bg-gray-50"
+          )}
+        >
+          <TrendingUp className="w-4 h-4" /> Mais requisitados
         </button>
       </div>
 
@@ -530,6 +571,60 @@ export const ReportsPage = () => {
                           </div>
                         )}
                       </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </Card>
+        </div>
+      )}
+
+      {reportType === 'top-books' && (
+        <div className="space-y-6">
+          <Card className="p-6 print:hidden flex justify-between items-center">
+            <div>
+              <h2 className="text-xl font-bold">Livros mais requisitados</h2>
+              <p className="text-sm text-gray-500">Ranking dos titulos com mais requisicoes.</p>
+            </div>
+            <Button variant="secondary" onClick={exportTopBooksPdf} className="flex items-center gap-2">
+              <Printer className="w-4 h-4" /> Baixar PDF
+            </Button>
+          </Card>
+
+          <Card className="overflow-hidden print:border-none print:shadow-none">
+            <div className="p-6 border-b border-gray-100 hidden print:block">
+              <h1 className="text-2xl font-bold">Relatorio de livros mais requisitados</h1>
+              <p className="text-sm text-gray-500">Gerado em {new Date().toLocaleDateString()}</p>
+            </div>
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="p-4 font-semibold text-xs uppercase text-gray-400">#</th>
+                  <th className="p-4 font-semibold text-xs uppercase text-gray-400">Titulo</th>
+                  <th className="p-4 font-semibold text-xs uppercase text-gray-400">Autor</th>
+                  <th className="p-4 font-semibold text-xs uppercase text-gray-400">ISBN</th>
+                  <th className="p-4 font-semibold text-xs uppercase text-gray-400 text-right">Requisicoes</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {topBooks.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-12 text-center">
+                      <div className="flex flex-col items-center gap-2 text-gray-400">
+                        <TrendingUp className="w-8 h-8 opacity-20" />
+                        <p className="text-sm font-medium italic">Ainda nao ha dados suficientes para o ranking.</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  topBooks.map((b: any, index: number) => (
+                    <tr key={`${b.bookId}-${index}`} className="hover:bg-gray-50 transition-colors">
+                      <td className="p-4 text-sm font-bold">{index + 1}</td>
+                      <td className="p-4 text-sm font-semibold">{b.title}</td>
+                      <td className="p-4 text-sm text-gray-600">{b.author}</td>
+                      <td className="p-4 text-xs font-mono text-gray-400">{b.isbn}</td>
+                      <td className="p-4 text-sm text-right font-bold">{b.totalBorrows}</td>
                     </tr>
                   ))
                 )}
