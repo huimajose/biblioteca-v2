@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { Card } from '@/components/ui/Card.tsx';
 import { BookOpen, Sparkles, Library } from 'lucide-react';
 import { DEFAULT_BOOK_COVER } from '@/constants.ts';
+import { BookInfoModal } from '@/components/BookInfoModal.tsx';
 import { User } from '@/hooks/useAuth.ts';
 import {
   LineChart,
@@ -27,6 +28,7 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
   const [recentNotifications, setRecentNotifications] = useState<any[]>([]);
   const [nextReturn, setNextReturn] = useState<string | null>(null);
   const [historyItems, setHistoryItems] = useState<any[]>([]);
+  const [selectedBook, setSelectedBook] = useState<any | null>(null);
 
   useEffect(() => {
     Promise.all([
@@ -167,7 +169,11 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
           ) : (
             <div className="space-y-3">
               {recentShelf.map((entry) => (
-                <div key={entry.id} className="flex items-center gap-3">
+                <div
+                  key={entry.id}
+                  className="flex items-center gap-3 cursor-pointer"
+                  onClick={() => setSelectedBook(entry.book)}
+                >
                   <img
                     src="/cover_2.jpeg"
                     alt={entry.book?.title}
@@ -200,7 +206,11 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
             <p className="text-sm text-gray-400">Sem sugestoes neste momento.</p>
           ) : (
             recommendations.map((book) => (
-              <div key={book.id} className="flex gap-4 items-center">
+              <div
+                key={book.id}
+                className="flex gap-4 items-center cursor-pointer"
+                onClick={() => setSelectedBook(book)}
+              >
                 <img
                   src="/cover_2.jpeg"
                   alt={book.title}
@@ -216,6 +226,10 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
           )}
         </div>
       </Card>
+
+      {selectedBook && (
+        <BookInfoModal book={selectedBook} onClose={() => setSelectedBook(null)} />
+      )}
     </div>
   );
 };

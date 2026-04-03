@@ -92,10 +92,16 @@ export async function GET(req: NextRequest) {
         borrowedDate: t.borrowedDate,
         status: normalizeStatus(t.status),
         physicalBookId: t.physicalBookId,
+        bookId: book[0]?.id ?? null,
         bookTitle: book[0]?.title ?? "N/D",
         bookAuthor: book[0]?.author ?? "N/D",
         isbn: book[0]?.isbn ?? "N/D",
         bookGenre: book[0]?.genre ?? null,
+        bookCover: book[0]?.cover ?? null,
+        bookAvailableCopies: book[0]?.availableCopies ?? 0,
+        bookTotalCopies: book[0]?.totalCopies ?? 0,
+        bookFileUrl: book[0]?.fileUrl ?? null,
+        bookIsDigital: book[0]?.is_digital ?? false,
       };
     })
   );

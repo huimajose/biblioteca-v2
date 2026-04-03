@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button.tsx';
 import { cn } from '@/utils/cn.ts';
 import { motion, AnimatePresence } from 'motion/react';
 import { BorrowTicket } from '@/components/BorrowTicket.tsx';
+import { BookInfoModal } from '@/components/BookInfoModal.tsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { LOGO_WATERMARK } from '@/constants.ts';
@@ -13,6 +14,7 @@ import { addCenteredWatermarkToAllPages, loadWatermarkImage } from '@/utils/pdfW
 export const ReportsPage = () => {
   const [reportType, setReportType] = useState<'activity' | 'genre' | 'inventory' | 'users' | 'top-books'>('activity');
   const [activities, setActivities] = useState<any[]>([]);
+  const [activitySummary, setActivitySummary] = useState<any | null>(null);
   const [books, setBooks] = useState<any[]>([]);
   const [userReports, setUserReports] = useState<any[]>([]);
   const [topBooks, setTopBooks] = useState<any[]>([]);
@@ -27,9 +29,9 @@ export const ReportsPage = () => {
   const [filtering, setFiltering] = useState(false);
   const [activityPage, setActivityPage] = useState(1);
   const [usersPage, setUsersPage] = useState(1);
-
-  const ACTIVITY_PAGE_SIZE = 10;
-  const USERS_PAGE_SIZE = 8;
+  const [activityPageSize, setActivityPageSize] = useState(10);
+  const [usersPageSize, setUsersPageSize] = useState(8);
+  const [selectedBookInfo, setSelectedBookInfo] = useState<any | null>(null);
 
   const topAdmin = useMemo(() => {
     const counts = activities.reduce((acc: Record<string, number>, a: any) => {
@@ -78,14 +80,14 @@ export const ReportsPage = () => {
   }, [activities, groupBy]);
 
   const pagedActivities = useMemo(() => {
-    const start = (activityPage - 1) * ACTIVITY_PAGE_SIZE;
-    return activities.slice(start, start + ACTIVITY_PAGE_SIZE);
-  }, [activities, activityPage]);
+    const start = (activityPage - 1) * activityPageSize;
+    return activities.slice(start, start + activityPageSize);
+  }, [activities, activityPage, activityPageSize]);
 
   const pagedUsers = useMemo(() => {
-    const start = (usersPage - 1) * USERS_PAGE_SIZE;
-    return userReports.slice(start, start + USERS_PAGE_SIZE);
-  }, [userReports, usersPage]);
+    const start = (usersPage - 1) * usersPageSize;
+    return userReports.slice(start, start + usersPageSize);
+  }, [userReports, usersPage, usersPageSize]);
 
 
   useEffect(() => {
@@ -125,6 +127,12 @@ export const ReportsPage = () => {
     try {
       const res = await fetch(`/api/admin/reports/activity?${query}`);
       setActivities(await res.json());
+      const summaryRes = await fetch(`/api/admin/reports/activity-summary?${query}`);
+      if (summaryRes.ok) {
+        setActivitySummary(await summaryRes.json());
+      } else {
+        setActivitySummary(null);
+      }
     } finally {
       setFiltering(false);
     }
@@ -586,6 +594,55 @@ export const ReportsPage = () => {
             </div>
           </Card>
 
+          {activitySummary && (
+            <Card className="p-6 print:hidden">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4">
+                  <p className="text-[10px] uppercase text-emerald-400 font-bold tracking-widest">Top admins</p>
+                  <div className="mt-2 space-y-1 text-sm">
+                    {(activitySummary.topAdmins || []).slice(0, 5).map((row: any) => (
+                      <div key={row.name} className="flex justify-between text-emerald-700">
+                        <span className="truncate">{row.name}</span>
+                        <span className="font-semibold">{row.count}</span>
+                      </div>
+                    ))}
+                    {(!activitySummary.topAdmins || activitySummary.topAdmins.length === 0) && (
+                      <p className="text-xs text-emerald-400">Sem dados.</p>
+                    )}
+                  </div>
+                </div>
+                <div className="bg-lime-50 border border-lime-100 rounded-xl p-4">
+                  <p className="text-[10px] uppercase text-lime-400 font-bold tracking-widest">Top utilizadores</p>
+                  <div className="mt-2 space-y-1 text-sm">
+                    {(activitySummary.topUsers || []).slice(0, 5).map((row: any) => (
+                      <div key={row.name} className="flex justify-between text-lime-700">
+                        <span className="truncate">{row.name}</span>
+                        <span className="font-semibold">{row.count}</span>
+                      </div>
+                    ))}
+                    {(!activitySummary.topUsers || activitySummary.topUsers.length === 0) && (
+                      <p className="text-xs text-lime-400">Sem dados.</p>
+                    )}
+                  </div>
+                </div>
+                <div className="bg-indigo-50 border border-indigo-100 rounded-xl p-4">
+                  <p className="text-[10px] uppercase text-indigo-400 font-bold tracking-widest">Top cursos</p>
+                  <div className="mt-2 space-y-1 text-sm">
+                    {(activitySummary.topGenres || []).slice(0, 5).map((row: any) => (
+                      <div key={row.label} className="flex justify-between text-indigo-700">
+                        <span className="truncate">{row.label}</span>
+                        <span className="font-semibold">{row.value}</span>
+                      </div>
+                    ))}
+                    {(!activitySummary.topGenres || activitySummary.topGenres.length === 0) && (
+                      <p className="text-xs text-indigo-400">Sem dados.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </Card>
+          )}
+
           {groupBy !== 'none' && (
             <Card className="p-6">
               <h2 className="text-lg font-bold mb-4">Resumo por {groupBy === 'user' ? 'utilizador' : groupBy === 'week' ? 'semana' : groupBy === 'day' ? 'dia' : 'curso'}</h2>
@@ -639,7 +696,22 @@ export const ReportsPage = () => {
                   </tr>
                 ) : (
                   pagedActivities.map(act => (
-                    <tr key={act.tid} className="hover:bg-gray-50 transition-colors">
+                    <tr
+                      key={act.tid}
+                      className="hover:bg-gray-50 transition-colors cursor-pointer"
+                      onClick={() => setSelectedBookInfo(act.book || {
+                        id: act.bookId,
+                        title: act.bookTitle,
+                        author: act.bookAuthor,
+                        isbn: act.isbn,
+                        genre: act.bookGenre,
+                        cover: act.bookCover,
+                        availableCopies: act.bookAvailableCopies,
+                        totalCopies: act.bookTotalCopies,
+                        fileUrl: act.bookFileUrl,
+                        isDigital: act.bookIsDigital,
+                      })}
+                    >
                       <td className="p-4 text-sm">{new Date(act.borrowedDate).toLocaleDateString()}</td>
                       <td className="p-4 text-sm font-medium">{act.userName || act.userEmail || 'N/D'}</td>
                       <td className="p-4 text-sm">
@@ -669,7 +741,10 @@ export const ReportsPage = () => {
                       <td className="p-4 print:hidden">
                         <div className="flex gap-2">
                           <button 
-                            onClick={() => setSelectedTicket(act)}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTicket(act);
+                            }}
                             className="p-2 text-lime-600 hover:bg-lime-50 rounded-lg transition-colors flex items-center gap-1 text-xs font-bold"
                             title="Ver talao"
                           >
@@ -677,7 +752,10 @@ export const ReportsPage = () => {
                           </button>
                           {act.status === 'borrowed' && (
                             <button 
-                              onClick={() => setConfirmReturn(act)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setConfirmReturn(act);
+                              }}
                               className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg transition-colors flex items-center gap-1 text-xs font-bold"
                               title="Devolver livro"
                             >
@@ -691,13 +769,25 @@ export const ReportsPage = () => {
                 )}
               </tbody>
             </table>
-            {activities.length > ACTIVITY_PAGE_SIZE && (
+            {activities.length > activityPageSize && (
               <div className="p-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
                 <span>
-                  A mostrar {(activityPage - 1) * ACTIVITY_PAGE_SIZE + 1}–
-                  {Math.min(activityPage * ACTIVITY_PAGE_SIZE, activities.length)} de {activities.length}
+                  A mostrar {(activityPage - 1) * activityPageSize + 1}–
+                  {Math.min(activityPage * activityPageSize, activities.length)} de {activities.length}
                 </span>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
+                  <select
+                    className="px-2 py-1 border rounded-lg text-xs"
+                    value={activityPageSize}
+                    onChange={(e) => {
+                      setActivityPageSize(Number(e.target.value));
+                      setActivityPage(1);
+                    }}
+                  >
+                    {[10, 20, 30, 50].map((size) => (
+                      <option key={size} value={size}>{size}/pagina</option>
+                    ))}
+                  </select>
                   <Button
                     variant="secondary"
                     onClick={() => setActivityPage((p) => Math.max(1, p - 1))}
@@ -709,10 +799,10 @@ export const ReportsPage = () => {
                     variant="secondary"
                     onClick={() =>
                       setActivityPage((p) =>
-                        Math.min(Math.ceil(activities.length / ACTIVITY_PAGE_SIZE), p + 1)
+                        Math.min(Math.ceil(activities.length / activityPageSize), p + 1)
                       )
                     }
-                    disabled={activityPage >= Math.ceil(activities.length / ACTIVITY_PAGE_SIZE)}
+                    disabled={activityPage >= Math.ceil(activities.length / activityPageSize)}
                   >
                     Proximo
                   </Button>
@@ -760,7 +850,11 @@ export const ReportsPage = () => {
                       </thead>
                       <tbody className="divide-y divide-gray-50">
                         {genreBooks.map((book: any) => (
-                          <tr key={book.id} className="hover:bg-gray-50 transition-colors">
+                          <tr
+                            key={book.id}
+                            className="hover:bg-gray-50 transition-colors cursor-pointer"
+                            onClick={() => setSelectedBookInfo(book)}
+                          >
                             <td className="p-4 text-sm font-bold">{book.title}</td>
                             <td className="p-4 text-sm text-gray-600">{book.author}</td>
                             <td className="p-4 text-xs font-mono text-gray-400">{book.isbn}</td>
@@ -829,7 +923,11 @@ export const ReportsPage = () => {
               </thead>
               <tbody className="divide-y divide-gray-50">
                 {books.map(book => (
-                  <tr key={book.id} className="hover:bg-gray-50 transition-colors">
+                  <tr
+                    key={book.id}
+                    className="hover:bg-gray-50 transition-colors cursor-pointer"
+                    onClick={() => setSelectedBookInfo(book)}
+                  >
                     <td className="p-4">
                       <p className="text-sm font-bold">{book.title}</p>
                       <p className="text-xs text-gray-500">{book.author}</p>
@@ -957,13 +1055,25 @@ export const ReportsPage = () => {
                 )}
               </tbody>
             </table>
-            {userReports.length > USERS_PAGE_SIZE && (
+            {userReports.length > usersPageSize && (
               <div className="p-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
                 <span>
-                  A mostrar {(usersPage - 1) * USERS_PAGE_SIZE + 1}–
-                  {Math.min(usersPage * USERS_PAGE_SIZE, userReports.length)} de {userReports.length}
+                  A mostrar {(usersPage - 1) * usersPageSize + 1}–
+                  {Math.min(usersPage * usersPageSize, userReports.length)} de {userReports.length}
                 </span>
-                <div className="flex gap-2">
+                <div className="flex items-center gap-2">
+                  <select
+                    className="px-2 py-1 border rounded-lg text-xs"
+                    value={usersPageSize}
+                    onChange={(e) => {
+                      setUsersPageSize(Number(e.target.value));
+                      setUsersPage(1);
+                    }}
+                  >
+                    {[8, 16, 24, 40].map((size) => (
+                      <option key={size} value={size}>{size}/pagina</option>
+                    ))}
+                  </select>
                   <Button
                     variant="secondary"
                     onClick={() => setUsersPage((p) => Math.max(1, p - 1))}
@@ -975,10 +1085,10 @@ export const ReportsPage = () => {
                     variant="secondary"
                     onClick={() =>
                       setUsersPage((p) =>
-                        Math.min(Math.ceil(userReports.length / USERS_PAGE_SIZE), p + 1)
+                        Math.min(Math.ceil(userReports.length / usersPageSize), p + 1)
                       )
                     }
-                    disabled={usersPage >= Math.ceil(userReports.length / USERS_PAGE_SIZE)}
+                    disabled={usersPage >= Math.ceil(userReports.length / usersPageSize)}
                   >
                     Proximo
                   </Button>
@@ -1054,7 +1164,11 @@ export const ReportsPage = () => {
                   </tr>
                 ) : (
                   topBooks.map((b: any, index: number) => (
-                    <tr key={`${b.bookId}-${index}`} className="hover:bg-gray-50 transition-colors">
+                    <tr
+                      key={`${b.bookId}-${index}`}
+                      className="hover:bg-gray-50 transition-colors cursor-pointer"
+                      onClick={() => setSelectedBookInfo(b)}
+                    >
                       <td className="p-4 text-sm font-bold">{index + 1}</td>
                       <td className="p-4 text-sm font-semibold">{b.title}</td>
                       <td className="p-4 text-sm text-gray-600">{b.author}</td>
@@ -1072,6 +1186,12 @@ export const ReportsPage = () => {
       <AnimatePresence>
         {selectedTicket && (
           <BorrowTicket activity={selectedTicket} onClose={() => setSelectedTicket(null)} />
+        )}
+        {selectedBookInfo && (
+          <BookInfoModal
+            book={selectedBookInfo}
+            onClose={() => setSelectedBookInfo(null)}
+          />
         )}
         
         {confirmReturn && (

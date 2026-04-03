@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { BookOpen, Users, Sparkles, ArrowRight, BadgeCheck } from 'lucide-react';
 import { Card } from '@/components/ui/Card.tsx';
+import { BookInfoModal } from '@/components/BookInfoModal.tsx';
 import { Link } from 'react-router-dom';
 import { DEFAULT_BOOK_COVER } from '@/constants.ts';
 
 export const HomePage = () => {
   const [books, setBooks] = useState<any[]>([]);
+  const [selectedBook, setSelectedBook] = useState<any | null>(null);
   const [members, setMembers] = useState(0);
   const [loading, setLoading] = useState(true);
   const [bannerIndex, setBannerIndex] = useState(0);
@@ -162,7 +164,11 @@ export const HomePage = () => {
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             {weeklyBooks.map(book => (
-              <Card key={book.id} className="p-4 flex gap-4 items-center border-lime-100">
+              <Card
+                key={book.id}
+                className="p-4 flex gap-4 items-center border-lime-100 cursor-pointer hover:shadow-md transition-shadow"
+                onClick={() => setSelectedBook(book)}
+              >
                 <img
                   src={DEFAULT_BOOK_COVER}
                   alt={book.title}
@@ -202,6 +208,10 @@ export const HomePage = () => {
           
         </div>
       </section>
+
+      {selectedBook && (
+        <BookInfoModal book={selectedBook} onClose={() => setSelectedBook(null)} />
+      )}
     </div>
   );
 };

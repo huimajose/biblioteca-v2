@@ -3,6 +3,7 @@ import { RotateCcw, Printer } from 'lucide-react';
 import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
 import { cn } from '@/utils/cn.ts';
+import { BookInfoModal } from '@/components/BookInfoModal.tsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { LOGO_WATERMARK } from '@/constants.ts';
@@ -16,6 +17,7 @@ export const TransactionsPage = () => {
   const [endDate, setEndDate] = useState('');
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
+  const [selectedBook, setSelectedBook] = useState<any | null>(null);
 
   const fetchTransactions = async () => {
     const query = new URLSearchParams();
@@ -187,7 +189,22 @@ export const TransactionsPage = () => {
               </tr>
             ) : (
               pending.map((t) => (
-                <tr key={t.tid} className="hover:bg-amber-50/40">
+                <tr
+                  key={t.tid}
+                  className="hover:bg-amber-50/40 cursor-pointer"
+                  onClick={() => setSelectedBook({
+                    id: t.bookId,
+                    title: t.bookTitle,
+                    author: t.bookAuthor,
+                    isbn: t.isbn,
+                    genre: t.bookGenre,
+                    cover: t.bookCover,
+                    availableCopies: t.bookAvailableCopies,
+                    totalCopies: t.bookTotalCopies,
+                    fileUrl: t.bookFileUrl,
+                    isDigital: t.bookIsDigital,
+                  })}
+                >
                   <td className="p-4 text-sm">{t.borrowedDate ? new Date(t.borrowedDate).toLocaleDateString() : 'N/D'}</td>
                   <td className="p-4 text-sm font-medium">{t.userName || t.userId}</td>
                   <td className="p-4 text-sm">
@@ -199,7 +216,10 @@ export const TransactionsPage = () => {
                       <Button
                         variant="secondary"
                         className="inline-flex items-center gap-2"
-                        onClick={() => handleApprove(t.tid, t.userId)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleApprove(t.tid, t.userId);
+                        }}
                         disabled={loading}
                       >
                         Aprovar
@@ -207,7 +227,10 @@ export const TransactionsPage = () => {
                       <Button
                         variant="secondary"
                         className="inline-flex items-center gap-2"
-                        onClick={() => handleReject(t.tid, t.userId)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleReject(t.tid, t.userId);
+                        }}
                         disabled={loading}
                       >
                         Rejeitar
@@ -247,7 +270,22 @@ export const TransactionsPage = () => {
               paged.map((t) => {
                 const status = (t.status || '').toLowerCase();
                 return (
-                  <tr key={t.tid} className="hover:bg-gray-50">
+                  <tr
+                    key={t.tid}
+                    className="hover:bg-gray-50 cursor-pointer"
+                    onClick={() => setSelectedBook({
+                      id: t.bookId,
+                      title: t.bookTitle,
+                      author: t.bookAuthor,
+                      isbn: t.isbn,
+                      genre: t.bookGenre,
+                      cover: t.bookCover,
+                      availableCopies: t.bookAvailableCopies,
+                      totalCopies: t.bookTotalCopies,
+                      fileUrl: t.bookFileUrl,
+                      isDigital: t.bookIsDigital,
+                    })}
+                  >
                     <td className="p-4 text-sm">{t.borrowedDate ? new Date(t.borrowedDate).toLocaleDateString() : 'N/D'}</td>
                     <td className="p-4 text-sm font-medium">{t.userName || t.userId}</td>
                     <td className="p-4 text-sm">
@@ -271,7 +309,10 @@ export const TransactionsPage = () => {
                       <Button
                         variant="secondary"
                         className="inline-flex items-center gap-2"
-                        onClick={() => handleReturn(t.tid)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleReturn(t.tid);
+                        }}
                           disabled={loading}
                         >
                           <RotateCcw className="w-4 h-4" />
@@ -299,6 +340,10 @@ export const TransactionsPage = () => {
           <button className="px-3 py-1 border rounded-lg" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>Seguinte</button>
         </div>
       </div>
+
+      {selectedBook && (
+        <BookInfoModal book={selectedBook} onClose={() => setSelectedBook(null)} />
+      )}
     </div>
   );
 };

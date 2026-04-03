@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Pencil, PlusCircle, FileDown, ChevronDown, Tags } from 'lucide-react';
 import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
+import { BookInfoModal } from '@/components/BookInfoModal.tsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
@@ -19,6 +20,7 @@ export const AdminBooksPage = () => {
   const [pdfOpen, setPdfOpen] = useState(false);
   const [genres, setGenres] = useState<any[]>([]);
   const [genreFilter, setGenreFilter] = useState<string>('all');
+  const [selectedBook, setSelectedBook] = useState<any | null>(null);
 
   useEffect(() => {
     fetch('/api/books')
@@ -393,7 +395,11 @@ export const AdminBooksPage = () => {
               </tr>
             ) : (
               paged.map((book) => (
-                <tr key={book.id} className="hover:bg-gray-50">
+                <tr
+                  key={book.id}
+                  className="hover:bg-gray-50 cursor-pointer"
+                  onClick={() => setSelectedBook(book)}
+                >
                   <td className="p-4 text-sm font-semibold">{book.title}</td>
                   <td className="p-4 text-sm text-gray-600">{book.author}</td>
                   <td className="p-4 text-xs font-mono text-gray-400">{book.isbn}</td>
@@ -405,11 +411,18 @@ export const AdminBooksPage = () => {
                   </td>
                   <td className="p-4 text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Button variant="secondary" className="inline-flex items-center gap-2" onClick={() => exportLabelPdf(book)}>
+                      <Button
+                        variant="secondary"
+                        className="inline-flex items-center gap-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          exportLabelPdf(book);
+                        }}
+                      >
                         <Tags className="w-4 h-4" />
                         
                       </Button>
-                      <Link to={`/admin/books/edit?id=${book.id}`}>
+                      <Link to={`/admin/books/edit?id=${book.id}`} onClick={(e) => e.stopPropagation()}>
                         <Button variant="secondary" className="inline-flex items-center gap-2">
                           <Pencil className="w-4 h-4" />
                           
@@ -423,6 +436,10 @@ export const AdminBooksPage = () => {
           </tbody>
         </table>
       </Card>
+
+      {selectedBook && (
+        <BookInfoModal book={selectedBook} onClose={() => setSelectedBook(null)} />
+      )}
 
       <div className="flex items-center justify-between text-sm text-gray-500">
         <span>Pagina {page} de {totalPages}</span>

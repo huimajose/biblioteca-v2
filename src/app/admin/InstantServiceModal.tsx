@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Card } from '../../components/ui/Card.tsx';
 import { Button } from '../../components/ui/Button.tsx';
 import { BorrowTicket } from '../../components/BorrowTicket.tsx';
+import { BookInfoModal } from '../../components/BookInfoModal.tsx';
 import { cn } from '../../utils/cn.ts';
 
 interface InstantServiceModalProps {
@@ -20,6 +21,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState<any>(null);
   const [selectedBooks, setSelectedBooks] = useState<any[]>([]);
+  const [infoBook, setInfoBook] = useState<any | null>(null);
   const [loading, setLoading] = useState(false);
   const [tickets, setTickets] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -276,6 +278,15 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
                                   <span className="text-[10px] font-bold text-emerald-600">{b.availableCopies} restantes</span>
                                 </div>
                               </div>
+                              <button
+                                className="ml-auto text-[10px] text-gray-400 hover:text-lime-600 underline"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setInfoBook(b);
+                                }}
+                              >
+                                Ver detalhes
+                              </button>
                             </button>
                           );
                         })}
@@ -510,6 +521,10 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
           </div>
         )}
       </AnimatePresence>
+
+      {infoBook && (
+        <BookInfoModal book={infoBook} onClose={() => setInfoBook(null)} />
+      )}
     </>
   );
 };
