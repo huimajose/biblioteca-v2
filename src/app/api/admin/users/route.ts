@@ -13,9 +13,12 @@ export async function GET(req: NextRequest) {
   const db = getDb();
   let users = await db.select().from(schema.users);
 
+  let verifications: Array<typeof schema.studentVerifications.$inferSelect> = [];
+  let approvedIds: Set<string> | null = null;
+
   if (verified === "true") {
-    const verifications = await db.select().from(schema.studentVerifications);
-    const approvedIds = new Set(
+    verifications = await db.select().from(schema.studentVerifications);
+    approvedIds = new Set(
       verifications
         .filter((s) => {
           const status = String(s.status || "").toLowerCase();
@@ -26,23 +29,28 @@ export async function GET(req: NextRequest) {
 
     if (approvedIds.size > 0) {
       users = users.filter(
-        (u) =>
-          approvedIds.has(u.clerkId) &&
-          String(u.role || "").toLowerCase() === "student"
-      );
-    } else {
-      users = users.filter(
-        (u) => String(u.role || "").toLowerCase() === "student"
+        (u) => approvedIds?.has(u.clerkId)
       );
     }
   }
 
-  const mapped = users.map((u) => ({
+  let mapped = users.map((u) => ({
     clerkId: u.clerkId,
     primaryEmail: u.primaryEmail,
     fullName: u.fullName ?? "",
     role: u.role ?? "external",
   }));
+
+  if (verified === "true" && mapped.length === 0 && approvedIds?.size) {
+    mapped = verifications
+      .filter((v) => approvedIds?.has(v.clerkId))
+      .map((v) => ({
+        clerkId: v.clerkId,
+        primaryEmail: "",
+        fullName: v.fullName ?? "",
+        role: "student",
+      }));
+  }
 
   return NextResponse.json(mapped);
 }
