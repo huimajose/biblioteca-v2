@@ -28,35 +28,35 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
     activity.status === 'returned' ? 'devolvido' :
     activity.status;
 
-  const buildTicketPdf = async (format: 'a5' | 'a4') => {
-    const doc = new jsPDF('p', 'pt', format);
+  const buildTicketPdf = async () => {
+    const doc = new jsPDF('p', 'mm', [80, 200]);
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
-    const marginX = format === 'a4' ? 60 : 40;
-    const topY = format === 'a4' ? 60 : 40;
+    const marginX = 6;
+    const topY = 10;
 
-    doc.setFontSize(18);
+    doc.setFontSize(12);
     doc.text('Biblioteca Virtual', marginX, topY);
-    doc.setFontSize(9);
-    doc.text('Recibo oficial da biblioteca', marginX, topY + 18);
+    doc.setFontSize(7);
+    doc.text('Recibo oficial da biblioteca', marginX, topY + 5);
 
-    doc.setFontSize(10);
-    doc.text('Titulo do livro', marginX, topY + 48);
-    doc.setFontSize(13);
-    doc.text(String(activity.bookTitle || 'N/D'), marginX, topY + 70, { maxWidth: pageW - marginX * 2 });
-    doc.setFontSize(9);
-    doc.text(String(activity.bookAuthor || ''), marginX, topY + 86);
-
-    doc.setFontSize(9);
-    doc.text(`Utilizador: ${activity.userName || activity.userEmail || activity.userId}`, marginX, topY + 118);
-    doc.text(`ISBN: ${activity.isbn || 'N/D'}`, marginX, topY + 134);
-    doc.text(`Data: ${new Date(activity.borrowedDate).toLocaleDateString()}`, marginX, topY + 150);
-    doc.text(`Estado: ${statusLabel}`, marginX, topY + 166);
-
-    doc.setFontSize(9);
-    doc.text('ID da transacao', marginX, topY + 198);
     doc.setFontSize(8);
-    doc.text(`#${activity.tid}`, marginX, topY + 214, { maxWidth: pageW - marginX * 2 });
+    doc.text('Titulo do livro', marginX, topY + 16);
+    doc.setFontSize(9);
+    doc.text(String(activity.bookTitle || 'N/D'), marginX, topY + 23, { maxWidth: pageW - marginX * 2 });
+    doc.setFontSize(7);
+    doc.text(String(activity.bookAuthor || ''), marginX, topY + 30);
+
+    doc.setFontSize(7);
+    doc.text(`Utilizador: ${activity.userName || activity.userEmail || activity.userId}`, marginX, topY + 40);
+    doc.text(`ISBN: ${activity.isbn || 'N/D'}`, marginX, topY + 46);
+    doc.text(`Data: ${new Date(activity.borrowedDate).toLocaleDateString()}`, marginX, topY + 52);
+    doc.text(`Estado: ${statusLabel}`, marginX, topY + 58);
+
+    doc.setFontSize(7);
+    doc.text('ID da transacao', marginX, topY + 68);
+    doc.setFontSize(6);
+    doc.text(`#${activity.tid}`, marginX, topY + 73, { maxWidth: pageW - marginX * 2 });
 
     const qrPayload = JSON.stringify({
       tid: activity.tid,
@@ -69,23 +69,23 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
 
     try {
       const qr = await QRCode.toDataURL(qrPayload, { margin: 1, width: 140 });
-      const qrSize = format === 'a4' ? 110 : 80;
+      const qrSize = 28;
       const qrX = pageW - marginX - qrSize;
-      const qrY = topY + 190;
+      const qrY = topY + 78;
       doc.addImage(qr, 'PNG', qrX, qrY, qrSize, qrSize);
-      doc.setFontSize(7);
-      doc.text('Validar talao', qrX, qrY + qrSize + 14);
+      doc.setFontSize(6);
+      doc.text('Validar talao', qrX, qrY + qrSize + 6);
     } catch {
       // ignore qr failure
     }
 
-    doc.setFontSize(7);
-    doc.text('Guarde este talao para os seus registos.', marginX, pageH - 56);
-    doc.text('Devolva o livro no prazo indicado para evitar multas.', marginX, pageH - 44);
+    doc.setFontSize(6);
+    doc.text('Guarde este talao para os seus registos.', marginX, pageH - 16);
+    doc.text('Devolva o livro no prazo indicado.', marginX, pageH - 10);
 
     try {
       const imgLoaded = await loadWatermarkImage(LOGO_WATERMARK);
-      const wmW = format === 'a4' ? 260 : 220;
+      const wmW = 45;
       const wmH = wmW * (imgLoaded.height / imgLoaded.width);
       const wmX = (pageW - wmW) / 2;
       const wmY = (pageH - wmH) / 2;
@@ -103,13 +103,13 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
     return doc;
   };
 
-  const exportTicketPdf = async (format: 'a5' | 'a4') => {
-    const doc = await buildTicketPdf(format);
-    doc.save(`talao-${activity.tid}-${format}.pdf`);
+  const exportTicketPdf = async () => {
+    const doc = await buildTicketPdf();
+    doc.save(`talao-${activity.tid}-ticket.pdf`);
   };
 
-  const printTicket = async (format: 'a5' | 'a4') => {
-    const doc = await buildTicketPdf(format);
+  const printTicket = async () => {
+    const doc = await buildTicketPdf();
     doc.autoPrint();
     const url = doc.output('bloburl');
     window.open(url, '_blank');
@@ -176,19 +176,11 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
             <Button variant="secondary" className="flex-1" onClick={onClose}>Fechar</Button>
           </div>
           <div className="flex gap-3">
-            <Button variant="secondary" className="flex-1 flex items-center justify-center gap-2" onClick={() => printTicket('a5')}>
-              <Printer className="w-4 h-4" /> Imprimir pequeno
+            <Button variant="secondary" className="flex-1 flex items-center justify-center gap-2" onClick={printTicket}>
+              <Printer className="w-4 h-4" /> Imprimir talao
             </Button>
-            <Button variant="secondary" className="flex-1 flex items-center justify-center gap-2" onClick={() => printTicket('a4')}>
-              <Printer className="w-4 h-4" /> Imprimir A4
-            </Button>
-          </div>
-          <div className="flex gap-3">
-            <Button className="flex-1 flex items-center justify-center gap-2" onClick={() => exportTicketPdf('a5')}>
-              <Printer className="w-4 h-4" /> Baixar PDF pequeno
-            </Button>
-            <Button className="flex-1 flex items-center justify-center gap-2" onClick={() => exportTicketPdf('a4')}>
-              <Printer className="w-4 h-4" /> Baixar PDF A4
+            <Button className="flex-1 flex items-center justify-center gap-2" onClick={exportTicketPdf}>
+              <Printer className="w-4 h-4" /> Baixar PDF
             </Button>
           </div>
         </div>
