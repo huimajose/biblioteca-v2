@@ -33,9 +33,17 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
     activity.status;
 
   const buildTicketPdf = async (format: 'ticket' | 'a4') => {
+    const title = String(activity.bookTitle || 'N/D');
+    const author = String(activity.bookAuthor || '');
+    const desc = author ? `${title} - ${author}` : title;
+    const baseTicketHeight = 160;
+    const extraLines = Math.max(0, Math.ceil(desc.length / 38) - 1);
+    const extraNoteLines = Math.max(0, Math.ceil(RETURN_POLICY_NOTE.length / 38) - 1);
+    const dynamicHeight = baseTicketHeight + extraLines * 6 + extraNoteLines * 4;
+
     const doc = format === 'a4'
       ? new jsPDF('p', 'pt', 'a4')
-      : new jsPDF('p', 'mm', [80, 200]);
+      : new jsPDF('p', 'mm', [80, Math.min(260, dynamicHeight)]);
     const pageW = doc.internal.pageSize.getWidth();
     const pageH = doc.internal.pageSize.getHeight();
     const marginX = format === 'a4' ? 60 : 6;
@@ -53,32 +61,36 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
     }
 
     if (logo) {
-      const logoW = format === 'a4' ? 64 : 16;
+      const logoW = format === 'a4' ? 64 : 14;
       const logoH = logoW * (logo.height / logo.width);
-      doc.addImage(logo, 'PNG', marginX, topY - (format === 'a4' ? 10 : 4), logoW, logoH);
+      doc.addImage(logo, 'PNG', marginX, topY - (format === 'a4' ? 10 : 3), logoW, logoH);
     }
 
-    doc.setFontSize(format === 'a4' ? 18 : 12);
+    doc.setFontSize(format === 'a4' ? 18 : 11);
     doc.text('Biblioteca Digital', marginX + (logo ? (format === 'a4' ? 72 : 20) : 0), topY + (format === 'a4' ? 4 : 2));
-    doc.setFontSize(format === 'a4' ? 9 : 7);
+    doc.setFontSize(format === 'a4' ? 9 : 6);
     doc.text('Recibo oficial da biblioteca', marginX + (logo ? (format === 'a4' ? 72 : 20) : 0), topY + (format === 'a4' ? 22 : 6));
 
-    doc.setFontSize(format === 'a4' ? 9 : 7);
+    doc.setFontSize(format === 'a4' ? 9 : 6);
     doc.text(`Serie: ${serial}`, marginX, topY + (format === 'a4' ? 40 : 14));
     doc.text(`Data: ${issueDate.toLocaleDateString()}`, marginX, topY + (format === 'a4' ? 54 : 19));
 
     const rightX = pageW - marginX;
-    doc.setFontSize(format === 'a4' ? 9 : 7);
+    doc.setFontSize(format === 'a4' ? 9 : 6);
     doc.text(`Estudante/Cliente: ${activity.userName || activity.userEmail || activity.userId}`, rightX, topY + (format === 'a4' ? 40 : 14), { align: 'right' });
     if (activity.returnedDate) {
       doc.text(`Devolucao: ${new Date(activity.returnedDate).toLocaleDateString()}`, rightX, topY + (format === 'a4' ? 54 : 19), { align: 'right' });
     }
 
-    const tableTop = topY + (format === 'a4' ? 78 : 30);
+    const tableTop = topY + (format === 'a4' ? 78 : 32);
     const colWidths = format === 'a4'
       ? [40, 340, 120]
-      : [10, 46, 18];
-    const rowH = format === 'a4' ? 24 : 8;
+      : [10, 48, 16];
+    const rowH = format === 'a4' ? 24 : 10;
+    const descMaxWidth = colWidths[1] - 8;
+    const descLines = doc.splitTextToSize(desc, descMaxWidth);
+    const lineH = format === 'a4' ? 12 : 4.5;
+    const bodyRowH = Math.max(rowH, Math.ceil(descLines.length * lineH + (format === 'a4' ? 8 : 4)));
     const tableW = colWidths.reduce((a, b) => a + b, 0);
 
     doc.setDrawColor(220);
@@ -92,26 +104,23 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
     doc.line(marginX + tableW, tableTop, marginX + tableW, tableTop + rowH);
 
     doc.setFontSize(format === 'a4' ? 9 : 6);
-    doc.text('Qtd', marginX + 4, tableTop + (format === 'a4' ? 16 : 5));
-    doc.text('Descricao', marginX + colWidths[0] + 4, tableTop + (format === 'a4' ? 16 : 5));
-    doc.text('ISBN', marginX + colWidths[0] + colWidths[1] + 4, tableTop + (format === 'a4' ? 16 : 5));
+    doc.text('Qtd', marginX + 4, tableTop + (format === 'a4' ? 16 : 6));
+    doc.text('Descricao', marginX + colWidths[0] + 4, tableTop + (format === 'a4' ? 16 : 6));
+    doc.text('ISBN', marginX + colWidths[0] + colWidths[1] + 4, tableTop + (format === 'a4' ? 16 : 6));
 
     const bodyTop = tableTop + rowH;
-    doc.rect(marginX, bodyTop, tableW, rowH);
+    doc.rect(marginX, bodyTop, tableW, bodyRowH);
     x = marginX;
     colWidths.forEach((w) => {
-      doc.line(x, bodyTop, x, bodyTop + rowH);
+      doc.line(x, bodyTop, x, bodyTop + bodyRowH);
       x += w;
     });
-    doc.line(marginX + tableW, bodyTop, marginX + tableW, bodyTop + rowH);
+    doc.line(marginX + tableW, bodyTop, marginX + tableW, bodyTop + bodyRowH);
 
     doc.setFontSize(format === 'a4' ? 9 : 6);
-    doc.text('1', marginX + 4, bodyTop + (format === 'a4' ? 16 : 5));
-    const title = String(activity.bookTitle || 'N/D');
-    const author = String(activity.bookAuthor || '');
-    const desc = author ? `${title} — ${author}` : title;
-    doc.text(desc, marginX + colWidths[0] + 4, bodyTop + (format === 'a4' ? 16 : 5), { maxWidth: colWidths[1] - 8 });
-    doc.text(String(activity.isbn || 'N/D'), marginX + colWidths[0] + colWidths[1] + 4, bodyTop + (format === 'a4' ? 16 : 5), { maxWidth: colWidths[2] - 8 });
+    doc.text('1', marginX + 4, bodyTop + (format === 'a4' ? 16 : 6));
+    doc.text(descLines as any, marginX + colWidths[0] + 4, bodyTop + (format === 'a4' ? 16 : 6));
+    doc.text(String(activity.isbn || 'N/D'), marginX + colWidths[0] + colWidths[1] + 4, bodyTop + (format === 'a4' ? 16 : 6), { maxWidth: colWidths[2] - 8 });
 
     const qrPayload = JSON.stringify({
       tid: activity.tid,
@@ -124,9 +133,9 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
 
     try {
       const qr = await QRCode.toDataURL(qrPayload, { margin: 1, width: 140 });
-      const qrSize = format === 'a4' ? 110 : 28;
+      const qrSize = format === 'a4' ? 110 : 26;
       const qrX = pageW - marginX - qrSize;
-      const qrY = bodyTop + rowH + (format === 'a4' ? 40 : 10);
+      const qrY = bodyTop + bodyRowH + (format === 'a4' ? 40 : 12);
       doc.addImage(qr, 'PNG', qrX, qrY, qrSize, qrSize);
       doc.setFontSize(format === 'a4' ? 7 : 6);
       doc.text('Validar talao', qrX, qrY + qrSize + (format === 'a4' ? 14 : 6));
@@ -135,7 +144,7 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
     }
 
     doc.setFontSize(format === 'a4' ? 7 : 6);
-    doc.text(RETURN_POLICY_NOTE, marginX, pageH - (format === 'a4' ? 68 : 22), { maxWidth: pageW - marginX * 2 });
+    doc.text(RETURN_POLICY_NOTE, marginX, pageH - (format === 'a4' ? 68 : 24), { maxWidth: pageW - marginX * 2 });
     doc.text(`Autorizado por: ${authorizedBy}`, marginX, pageH - (format === 'a4' ? 56 : 16));
     doc.text(`Data: ${issueDate.toLocaleDateString()}`, marginX, pageH - (format === 'a4' ? 44 : 10));
 
