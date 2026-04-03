@@ -5,6 +5,7 @@ import { Button } from '../components/ui/Button.tsx';
 import jsPDF from 'jspdf';
 import { LOGO_WATERMARK } from '@/constants.ts';
 import QRCode from 'qrcode';
+import { loadWatermarkImage } from '@/utils/pdfWatermark.ts';
 
 interface BorrowTicketProps {
   activity: {
@@ -83,13 +84,7 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
     doc.text('Devolva o livro no prazo indicado para evitar multas.', marginX, pageH - 44);
 
     try {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      const imgLoaded = await new Promise<HTMLImageElement>((resolve, reject) => {
-        img.onload = () => resolve(img);
-        img.onerror = reject;
-        img.src = LOGO_WATERMARK;
-      });
+      const imgLoaded = await loadWatermarkImage(LOGO_WATERMARK);
       const wmW = format === 'a4' ? 260 : 220;
       const wmH = wmW * (imgLoaded.height / imgLoaded.width);
       const wmX = (pageW - wmW) / 2;

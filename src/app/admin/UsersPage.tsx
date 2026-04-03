@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/Button.tsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { LOGO_WATERMARK } from '@/constants.ts';
+import { addCenteredWatermarkToAllPages, loadWatermarkImage } from '@/utils/pdfWatermark.ts';
 
 export const UsersPage = () => {
   const [users, setUsers] = useState<any[]>([]);
@@ -51,35 +52,6 @@ export const UsersPage = () => {
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
-  const loadLogo = () =>
-    new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => resolve(img);
-      img.onerror = reject;
-      img.src = LOGO_WATERMARK;
-    });
-
-  const addWatermarkToAllPages = (doc: jsPDF, img: HTMLImageElement) => {
-    const pages = doc.getNumberOfPages();
-    for (let i = 1; i <= pages; i += 1) {
-      doc.setPage(i);
-      const pageW = doc.internal.pageSize.getWidth();
-      const pageH = doc.internal.pageSize.getHeight();
-      const targetW = 150;
-      const targetH = targetW * (img.height / img.width);
-      const x = (pageW - targetW) / 2;
-      const y = (pageH - targetH) / 2;
-      if ((doc as any).GState && doc.setGState) {
-        doc.setGState(new (doc as any).GState({ opacity: 0.08 }));
-      }
-      doc.addImage(img, 'PNG', x, y, targetW, targetH);
-      if ((doc as any).GState && doc.setGState) {
-        doc.setGState(new (doc as any).GState({ opacity: 1 }));
-      }
-    }
-  };
-
   const exportUsersPdf = async (role: 'all' | 'student' | 'external' | 'admin') => {
     const list = role === 'all' ? users : users.filter((u) => (u.role || 'external') === role);
     const doc = new jsPDF('p', 'pt');
@@ -95,8 +67,8 @@ export const UsersPage = () => {
       headStyles: { fillColor: [101, 163, 13] },
     });
     try {
-      const logo = await loadLogo();
-      addWatermarkToAllPages(doc, logo);
+      const logo = await loadWatermarkImage(LOGO_WATERMARK);
+      addCenteredWatermarkToAllPages(doc, logo, { width: 150 });
     } catch {
       // ignore watermark if logo fails
     }

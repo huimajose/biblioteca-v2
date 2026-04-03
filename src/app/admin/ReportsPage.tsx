@@ -7,6 +7,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { BorrowTicket } from '@/components/BorrowTicket.tsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { LOGO_WATERMARK } from '@/constants.ts';
+import { addCenteredWatermarkToAllPages, loadWatermarkImage } from '@/utils/pdfWatermark.ts';
 
 export const ReportsPage = () => {
   const [reportType, setReportType] = useState<'activity' | 'genre' | 'inventory' | 'users' | 'top-books'>('activity');
@@ -22,6 +24,7 @@ export const ReportsPage = () => {
   const [confirmReturn, setConfirmReturn] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [filtering, setFiltering] = useState(false);
+
 
   useEffect(() => {
     if (reportType === 'genre' || reportType === 'inventory') {
@@ -76,7 +79,7 @@ export const ReportsPage = () => {
     setDates({ start, end });
   };
 
-  const exportActivityPdf = () => {
+  const exportActivityPdf = async () => {
     const doc = new jsPDF('p', 'pt');
     doc.setFontSize(16);
     doc.text('Relatorio de atividade da biblioteca', 40, 40);
@@ -107,10 +110,17 @@ export const ReportsPage = () => {
       headStyles: { fillColor: [101, 163, 13] },
     });
 
+    try {
+      const logo = await loadWatermarkImage(LOGO_WATERMARK);
+      addCenteredWatermarkToAllPages(doc, logo, { width: 160 });
+    } catch {
+      // ignore watermark if logo fails
+    }
+
     doc.save('relatorio-atividade.pdf');
   };
 
-  const exportTopBooksPdf = () => {
+  const exportTopBooksPdf = async () => {
     const doc = new jsPDF('p', 'pt');
     doc.setFontSize(16);
     doc.text('Relatorio de livros mais requisitados', 40, 40);
@@ -133,6 +143,13 @@ export const ReportsPage = () => {
       styles: { fontSize: 9 },
       headStyles: { fillColor: [101, 163, 13] },
     });
+
+    try {
+      const logo = await loadWatermarkImage(LOGO_WATERMARK);
+      addCenteredWatermarkToAllPages(doc, logo, { width: 160 });
+    } catch {
+      // ignore watermark if logo fails
+    }
 
     doc.save('relatorio-livros-mais-requisitados.pdf');
   };

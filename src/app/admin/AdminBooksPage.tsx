@@ -7,6 +7,7 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { LOGO_WATERMARK } from '@/constants.ts';
+import { addCenteredWatermarkToAllPages, loadWatermarkImage } from '@/utils/pdfWatermark.ts';
 
 export const AdminBooksPage = () => {
   const [books, setBooks] = useState<any[]>([]);
@@ -63,35 +64,6 @@ export const AdminBooksPage = () => {
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
-  const loadLogo = () =>
-    new Promise<HTMLImageElement>((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => resolve(img);
-      img.onerror = reject;
-      img.src = LOGO_WATERMARK;
-    });
-
-  const addWatermarkToAllPages = (doc: jsPDF, img: HTMLImageElement) => {
-    const pages = doc.getNumberOfPages();
-    for (let i = 1; i <= pages; i += 1) {
-      doc.setPage(i);
-      const pageW = doc.internal.pageSize.getWidth();
-      const pageH = doc.internal.pageSize.getHeight();
-      const targetW = 160;
-      const targetH = targetW * (img.height / img.width);
-      const x = (pageW - targetW) / 2;
-      const y = (pageH - targetH) / 2;
-      if ((doc as any).GState && doc.setGState) {
-        doc.setGState(new (doc as any).GState({ opacity: 0.08 }));
-      }
-      doc.addImage(img, 'PNG', x, y, targetW, targetH);
-      if ((doc as any).GState && doc.setGState) {
-        doc.setGState(new (doc as any).GState({ opacity: 1 }));
-      }
-    }
-  };
-
   const exportInventoryPdf = async (byGenre: boolean) => {
     const doc = new jsPDF('p', 'pt');
     doc.setFontSize(16);
@@ -142,8 +114,8 @@ export const AdminBooksPage = () => {
     }
 
     try {
-      const logo = await loadLogo();
-      addWatermarkToAllPages(doc, logo);
+      const logo = await loadWatermarkImage(LOGO_WATERMARK);
+      addCenteredWatermarkToAllPages(doc, logo, { width: 160 });
     } catch {
       // ignore watermark if logo fails
     }
@@ -268,7 +240,7 @@ export const AdminBooksPage = () => {
   const exportLabelPdf = async (book: any) => {
     const doc = new jsPDF('p', 'pt', 'a4');
     try {
-      const logo = await loadLogo();
+      const logo = await loadWatermarkImage(LOGO_WATERMARK);
       drawLabel(doc, 40, 40, book, logo);
     } catch {
       drawLabel(doc, 40, 40, book);
@@ -290,7 +262,7 @@ export const AdminBooksPage = () => {
 
     let logo: HTMLImageElement | null = null;
     try {
-      logo = await loadLogo();
+      logo = await loadWatermarkImage(LOGO_WATERMARK);
     } catch {
       logo = null;
     }

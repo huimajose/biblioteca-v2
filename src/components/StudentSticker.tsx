@@ -3,6 +3,7 @@ import QRCode from 'qrcode';
 import jsPDF from 'jspdf';
 import { toPng } from 'html-to-image';
 import { LOGO_WATERMARK } from '@/constants.ts';
+import { loadWatermarkImage } from '@/utils/pdfWatermark.ts';
 
 interface StudentStickerProps {
   userId: string;
@@ -10,15 +11,6 @@ interface StudentStickerProps {
   studentNumber?: string;
   avatarUrl?: string;
 }
-
-const loadImage = (src: string) =>
-  new Promise<HTMLImageElement>((resolve, reject) => {
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
-    img.onload = () => resolve(img);
-    img.onerror = reject;
-    img.src = src;
-  });
 
 export const StudentSticker = ({ userId, fullName, studentNumber, avatarUrl }: StudentStickerProps) => {
   const [qr, setQr] = useState<string>('');
@@ -44,7 +36,7 @@ export const StudentSticker = ({ userId, fullName, studentNumber, avatarUrl }: S
       setAvatarData(null);
       return;
     }
-    loadImage(avatarUrl)
+    loadWatermarkImage(avatarUrl)
       .then((img) => {
         const canvas = document.createElement('canvas');
         canvas.width = img.width;
@@ -74,7 +66,7 @@ export const StudentSticker = ({ userId, fullName, studentNumber, avatarUrl }: S
 
     let watermark: HTMLImageElement | null = null;
     try {
-      watermark = await loadImage(LOGO_WATERMARK);
+      watermark = await loadWatermarkImage(LOGO_WATERMARK);
     } catch {
       watermark = null;
     }
