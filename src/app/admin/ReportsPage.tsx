@@ -25,6 +25,11 @@ export const ReportsPage = () => {
   const [confirmReturn, setConfirmReturn] = useState<any>(null);
   const [loading, setLoading] = useState(false);
   const [filtering, setFiltering] = useState(false);
+  const [activityPage, setActivityPage] = useState(1);
+  const [usersPage, setUsersPage] = useState(1);
+
+  const ACTIVITY_PAGE_SIZE = 10;
+  const USERS_PAGE_SIZE = 8;
 
   const topAdmin = useMemo(() => {
     const counts = activities.reduce((acc: Record<string, number>, a: any) => {
@@ -43,6 +48,11 @@ export const ReportsPage = () => {
     activities.forEach((a: any) => {
       if (groupBy === 'user') {
         const key = a.userName || a.userEmail || a.userId || 'N/D';
+        map.set(key, (map.get(key) || 0) + 1);
+        return;
+      }
+      if (groupBy === 'genre') {
+        const key = a.bookGenre || 'Sem curso';
         map.set(key, (map.get(key) || 0) + 1);
         return;
       }
@@ -67,6 +77,16 @@ export const ReportsPage = () => {
       .map(([label, count]) => ({ label, count }));
   }, [activities, groupBy]);
 
+  const pagedActivities = useMemo(() => {
+    const start = (activityPage - 1) * ACTIVITY_PAGE_SIZE;
+    return activities.slice(start, start + ACTIVITY_PAGE_SIZE);
+  }, [activities, activityPage]);
+
+  const pagedUsers = useMemo(() => {
+    const start = (usersPage - 1) * USERS_PAGE_SIZE;
+    return userReports.slice(start, start + USERS_PAGE_SIZE);
+  }, [userReports, usersPage]);
+
 
   useEffect(() => {
     if (reportType === 'genre' || reportType === 'inventory') {
@@ -89,6 +109,12 @@ export const ReportsPage = () => {
       fetchReport();
     }, 200);
     return () => clearTimeout(timer);
+  }, [reportType, dates.start, dates.end, statusFilter]);
+
+  useEffect(() => {
+    if (reportType !== 'activity') return;
+    setActivityPage(1);
+    setUsersPage(1);
   }, [reportType, dates.start, dates.end, statusFilter]);
 
   const fetchReport = async () => {
@@ -129,36 +155,29 @@ export const ReportsPage = () => {
     doc.text(`Intervalo: ${dates.start || 'Todos'} - ${dates.end || 'Todos'}`, 40, 58);
     doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 40, 72);
 
+    const params = new URLSearchParams(dates);
+    if (statusFilter !== 'all') params.set('status', statusFilter);
+    const query = params.toString();
+
+    const summaryRes = await fetch(`/api/admin/reports/activity-summary?${query}`);
+    const summary = summaryRes.ok ? await summaryRes.json() : null;
+
     const adminCounts = activities.reduce((acc: Record<string, number>, a: any) => {
       if (String(a.status || '').toLowerCase() !== 'borrowed') return acc;
       const key = a.adminName || a.adminEmail || a.adminId || 'Sistema';
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {});
-    const topAdmin = Object.entries(adminCounts).sort((a, b) => b[1] - a[1])[0];
+    const topAdmin = summary?.topAdmins?.[0]
+      ? [summary.topAdmins[0].name, summary.topAdmins[0].count]
+      : Object.entries(adminCounts).sort((a, b) => b[1] - a[1])[0];
     if (topAdmin) {
       doc.setFontSize(10);
       doc.text(`Admin com mais emprestimos aprovados: ${topAdmin[0]} (${topAdmin[1]})`, 40, 90);
     }
 
-    const trendMap = new Map<string, number>();
-    activities.forEach((a: any) => {
-      const raw = a.borrowedDate;
-      if (!raw) return;
-      const d = new Date(raw);
-      if (Number.isNaN(d.getTime())) return;
-      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-      trendMap.set(key, (trendMap.get(key) || 0) + 1);
-    });
-    const trend = Array.from(trendMap.entries())
-      .sort((a, b) => a[0].localeCompare(b[0]))
-      .slice(-6)
-      .map(([key, value]) => {
-        const [y, m] = key.split('-');
-        return { label: `${m}/${y}`, value };
-      });
-
-    const statusCounts = activities.reduce((acc: Record<string, number>, a: any) => {
+    const trend = summary?.trend || [];
+    const statusCounts = summary?.statusCounts || activities.reduce((acc: Record<string, number>, a: any) => {
       const s = String(a.status || '').toLowerCase();
       if (s === 'borrowed') acc.borrowed += 1;
       else if (s === 'returned') acc.returned += 1;
@@ -171,12 +190,13 @@ export const ReportsPage = () => {
       { label: 'Pendente', value: statusCounts.pending },
     ];
 
-    const genreCounts = activities.reduce((acc: Record<string, number>, a: any) => {
-      const key = a.bookGenre || 'Sem curso';
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {});
-    const topGenres = Object.entries(genreCounts)
+    const topGenres = summary?.topGenres || Object.entries(
+      activities.reduce((acc: Record<string, number>, a: any) => {
+        const key = a.bookGenre || 'Sem curso';
+        acc[key] = (acc[key] || 0) + 1;
+        return acc;
+      }, {})
+    )
       .map(([label, value]) => ({ label, value }))
       .sort((a, b) => b.value - a.value)
       .slice(0, 6);
@@ -211,12 +231,12 @@ export const ReportsPage = () => {
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {});
-    const sortedUsers = Object.entries(userCounts)
+    const sortedUsers = summary?.users || Object.entries(userCounts)
       .sort((a, b) => b[1] - a[1])
       .map(([name, count]) => ({ name, count }));
-    const topUsers = sortedUsers.slice(0, 10);
+    const topUsers = summary?.topUsers || sortedUsers.slice(0, 10);
 
-    const adminRows = Object.entries(adminCounts)
+    const adminRows = summary?.topAdmins || Object.entries(adminCounts)
       .sort((a, b) => b[1] - a[1])
       .map(([name, count]) => ({ name, count }));
 
@@ -261,7 +281,7 @@ export const ReportsPage = () => {
     if (groupBy !== 'none' && groupedActivity.length) {
       autoTable(doc, {
         startY: tableStartY,
-        head: [[groupBy === 'user' ? 'Utilizador' : groupBy === 'week' ? 'Semana' : 'Dia', 'Total']],
+        head: [[groupBy === 'user' ? 'Utilizador' : groupBy === 'week' ? 'Semana' : groupBy === 'day' ? 'Dia' : 'Curso', 'Total']],
         body: groupedActivity.map((row: any) => [row.label, String(row.count)]),
         styles: { fontSize: 9 },
         headStyles: { fillColor: [101, 163, 13] },
@@ -324,6 +344,12 @@ export const ReportsPage = () => {
     drawChartBlock('Tendencia de requisicoes', trend, [101, 163, 13]);
     drawChartBlock('Estados das requisicoes', statusData, [132, 204, 22]);
     drawWideChartBlock('Top generos', topGenres, [99, 102, 241]);
+
+    ensureSpace(30);
+    doc.setFontSize(8);
+    doc.setTextColor(120);
+    doc.text(`Legenda: barras representam total de requisicoes. Base: ${activities.length} registos.`, 40, chartY + 10);
+    doc.setTextColor(0);
 
     const filterSummary = [
       `Intervalo: ${dates.start || 'Todos'} - ${dates.end || 'Todos'}`,
@@ -536,6 +562,7 @@ export const ReportsPage = () => {
                   <option value="user">Utilizador</option>
                   <option value="week">Semana</option>
                   <option value="day">Dia</option>
+                  <option value="genre">Curso</option>
                 </select>
               </div>
               <div className="flex flex-wrap gap-2">
@@ -561,14 +588,14 @@ export const ReportsPage = () => {
 
           {groupBy !== 'none' && (
             <Card className="p-6">
-              <h2 className="text-lg font-bold mb-4">Resumo por {groupBy === 'user' ? 'utilizador' : groupBy === 'week' ? 'semana' : 'dia'}</h2>
+              <h2 className="text-lg font-bold mb-4">Resumo por {groupBy === 'user' ? 'utilizador' : groupBy === 'week' ? 'semana' : groupBy === 'day' ? 'dia' : 'curso'}</h2>
               {groupedActivity.length === 0 ? (
                 <p className="text-sm text-gray-400">Sem dados para agrupar.</p>
               ) : (
                 <table className="w-full text-left border-collapse">
                   <thead className="bg-gray-50 border-b border-gray-100">
                     <tr>
-                      <th className="p-3 text-xs uppercase text-gray-400">{groupBy === 'user' ? 'Utilizador' : groupBy === 'week' ? 'Semana' : 'Dia'}</th>
+                      <th className="p-3 text-xs uppercase text-gray-400">{groupBy === 'user' ? 'Utilizador' : groupBy === 'week' ? 'Semana' : groupBy === 'day' ? 'Dia' : 'Curso'}</th>
                       <th className="p-3 text-xs uppercase text-gray-400 text-right">Total</th>
                     </tr>
                   </thead>
@@ -611,7 +638,7 @@ export const ReportsPage = () => {
                     </td>
                   </tr>
                 ) : (
-                  activities.map(act => (
+                  pagedActivities.map(act => (
                     <tr key={act.tid} className="hover:bg-gray-50 transition-colors">
                       <td className="p-4 text-sm">{new Date(act.borrowedDate).toLocaleDateString()}</td>
                       <td className="p-4 text-sm font-medium">{act.userName || act.userEmail || 'N/D'}</td>
@@ -664,6 +691,34 @@ export const ReportsPage = () => {
                 )}
               </tbody>
             </table>
+            {activities.length > ACTIVITY_PAGE_SIZE && (
+              <div className="p-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                <span>
+                  A mostrar {(activityPage - 1) * ACTIVITY_PAGE_SIZE + 1}–
+                  {Math.min(activityPage * ACTIVITY_PAGE_SIZE, activities.length)} de {activities.length}
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setActivityPage((p) => Math.max(1, p - 1))}
+                    disabled={activityPage === 1}
+                  >
+                    Anterior
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      setActivityPage((p) =>
+                        Math.min(Math.ceil(activities.length / ACTIVITY_PAGE_SIZE), p + 1)
+                      )
+                    }
+                    disabled={activityPage >= Math.ceil(activities.length / ACTIVITY_PAGE_SIZE)}
+                  >
+                    Proximo
+                  </Button>
+                </div>
+              </div>
+            )}
           </Card>
         </>
       )}
@@ -854,7 +909,7 @@ export const ReportsPage = () => {
                     </td>
                   </tr>
                 ) : (
-                  userReports.map(user => (
+                  pagedUsers.map(user => (
                     <tr key={user.clerkId} className="hover:bg-gray-50 transition-colors align-top">
                       <td className="p-4">
                         <p className="text-sm font-bold">{user.fullName || user.primaryEmail}</p>
@@ -902,6 +957,34 @@ export const ReportsPage = () => {
                 )}
               </tbody>
             </table>
+            {userReports.length > USERS_PAGE_SIZE && (
+              <div className="p-4 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
+                <span>
+                  A mostrar {(usersPage - 1) * USERS_PAGE_SIZE + 1}–
+                  {Math.min(usersPage * USERS_PAGE_SIZE, userReports.length)} de {userReports.length}
+                </span>
+                <div className="flex gap-2">
+                  <Button
+                    variant="secondary"
+                    onClick={() => setUsersPage((p) => Math.max(1, p - 1))}
+                    disabled={usersPage === 1}
+                  >
+                    Anterior
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    onClick={() =>
+                      setUsersPage((p) =>
+                        Math.min(Math.ceil(userReports.length / USERS_PAGE_SIZE), p + 1)
+                      )
+                    }
+                    disabled={usersPage >= Math.ceil(userReports.length / USERS_PAGE_SIZE)}
+                  >
+                    Proximo
+                  </Button>
+                </div>
+              </div>
+            )}
           </Card>
         </div>
       )}
