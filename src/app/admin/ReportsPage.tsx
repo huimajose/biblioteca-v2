@@ -28,6 +28,7 @@ export const ReportsPage = () => {
 
   const topAdmin = useMemo(() => {
     const counts = activities.reduce((acc: Record<string, number>, a: any) => {
+      if (String(a.status || '').toLowerCase() !== 'borrowed') return acc;
       const key = a.adminName || a.adminEmail || a.adminId || 'Sistema';
       acc[key] = (acc[key] || 0) + 1;
       return acc;
@@ -129,6 +130,7 @@ export const ReportsPage = () => {
     doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 40, 72);
 
     const adminCounts = activities.reduce((acc: Record<string, number>, a: any) => {
+      if (String(a.status || '').toLowerCase() !== 'borrowed') return acc;
       const key = a.adminName || a.adminEmail || a.adminId || 'Sistema';
       acc[key] = (acc[key] || 0) + 1;
       return acc;
@@ -136,7 +138,7 @@ export const ReportsPage = () => {
     const topAdmin = Object.entries(adminCounts).sort((a, b) => b[1] - a[1])[0];
     if (topAdmin) {
       doc.setFontSize(10);
-      doc.text(`Admin com mais atividades: ${topAdmin[0]} (${topAdmin[1]})`, 40, 90);
+      doc.text(`Admin com mais emprestimos aprovados: ${topAdmin[0]} (${topAdmin[1]})`, 40, 90);
     }
 
     const trendMap = new Map<string, number>();
@@ -214,7 +216,23 @@ export const ReportsPage = () => {
       .map(([name, count]) => ({ name, count }));
     const topUsers = sortedUsers.slice(0, 10);
 
+    const adminRows = Object.entries(adminCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([name, count]) => ({ name, count }));
+
     let tableStartY = 120;
+
+    if (adminRows.length) {
+      autoTable(doc, {
+        startY: tableStartY,
+        head: [['Admins com mais aprovacoes', 'Total aprovado']],
+        body: adminRows.map((row) => [row.name, String(row.count)]),
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [16, 185, 129] },
+      });
+      const last = (doc as any).lastAutoTable?.finalY || tableStartY;
+      tableStartY = last + 20;
+    }
 
     if (topUsers.length) {
       autoTable(doc, {
