@@ -1,8 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Card } from '@/components/ui/Card.tsx';
 import { BookOpen, Sparkles, Library } from 'lucide-react';
 import { DEFAULT_BOOK_COVER } from '@/constants.ts';
 import { User } from '@/hooks/useAuth.ts';
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+} from 'recharts';
 
 interface UserDashboardPageProps {
   user: User;
@@ -15,6 +26,7 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
   const [recentShelf, setRecentShelf] = useState<any[]>([]);
   const [recentNotifications, setRecentNotifications] = useState<any[]>([]);
   const [nextReturn, setNextReturn] = useState<string | null>(null);
+  const [historyItems, setHistoryItems] = useState<any[]>([]);
 
   useEffect(() => {
     Promise.all([
@@ -29,6 +41,7 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
       const historyList = Array.isArray(history) ? history : [];
       const borrowed = historyList.filter((h) => h.status === 'borrowed').length;
       setStats({ shelf: shelfCount, borrowed, points: score?.points ?? 0 });
+      setHistoryItems(historyList);
       setRecommendations(Array.isArray(recs) ? recs : []);
       setVerificationStatus((studentInfo as any)?.status ?? null);
       setRecentShelf(Array.isArray(shelf) ? shelf.slice(0, 3) : []);
@@ -39,6 +52,41 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
       setNextReturn(next?.expectedReturnDate ?? null);
     });
   }, [user.id]);
+
+  const borrowTrend = useMemo(() => {
+    const map = new Map<string, number>();
+    historyItems.forEach((h) => {
+      const raw = h?.borrowedDate || h?.date || h?.createdAt;
+      if (!raw) return;
+      const d = new Date(raw);
+      if (Number.isNaN(d.getTime())) return;
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      map.set(key, (map.get(key) || 0) + 1);
+    });
+    const entries = Array.from(map.entries())
+      .sort((a, b) => a[0].localeCompare(b[0]))
+      .slice(-6)
+      .map(([key, value]) => {
+        const [y, m] = key.split('-');
+        return { month: `${m}/${y}`, borrows: value };
+      });
+    return entries.length ? entries : [{ month: 'N/A', borrows: 0 }];
+  }, [historyItems]);
+
+  const statusDistribution = useMemo(() => {
+    const counts: Record<string, number> = { borrowed: 0, returned: 0, pending: 0 };
+    historyItems.forEach((h) => {
+      const status = String(h?.status || '').toLowerCase();
+      if (status === 'borrowed') counts.borrowed += 1;
+      else if (status === 'returned') counts.returned += 1;
+      else if (status === 'pending') counts.pending += 1;
+    });
+    return [
+      { name: 'Emprestado', value: counts.borrowed },
+      { name: 'Devolvido', value: counts.returned },
+      { name: 'Pendente', value: counts.pending },
+    ];
+  }, [historyItems]);
 
   return (
     <div className="space-y-6">
@@ -82,8 +130,35 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
      
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-       
-       
+        <Card className="p-6">
+          <h2 className="text-lg font-bold mb-4">Tendencia de requisicoes</h2>
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <LineChart data={borrowTrend}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
+                <Tooltip />
+                <Line type="monotone" dataKey="borrows" stroke="#65a30d" strokeWidth={2} dot={false} />
+              </LineChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <h2 className="text-lg font-bold mb-4">Estado das requisicoes</h2>
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={statusDistribution}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 10 }} />
+                <Tooltip />
+                <Bar dataKey="value" fill="#84cc16" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
       </div>
        <Card className="p-6">
           <h2 className="text-lg font-bold mb-3">Continuar a ler</h2>
