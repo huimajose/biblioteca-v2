@@ -209,19 +209,32 @@ export const ReportsPage = () => {
       acc[key] = (acc[key] || 0) + 1;
       return acc;
     }, {});
-    const topUsers = Object.entries(userCounts)
+    const sortedUsers = Object.entries(userCounts)
       .sort((a, b) => b[1] - a[1])
       .map(([name, count]) => ({ name, count }));
+    const topUsers = sortedUsers.slice(0, 10);
 
     let tableStartY = 120;
 
     if (topUsers.length) {
       autoTable(doc, {
         startY: tableStartY,
-        head: [['Utilizador', 'Total de atividades']],
+        head: [['Top utilizadores (mais emprestimos)', 'Total']],
         body: topUsers.map((row) => [row.name, String(row.count)]),
         styles: { fontSize: 9 },
         headStyles: { fillColor: [101, 163, 13] },
+      });
+      const last = (doc as any).lastAutoTable?.finalY || tableStartY;
+      tableStartY = last + 20;
+    }
+
+    if (sortedUsers.length) {
+      autoTable(doc, {
+        startY: tableStartY,
+        head: [['Utilizadores com emprestimos', 'Total']],
+        body: sortedUsers.map((row) => [row.name, String(row.count)]),
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [132, 204, 22] },
       });
       const last = (doc as any).lastAutoTable?.finalY || tableStartY;
       tableStartY = last + 20;
