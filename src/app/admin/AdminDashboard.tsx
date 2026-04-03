@@ -24,6 +24,7 @@ import {
   Cell
 } from 'recharts';
 import {Card} from '../../components/ui/Card';
+import { BookInfoModal } from '../../components/BookInfoModal.tsx';
 import { InstantServiceModal } from './InstantServiceModal';
 
 const AdminDashboard: React.FC = () => {
@@ -32,6 +33,8 @@ const AdminDashboard: React.FC = () => {
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
   const [books, setBooks] = useState<any[]>([]);
   const [isInstantOpen, setIsInstantOpen] = useState(false);
+  const [topClicked, setTopClicked] = useState<any[]>([]);
+  const [selectedBook, setSelectedBook] = useState<any | null>(null);
 
   const topGenres = useMemo(() => {
     const counts = (books || []).reduce((acc: Record<string, number>, b: any) => {
@@ -49,6 +52,7 @@ const AdminDashboard: React.FC = () => {
     fetchStats();
     fetchPending();
     fetchBooks();
+    fetchTopClicked();
   }, []);
 
   const fetchStats = async () => {
@@ -66,6 +70,12 @@ const AdminDashboard: React.FC = () => {
     const res = await fetch('/api/admin/pending-users');
     const data = await res.json();
     setPendingUsers(Array.isArray(data) ? data : data?.data ?? []);
+  };
+
+  const fetchTopClicked = async () => {
+    const res = await fetch('/api/admin/reports/top-clicked');
+    const data = await res.json();
+    setTopClicked(Array.isArray(data) ? data : []);
   };
 
   const handleApprove = async (clerkId: string, approve: boolean) => {
@@ -163,23 +173,62 @@ const AdminDashboard: React.FC = () => {
         </Card>
       </div>
 
-      <Card className="p-6">
-        <h2 className="text-lg font-bold mb-4">Top generos</h2>
-        <div className="h-[260px] w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={topGenres}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-              <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} />
-              <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} />
-              <Tooltip 
-                cursor={{ fill: '#f9fafb' }}
-                contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
-              />
-              <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={40} fill="#65a30d" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-      </Card>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <Card className="p-6">
+          <h2 className="text-lg font-bold mb-4">Top generos</h2>
+          <div className="h-[260px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={topGenres}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#9ca3af' }} />
+                <Tooltip 
+                  cursor={{ fill: '#f9fafb' }}
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                />
+                <Bar dataKey="value" radius={[6, 6, 0, 0]} barSize={40} fill="#65a30d" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <h2 className="text-lg font-bold mb-4">Livros mais clicados</h2>
+          <div className="overflow-hidden rounded-xl border border-gray-100">
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="p-3 text-xs uppercase text-gray-400">Livro</th>
+                  <th className="p-3 text-xs uppercase text-gray-400 text-right">Cliques</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {topClicked.length === 0 ? (
+                  <tr>
+                    <td colSpan={2} className="p-6 text-sm text-gray-400 text-center">
+                      Sem dados de cliques ainda.
+                    </td>
+                  </tr>
+                ) : (
+                  topClicked.map((book) => (
+                    <tr
+                      key={book.id}
+                      className="hover:bg-gray-50 cursor-pointer"
+                      onClick={() => setSelectedBook(book)}
+                    >
+                      <td className="p-3">
+                        <p className="text-sm font-semibold">{book.title}</p>
+                        <p className="text-[10px] text-gray-400">{book.author}</p>
+                      </td>
+                      <td className="p-3 text-right font-semibold text-sm">{book.totalClicks}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
 
       <div className="grid grid-cols-1 gap-8">
         <Card className="p-6">
@@ -216,6 +265,10 @@ const AdminDashboard: React.FC = () => {
         }} 
         books={books} 
       />
+
+      {selectedBook && (
+        <BookInfoModal book={selectedBook} onClose={() => setSelectedBook(null)} />
+      )}
     </div>
   );
 

@@ -33,6 +33,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
   const [genres, setGenres] = useState<any[]>([]);
   const [genreFilter, setGenreFilter] = useState<string>('all');
   const [shelfIds, setShelfIds] = useState<Set<number>>(new Set());
+  const [recommendations, setRecommendations] = useState<any[]>([]);
   const [borrowLoading, setBorrowLoading] = useState<Record<number, boolean>>({});
   const [reserveLoading, setReserveLoading] = useState<Record<number, boolean>>({});
   const [shelfLoading, setShelfLoading] = useState<Record<number, boolean>>({});
@@ -58,6 +59,11 @@ export const UserPortal = ({ user }: UserPortalProps) => {
       .then(res => res.json())
       .then(data => setGenres(Array.isArray(data) ? data : []))
       .catch(() => setGenres([]));
+
+    fetch(`/api/books/recommendations?userId=${user.id}`)
+      .then(res => res.json())
+      .then(data => setRecommendations(Array.isArray(data) ? data : []))
+      .catch(() => setRecommendations([]));
   }, []);
 
   useEffect(() => {
@@ -67,6 +73,24 @@ export const UserPortal = ({ user }: UserPortalProps) => {
   }, [user?.id]);
 
   const notify = (title: string, message: string) => setToast({ title, message });
+
+  const trackClick = (book: any) => {
+    if (!book?.id) return;
+    try {
+      const raw = window.localStorage.getItem('recentBookClicks');
+      const list = raw ? (JSON.parse(raw) as number[]) : [];
+      const cleaned = Array.isArray(list) ? list.filter((v) => Number.isFinite(v)) : [];
+      const next = [book.id, ...cleaned.filter((id) => id !== book.id)].slice(0, 15);
+      window.localStorage.setItem('recentBookClicks', JSON.stringify(next));
+    } catch {
+      // ignore
+    }
+    fetch('/api/books/click', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ bookId: book.id, userId: user.id }),
+    }).catch(() => null);
+  };
 
   const handleBorrow = async (bookId: number) => {
     if (borrowLoading[bookId]) return;
@@ -263,6 +287,41 @@ export const UserPortal = ({ user }: UserPortalProps) => {
         </select>
       </div>
 
+      <Card className="p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div>
+            <h2 className="text-lg font-bold">Recomendados para si</h2>
+            <p className="text-xs text-gray-400">Com base nos seus cliques e pedidos.</p>
+          </div>
+          <span className="text-[10px] uppercase text-lime-600 font-bold tracking-widest">Sugestoes</span>
+        </div>
+        {recommendations.length === 0 ? (
+          <p className="text-sm text-gray-400">Sem recomendacoes neste momento.</p>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {recommendations.slice(0, 8).map((book) => (
+              <div
+                key={book.id}
+                className="p-3 border border-gray-100 rounded-2xl hover:border-lime-200 hover:shadow-sm transition-all cursor-pointer"
+                onClick={() => {
+                  trackClick(book);
+                  setSelectedBook(book);
+                }}
+              >
+                <img
+                  src={book.cover || DEFAULT_BOOK_COVER}
+                  alt={book.title}
+                  className="w-full h-36 object-cover rounded-xl mb-3"
+                  referrerPolicy="no-referrer"
+                />
+                <p className="text-sm font-bold line-clamp-1">{book.title}</p>
+                <p className="text-xs text-gray-500 line-clamp-1">{book.author}</p>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
+
       {pagedBooks.length === 0 ? (
         <div className="p-6 text-center text-sm text-gray-500 bg-gray-50 border border-gray-100 rounded-2xl">
           {filterAvailability === 'available'
@@ -279,7 +338,13 @@ export const UserPortal = ({ user }: UserPortalProps) => {
             animate={{ opacity: 1, scale: 1 }}
             whileHover={{ y: -5 }}
           >
-            <Card className="group cursor-pointer h-full flex flex-col" onClick={() => setSelectedBook(book)}>
+            <Card
+              className="group cursor-pointer h-full flex flex-col"
+              onClick={() => {
+                trackClick(book);
+                setSelectedBook(book);
+              }}
+            >
               <div className="aspect-[3/4] overflow-hidden relative bg-gray-100">
                 <img 
                   src="/cover_2.jpeg" 
@@ -407,11 +472,11 @@ export const UserPortal = ({ user }: UserPortalProps) => {
           />
         )}
         {selectedLabel && (
-          <BookLabel 
-            book={selectedLabel} 
-            onClose={() => setSelectedLabel(null)} 
-          />
-        )}
+            <BookLabel 
+              book={selectedLabel} 
+              onClose={() => setSelectedLabel(null)} 
+            />
+          )}
         {selectedBook && (
           <BookDetailsModal
             book={selectedBook}
