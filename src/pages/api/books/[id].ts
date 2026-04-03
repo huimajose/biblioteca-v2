@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { drizzle } from "drizzle-orm/neon-http";
-import { asc } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { DEFAULT_BOOK_COVER } from "@/constants.ts";
 
@@ -36,20 +36,35 @@ const getDb = () => {
 
 export default async function handler(
   req: NextApiRequest,
-  res: NextApiResponse<any[] | ErrorResponse>
+  res: NextApiResponse<any | ErrorResponse>
 ) {
   if (req.method !== "GET") {
     res.setHeader("Allow", "GET");
     return res.status(405).json({ error: "Metodo nao permitido" });
   }
 
-  const db = getDb();
+  const rawId = Array.isArray(req.query.id) ? req.query.id[0] : req.query.id;
+  const bookId = Number(rawId);
+  if (!rawId || Number.isNaN(bookId)) {
+    return res.status(400).json({ error: "Livro invalido" });
+  }
+
   try {
-    const books = await db.select().from(schema.books).orderBy(asc(schema.books.id));
-    return res.status(200).json(books.map(mapBookRow));
+    const db = getDb();
+    const book = await db
+      .select()
+      .from(schema.books)
+      .where(eq(schema.books.id, bookId))
+      .limit(1);
+
+    if (!book[0]) {
+      return res.status(404).json({ error: "Livro nao encontrado" });
+    }
+
+    return res.status(200).json(mapBookRow(book[0]));
   } catch (error: any) {
     return res
       .status(500)
-      .json({ error: error?.message || "Erro ao carregar livros" });
+      .json({ error: error?.message || "Erro ao carregar livro" });
   }
 }
