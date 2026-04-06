@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, BookOpen } from 'lucide-react';
+import { Search, BookOpen, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Card } from '@/components/ui/Card.tsx';
 import { User } from '@/hooks/useAuth.ts';
@@ -413,13 +413,22 @@ export const UserPortal = ({ user }: UserPortalProps) => {
                         onClick={(e) => { e.stopPropagation(); handleAddToShelf(book.id); }}
                         disabled={isAddingShelf(book.id) || shelfIds.has(book.id)}
                         className={cn(
-                          "text-[10px] px-3 py-1.5 rounded-lg transition-colors font-bold uppercase",
+                          "text-[10px] px-3 py-1.5 rounded-lg transition-colors font-bold uppercase inline-flex items-center gap-1",
                           (isAddingShelf(book.id) || shelfIds.has(book.id))
                             ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                             : "bg-lime-600 text-white hover:bg-lime-700"
                         )}
                       >
-                        {shelfIds.has(book.id) ? 'Na estante' : isAddingShelf(book.id) ? 'A processar...' : 'Adicionar a estante'}
+                        {shelfIds.has(book.id) ? (
+                          'Na estante'
+                        ) : isAddingShelf(book.id) ? (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            A processar...
+                          </>
+                        ) : (
+                          'Adicionar a estante'
+                        )}
                       </button>
                     </div>
                   ) : (
@@ -442,7 +451,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
                           onClick={(e) => { e.stopPropagation(); handleBorrow(book.id); }}
                           disabled={isBorrowing(book.id) || hasActiveBorrowRequest(book.id)}
                           className={cn(
-                            "text-[10px] px-2 py-1 rounded transition-colors font-bold uppercase",
+                            "text-[10px] px-2 py-1 rounded transition-colors font-bold uppercase inline-flex items-center gap-1",
                             (isBorrowing(book.id) || hasActiveBorrowRequest(book.id))
                               ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                               : "bg-lime-600 text-white hover:bg-lime-700"
@@ -451,7 +460,12 @@ export const UserPortal = ({ user }: UserPortalProps) => {
                           {hasActiveBorrowRequest(book.id)
                             ? getBorrowDisabledLabel(book.id)
                             : isBorrowing(book.id)
-                              ? 'A processar...'
+                              ? (
+                                <>
+                                  <Loader2 className="w-3 h-3 animate-spin" />
+                                  A processar...
+                                </>
+                              )
                               : 'Requisitar'}
                         </button>
                       ) : (

@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, BookOpen, BookmarkPlus } from 'lucide-react';
+import { X, BookOpen, BookmarkPlus, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/Button.tsx';
 import { DEFAULT_BOOK_COVER } from '@/constants.ts';
 
@@ -101,7 +101,11 @@ export const BookDetailsModal = ({
                     onClick={() => onAddToShelf(book.id)}
                     disabled={shelfLoading || shelfDisabled}
                   >
-                    <BookmarkPlus className="w-4 h-4" />
+                    {shelfLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <BookmarkPlus className="w-4 h-4" />
+                    )}
                     {shelfDisabled ? 'Ja na estante' : shelfLoading ? 'A processar...' : 'Adicionar a estante'}
                   </Button>
                 </>
@@ -109,7 +113,16 @@ export const BookDetailsModal = ({
               {hasPhysical && (
                 book.availableCopies > 0 ? (
                   <Button className="text-xs uppercase" onClick={() => onBorrow(book.id)} disabled={borrowLoading || borrowDisabled}>
-                    {borrowDisabled ? borrowDisabledLabel : borrowLoading ? 'A processar...' : 'Requisitar emprestimo'}
+                    {borrowDisabled ? (
+                      borrowDisabledLabel
+                    ) : borrowLoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        A processar...
+                      </>
+                    ) : (
+                      'Requisitar emprestimo'
+                    )}
                   </Button>
                 ) : (
                   <Button className="text-xs uppercase" variant="secondary" onClick={() => onReserve(book.id)} disabled={reserveLoading || isOutOfStock}>
