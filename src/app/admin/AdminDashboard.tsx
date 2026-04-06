@@ -26,6 +26,10 @@ import {
 import {Card} from '../../components/ui/Card';
 import { BookInfoModal } from '../../components/BookInfoModal.tsx';
 import { InstantServiceModal } from './InstantServiceModal';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import { LOGO_WATERMARK } from '@/constants.ts';
+import { addCenteredWatermarkToAllPages, loadWatermarkImage } from '@/utils/pdfWatermark.ts';
 
 const AdminDashboard: React.FC = () => {
   const actorUserId = typeof window !== 'undefined' ? window.localStorage.getItem('userId') || '' : '';
@@ -106,6 +110,57 @@ const AdminDashboard: React.FC = () => {
     });
     fetchPending();
     fetchStats();
+  };
+
+  const exportTopClickedPdf = async () => {
+    const doc = new jsPDF('p', 'pt');
+    doc.setFontSize(16);
+    doc.text('Relatorio de livros mais clicados', 40, 40);
+    doc.setFontSize(10);
+    doc.text(`Periodo: ${clickRange === 'all' ? 'Todos' : `Ultimos ${clickRange} dias`}`, 40, 58);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 40, 72);
+
+    autoTable(doc, {
+      startY: 92,
+      head: [['Livro', 'Autor', 'Cliques']],
+      body: topClicked.length
+        ? topClicked.map((book) => [book.title || 'N/D', book.author || 'N/D', String(book.totalClicks || 0)])
+        : [['Sem dados', '-', '0']],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [101, 163, 13] },
+    });
+
+    try {
+      const logo = await loadWatermarkImage(LOGO_WATERMARK);
+      addCenteredWatermarkToAllPages(doc, logo, { width: 160 });
+    } catch {}
+
+    doc.save('relatorio-livros-mais-clicados.pdf');
+  };
+
+  const exportPendingUsersPdf = async () => {
+    const doc = new jsPDF('p', 'pt');
+    doc.setFontSize(16);
+    doc.text('Relatorio de utilizadores pendentes', 40, 40);
+    doc.setFontSize(10);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 40, 58);
+
+    autoTable(doc, {
+      startY: 82,
+      head: [['Email', 'Clerk ID']],
+      body: pendingUsers.length
+        ? pendingUsers.map((user) => [user.email || 'N/D', user.clerkId || 'N/D'])
+        : [['Sem pedidos pendentes', '-']],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [245, 158, 11] },
+    });
+
+    try {
+      const logo = await loadWatermarkImage(LOGO_WATERMARK);
+      addCenteredWatermarkToAllPages(doc, logo, { width: 160 });
+    } catch {}
+
+    doc.save('relatorio-utilizadores-pendentes.pdf');
   };
 
   return (
@@ -213,7 +268,16 @@ const AdminDashboard: React.FC = () => {
         </Card>
 
         <Card className="p-6">
-          <h2 className="text-lg font-bold mb-4">Livros mais clicados</h2>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-lg font-bold">Livros mais clicados</h2>
+            <button
+              onClick={exportTopClickedPdf}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50"
+            >
+              <Printer className="w-4 h-4" />
+              PDF
+            </button>
+          </div>
           <div className="flex items-center gap-2 mb-3">
             {(['7', '30', '90', 'all'] as const).map((range) => (
               <button
@@ -293,9 +357,18 @@ const AdminDashboard: React.FC = () => {
 
       <div className="grid grid-cols-1 gap-8">
         <Card className="p-6">
-          <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
-            <UserPlus className="w-5 h-5" /> Pedidos de acesso pendentes
-          </h2>
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <h2 className="text-lg font-bold flex items-center gap-2">
+              <UserPlus className="w-5 h-5" /> Pedidos de acesso pendentes
+            </h2>
+            <button
+              onClick={exportPendingUsersPdf}
+              className="inline-flex items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 text-xs font-bold text-gray-600 hover:bg-gray-50"
+            >
+              <Printer className="w-4 h-4" />
+              PDF
+            </button>
+          </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {pendingUsers.length === 0 ? (
               <p className="text-gray-500 text-sm italic col-span-full">Sem pedidos pendentes.</p>

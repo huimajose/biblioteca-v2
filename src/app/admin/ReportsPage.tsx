@@ -93,6 +93,27 @@ export const ReportsPage = () => {
     return userReports.slice(start, start + usersPageSize);
   }, [userReports, usersPage, usersPageSize]);
 
+  const activeBorrowDeadlines = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const borrowed = activities.filter((act: any) => String(act.status || '').toLowerCase() === 'borrowed');
+    const withinDue = borrowed.filter((act: any) => {
+      if (!act.dueDate) return true;
+      const due = new Date(act.dueDate);
+      due.setHours(0, 0, 0, 0);
+      return due >= today;
+    });
+    const overdue = borrowed.filter((act: any) => {
+      if (!act.dueDate) return false;
+      const due = new Date(act.dueDate);
+      due.setHours(0, 0, 0, 0);
+      return due < today;
+    });
+
+    return { withinDue, overdue };
+  }, [activities]);
+
 
   useEffect(() => {
     if (reportType === 'genre' || reportType === 'inventory') {
@@ -656,6 +677,43 @@ export const ReportsPage = () => {
     doc.save('relatorio-utilizadores-emprestimos.pdf');
   };
 
+  const exportBorrowDeadlinePdf = async (mode: 'within' | 'overdue') => {
+    const doc = new jsPDF('p', 'pt');
+    const rowsSource = mode === 'within' ? activeBorrowDeadlines.withinDue : activeBorrowDeadlines.overdue;
+    const title = mode === 'within'
+      ? 'Relatorio de livros emprestados dentro do prazo'
+      : 'Relatorio de livros emprestados fora do prazo';
+
+    doc.setFontSize(16);
+    doc.text(title, 40, 40);
+    doc.setFontSize(10);
+    doc.text(`Intervalo filtrado: ${dates.start || 'Todos'} - ${dates.end || 'Todos'}`, 40, 58);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 40, 72);
+
+    autoTable(doc, {
+      startY: 92,
+      head: [['Data', 'Limite', 'Utilizador', 'Livro', 'Estado']],
+      body: rowsSource.length
+        ? rowsSource.map((act: any) => [
+            act.borrowedDate ? new Date(act.borrowedDate).toLocaleDateString() : 'N/D',
+            act.dueDate ? new Date(act.dueDate).toLocaleDateString() : 'Sem limite',
+            getActivityUserLabel(act),
+            act.bookTitle || 'N/D',
+            mode === 'within' ? 'Dentro do prazo' : 'Fora do prazo',
+          ])
+        : [['Sem registos', '-', '-', '-', '-']],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: mode === 'within' ? [16, 185, 129] : [239, 68, 68] },
+    });
+
+    try {
+      const logo = await loadWatermarkImage(LOGO_WATERMARK);
+      addCenteredWatermarkToAllPages(doc, logo, { width: 160 });
+    } catch {}
+
+    doc.save(mode === 'within' ? 'relatorio-emprestimos-dentro-prazo.pdf' : 'relatorio-emprestimos-fora-prazo.pdf');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2 print:hidden">
@@ -756,6 +814,20 @@ export const ReportsPage = () => {
               <Button onClick={fetchReport}>Filtrar atividades</Button>
               <Button variant="secondary" onClick={exportActivityPdf} className="flex items-center gap-2">
                 <Printer className="w-4 h-4" /> Baixar PDF
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => exportBorrowDeadlinePdf('within')}
+                className="flex items-center gap-2"
+              >
+                <Printer className="w-4 h-4" /> Dentro do prazo
+              </Button>
+              <Button
+                variant="secondary"
+                onClick={() => exportBorrowDeadlinePdf('overdue')}
+                className="flex items-center gap-2"
+              >
+                <Printer className="w-4 h-4" /> Fora do prazo
               </Button>
               {filtering && (
                 <span className="text-xs text-gray-400">A filtrar...</span>

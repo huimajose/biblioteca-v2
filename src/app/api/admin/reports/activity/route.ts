@@ -94,6 +94,7 @@ export async function GET(req: NextRequest) {
         adminName: adminInfo?.fullName || null,
         adminEmail: adminInfo?.primaryEmail || null,
         borrowedDate: t.borrowedDate,
+        dueDate: pbook[0]?.returnDate ?? null,
         status: normalizeStatus(t.status),
         physicalBookId: t.physicalBookId,
         bookId: book[0]?.id ?? null,
