@@ -495,6 +495,167 @@ export const ReportsPage = () => {
     availableCopies: books.reduce((acc, b) => acc + (b.availableCopies || 0), 0),
   };
 
+  const exportGenrePdf = async () => {
+    const doc = new jsPDF('p', 'pt');
+    doc.setFontSize(16);
+    doc.text('Relatorio de inventario por curso', 40, 40);
+    doc.setFontSize(10);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 40, 58);
+
+    let currentY = 90;
+    const genreEntries = Object.entries(booksByGenre);
+
+    if (genreEntries.length === 0) {
+      autoTable(doc, {
+        startY: currentY,
+        head: [['Curso', 'Livros']],
+        body: [['Sem dados', '0']],
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [101, 163, 13] },
+      });
+    } else {
+      for (const [genre, genreBooks] of genreEntries) {
+        if (currentY > 700) {
+          doc.addPage();
+          currentY = 50;
+        }
+
+        doc.setFontSize(12);
+        doc.text(`${genre} (${genreBooks.length} livros)`, 40, currentY);
+
+        autoTable(doc, {
+          startY: currentY + 10,
+          head: [['Titulo', 'Autor', 'ISBN', 'Tipo', 'Stock']],
+          body: (genreBooks as any[]).map((book: any) => [
+            book.title || 'N/D',
+            book.author || 'N/D',
+            book.isbn || 'N/D',
+            book.isDigital ? 'Digital' : 'Fisico',
+            book.isDigital ? 'Sempre disponivel' : String(book.availableCopies ?? 0),
+          ]),
+          styles: { fontSize: 9 },
+          headStyles: { fillColor: [101, 163, 13] },
+        });
+
+        currentY = ((doc as any).lastAutoTable?.finalY || currentY + 20) + 24;
+      }
+    }
+
+    try {
+      const logo = await loadWatermarkImage(LOGO_WATERMARK);
+      addCenteredWatermarkToAllPages(doc, logo, { width: 160 });
+    } catch {}
+
+    doc.save('relatorio-inventario-por-curso.pdf');
+  };
+
+  const exportInventoryPdf = async () => {
+    const doc = new jsPDF('p', 'pt');
+    doc.setFontSize(16);
+    doc.text('Relatorio de estado de stock', 40, 40);
+    doc.setFontSize(10);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 40, 58);
+    doc.text(
+      `Titulos: ${inventoryStats.totalBooks} | Exemplares: ${inventoryStats.totalCopies} | Disponiveis: ${inventoryStats.availableCopies}`,
+      40,
+      72
+    );
+    doc.text(
+      `Esgotados: ${inventoryStats.outOfStock} | Stock baixo: ${inventoryStats.lowStock} | Digitais: ${inventoryStats.digitalBooks}`,
+      40,
+      86
+    );
+
+    autoTable(doc, {
+      startY: 106,
+      head: [['Titulo', 'Autor', 'ISBN', 'Tipo', 'Disponibilidade', 'Estado']],
+      body: books.map((book: any) => [
+        book.title || 'N/D',
+        book.author || 'N/D',
+        book.isbn || 'N/D',
+        book.isDigital ? 'Digital' : 'Fisico',
+        book.isDigital ? '-' : String(book.availableCopies ?? 0),
+        book.isDigital
+          ? 'Sempre disponivel'
+          : book.availableCopies === 0
+            ? 'Esgotado'
+            : book.availableCopies === 1
+              ? 'Stock baixo'
+              : 'Em stock',
+      ]),
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [16, 185, 129] },
+    });
+
+    try {
+      const logo = await loadWatermarkImage(LOGO_WATERMARK);
+      addCenteredWatermarkToAllPages(doc, logo, { width: 160 });
+    } catch {}
+
+    doc.save('relatorio-estado-stock.pdf');
+  };
+
+  const exportUsersPdf = async () => {
+    const doc = new jsPDF('p', 'pt');
+    doc.setFontSize(16);
+    doc.text('Relatorio de utilizadores e emprestimos', 40, 40);
+    doc.setFontSize(10);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 40, 58);
+
+    let currentY = 90;
+
+    if (userReports.length === 0) {
+      autoTable(doc, {
+        startY: currentY,
+        head: [['Utilizador', 'Estado', 'Emprestimos ativos']],
+        body: [['Sem utilizadores registados', '-', '0']],
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [101, 163, 13] },
+      });
+    } else {
+      for (const user of userReports) {
+        if (currentY > 680) {
+          doc.addPage();
+          currentY = 50;
+        }
+
+        doc.setFillColor(247, 250, 252);
+        doc.roundedRect(40, currentY, 515, 54, 10, 10, 'F');
+        doc.setFontSize(12);
+        doc.text(user.fullName || user.primaryEmail || user.clerkId, 52, currentY + 18);
+        doc.setFontSize(9);
+        doc.text(`Email: ${user.primaryEmail || 'N/D'}`, 52, currentY + 34);
+        doc.text(`Perfil: ${user.status || 'N/D'}`, 280, currentY + 34);
+        doc.text(`Registado em: ${user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'N/D'}`, 400, currentY + 34);
+
+        const borrows = Array.isArray(user.activeBorrows) ? user.activeBorrows : [];
+        autoTable(doc, {
+          startY: currentY + 66,
+          head: [['Data', 'Livro', 'PID', 'Estado da conta']],
+          body: borrows.length
+            ? borrows.map((borrow: any) => [
+                borrow.borrowedDate ? new Date(borrow.borrowedDate).toLocaleDateString() : 'N/D',
+                borrow.bookTitle || 'N/D',
+                String(borrow.physicalBookId ?? '-'),
+                'Emprestimo ativo',
+              ])
+            : [['-', 'Sem emprestimos ativos', '-', 'Conta sem movimentos ativos']],
+          styles: { fontSize: 9 },
+          headStyles: { fillColor: [132, 204, 22] },
+        });
+
+        currentY = ((doc as any).lastAutoTable?.finalY || currentY + 70) + 24;
+      }
+    }
+
+    try {
+      const logo = await loadWatermarkImage(LOGO_WATERMARK);
+      addCenteredWatermarkToAllPages(doc, logo, { width: 160 });
+    } catch {}
+
+    doc.save('relatorio-utilizadores-emprestimos.pdf');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap gap-2 print:hidden">
@@ -842,8 +1003,8 @@ export const ReportsPage = () => {
               <h2 className="text-xl font-bold">Inventario por curso</h2>
               <p className="text-sm text-gray-500">Listagem de todos os livros agrupados por categoria.</p>
             </div>
-            <Button variant="secondary" onClick={() => window.print()} className="flex items-center gap-2">
-              <Printer className="w-4 h-4" /> Imprimir inventario
+            <Button variant="secondary" onClick={exportGenrePdf} className="flex items-center gap-2">
+              <Printer className="w-4 h-4" /> Baixar PDF
             </Button>
           </Card>
 
@@ -929,8 +1090,8 @@ export const ReportsPage = () => {
           <Card className="overflow-hidden">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center print:hidden">
               <h2 className="text-xl font-bold">Estado completo do inventario</h2>
-              <Button variant="secondary" onClick={() => window.print()} className="flex items-center gap-2">
-                <Printer className="w-4 h-4" /> Imprimir inventario
+              <Button variant="secondary" onClick={exportInventoryPdf} className="flex items-center gap-2">
+                <Printer className="w-4 h-4" /> Baixar PDF
               </Button>
             </div>
             <table className="w-full text-left border-collapse">
@@ -999,8 +1160,8 @@ export const ReportsPage = () => {
               <h2 className="text-xl font-bold">Diretorio de utilizadores e emprestimos ativos</h2>
               <p className="text-sm text-gray-500">Lista completa de todos os utilizadores registados e dos itens atualmente requisitados.</p>
             </div>
-            <Button variant="secondary" onClick={() => window.print()} className="flex items-center gap-2">
-              <Printer className="w-4 h-4" /> Imprimir relatorio de utilizadores
+            <Button variant="secondary" onClick={exportUsersPdf} className="flex items-center gap-2">
+              <Printer className="w-4 h-4" /> Baixar PDF conta corrente
             </Button>
           </Card>
 
