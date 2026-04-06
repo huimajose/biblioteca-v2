@@ -27,13 +27,24 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
   const [tickets, setTickets] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
 
-  const pickRandomUser = () => {
-    if (filteredUsers.length === 0) {
-      setError('Nao ha utilizadores disponiveis para selecao aleatoria.');
-      return;
-    }
+  const createRandomUser = () => {
+    const firstNames = ['Ana', 'Paulo', 'Marta', 'Joao', 'Carla', 'Luis', 'Sofia', 'Daniel'];
+    const lastNames = ['Silva', 'Santos', 'Costa', 'Pereira', 'Fernandes', 'Almeida', 'Mendes', 'Rocha'];
+    const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
+    const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+    const randomCode = Math.random().toString(36).slice(2, 8).toUpperCase();
 
-    const randomUser = filteredUsers[Math.floor(Math.random() * filteredUsers.length)];
+    return {
+      clerkId: `TEMP-${Date.now().toString(36).toUpperCase()}-${randomCode}`,
+      fullName: `${firstName} ${lastName}`,
+      primaryEmail: '',
+      role: 'external',
+      isGenerated: true,
+    };
+  };
+
+  const pickRandomUser = () => {
+    const randomUser = createRandomUser();
     setError(null);
     handleSelectUser(randomUser);
   };
@@ -113,7 +124,8 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
         headers: { 'Content-Type': 'application/json', 'x-is-admin': 'true', 'x-user-id': actorUserId },
         body: JSON.stringify({ 
           bookIds: selectedBooks.map(b => b.id), 
-          userId: selectedUser.clerkId
+          userId: selectedUser.clerkId,
+          userName: selectedUser.fullName || selectedUser.primaryEmail || selectedUser.clerkId,
         })
       });
       
@@ -181,7 +193,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
                     >
                       <div>
                         <h3 className="text-2xl font-bold mb-2">Identificar utilizador</h3>
-                        <p className="text-gray-500 mb-6">Procure um estudante verificado para requisicao imediata.</p>
+                        <p className="text-gray-500 mb-6">Procure um estudante verificado ou gere um cliente aleatorio para requisicao imediata.</p>
                         <div className="relative">
                           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                           <input 
@@ -198,7 +210,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
                           className="mt-3 inline-flex items-center gap-2 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm font-bold text-lime-700 transition-colors hover:bg-lime-100"
                         >
                           <Plus className="w-4 h-4" />
-                          Usar utilizador aleatorio
+                          Gerar utilizador aleatorio
                         </button>
                       </div>
 
@@ -339,7 +351,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
                             </div>
                             <div className="overflow-hidden">
                               <p className="text-xl font-bold truncate">{selectedUser?.fullName || selectedUser?.primaryEmail}</p>
-                              <p className="text-xs text-gray-400 truncate">{selectedUser?.primaryEmail}</p>
+                              <p className="text-xs text-gray-400 truncate">{selectedUser?.primaryEmail || selectedUser?.clerkId}</p>
                             </div>
                           </div>
                         </div>
@@ -382,7 +394,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
                         </div>
                         <div className="overflow-hidden">
                           <p className="text-sm font-bold truncate">{selectedUser.fullName || selectedUser.primaryEmail}</p>
-                          <p className="text-[10px] text-gray-400 truncate">{selectedUser.primaryEmail}</p>
+                          <p className="text-[10px] text-gray-400 truncate">{selectedUser.primaryEmail || selectedUser.clerkId}</p>
                         </div>
                         <button onClick={() => setStep('user')} className="ml-auto p-2 text-gray-300 hover:text-lime-600 transition-colors">
                           <RotateCcw className="w-4 h-4" />

@@ -18,9 +18,11 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as {
     bookIds?: number[];
     userId?: string;
+    userName?: string;
   };
   const bookIds = Array.isArray(body?.bookIds) ? body.bookIds : null;
   const userId = body?.userId;
+  const fallbackUserName = String(body?.userName || "").trim();
   const adminId = "system";
 
   if (!bookIds || !userId) {
@@ -43,6 +45,9 @@ export async function POST(req: Request) {
       .where(eq(schema.studentVerifications.clerkId, userId))
       .limit(1);
     userName = verification[0]?.fullName || null;
+  }
+  if (!userName && fallbackUserName) {
+    userName = fallbackUserName;
   }
 
   const results: any[] = [];
@@ -79,7 +84,7 @@ export async function POST(req: Request) {
         borrowedDate: now,
         returnedDate: null,
         scoreApplied: false,
-        user_name: userId,
+        user_name: userName || userId,
       })
       .returning();
 
