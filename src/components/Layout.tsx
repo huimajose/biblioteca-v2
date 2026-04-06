@@ -30,6 +30,8 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
   const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
   const [toast, setToast] = useState<{ title: string; message: string } | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [pendingTransactionsCount, setPendingTransactionsCount] = useState(0);
+  const [pendingUsersCount, setPendingUsersCount] = useState(0);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [notifOpen, setNotifOpen] = useState(false);
   const [pushEnabled, setPushEnabled] = useState(true);
@@ -117,12 +119,24 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
       .then(data => setPushEnabled(data?.pushEnabled ?? true));
   }, [user.id]);
 
+  useEffect(() => {
+    if (!user.isAdmin) return;
+
+    Promise.all([
+      fetch('/api/admin/stats').then((res) => res.json()).catch(() => null),
+      fetch('/api/admin/pending-users').then((res) => res.json()).catch(() => []),
+    ]).then(([stats, pendingUsers]) => {
+      setPendingTransactionsCount(Number(stats?.pending ?? 0));
+      setPendingUsersCount(Array.isArray(pendingUsers) ? pendingUsers.length : 0);
+    });
+  }, [user.id, user.isAdmin]);
+
   const menuItems = user.isAdmin ? [
     { icon: LayoutDashboard, label: 'Painel', path: '/admin' },
     { icon: BookOpen, label: 'Livros', path: '/admin/books' },
-    { icon: UsersIcon, label: 'Utilizadores', path: '/admin/users' },
+    { icon: UsersIcon, label: 'Utilizadores', path: '/admin/users', badge: pendingUsersCount },
     { icon: UsersIcon, label: 'Verificacao estudantes', path: '/admin/student-verifications' },
-    { icon: History, label: 'Transacoes', path: '/admin/transactions' },
+    { icon: History, label: 'Transacoes', path: '/admin/transactions', badge: pendingTransactionsCount },
     { icon: Printer, label: 'Relatorios', path: '/admin/reports' },
     { icon: BookMarked, label: 'Modo leitor', path: '/admin/as-user' },
     { icon: UserCircle, label: 'Perfil', path: '/profile' },
@@ -156,10 +170,18 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
             <Link 
               key={item.path} 
               to={item.path}
-              className="flex items-center gap-3 p-3 rounded-xl text-gray-600 hover:bg-lime-50 hover:text-lime-700 transition-all group"
+              className="relative flex items-center gap-3 p-3 rounded-xl text-gray-600 hover:bg-lime-50 hover:text-lime-700 transition-all group"
             >
               <item.icon className="w-5 h-5" />
               {isSidebarOpen && <span className="font-medium">{item.label}</span>}
+              {!!item.badge && (
+                <span className={cn(
+                  "ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700",
+                  !isSidebarOpen && "absolute top-2 right-2"
+                )}>
+                  {item.badge}
+                </span>
+              )}
             </Link>
           ))}
         </nav>

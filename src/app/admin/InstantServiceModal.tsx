@@ -27,6 +27,17 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
   const [tickets, setTickets] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  const pickRandomUser = () => {
+    if (filteredUsers.length === 0) {
+      setError('Nao ha utilizadores disponiveis para selecao aleatoria.');
+      return;
+    }
+
+    const randomUser = filteredUsers[Math.floor(Math.random() * filteredUsers.length)];
+    setError(null);
+    handleSelectUser(randomUser);
+  };
+
   useEffect(() => {
     if (isOpen) {
       Promise.all([
@@ -55,6 +66,9 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
       setSelectedBooks([]);
       setTickets([]);
       setError(null);
+      setUserSearch('');
+      setBookSearch('');
+      setBookGenreFilter('all');
     }
   }, [isOpen]);
 
@@ -63,9 +77,6 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
     u.clerkId.toLowerCase().includes(userSearch.toLowerCase()) ||
     (u.fullName || '').toLowerCase().includes(userSearch.toLowerCase())
   );
-
-  console.log('users:', allUsers);
-
   const safeBooks = Array.isArray(books) ? books : [];
   const genreOptions = Array.from(new Set(safeBooks.map((b) => b.genre).filter(Boolean))).sort();
   const filteredBooks = safeBooks.filter(b => 
@@ -181,6 +192,14 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
                             onChange={e => setUserSearch(e.target.value)}
                           />
                         </div>
+                        <button
+                          type="button"
+                          onClick={pickRandomUser}
+                          className="mt-3 inline-flex items-center gap-2 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm font-bold text-lime-700 transition-colors hover:bg-lime-100"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Usar utilizador aleatorio
+                        </button>
                       </div>
 
                       <div className="space-y-3">

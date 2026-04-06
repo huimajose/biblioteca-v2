@@ -37,6 +37,7 @@ const AdminDashboard: React.FC = () => {
   const [topClicked, setTopClicked] = useState<any[]>([]);
   const [selectedBook, setSelectedBook] = useState<any | null>(null);
   const [clickRange, setClickRange] = useState<'7' | '30' | '90' | 'all'>('30');
+  const [topClickedPage, setTopClickedPage] = useState(1);
 
   const topGenres = useMemo(() => {
     const counts = (books || []).reduce((acc: Record<string, number>, b: any) => {
@@ -49,6 +50,22 @@ const AdminDashboard: React.FC = () => {
       .sort((a, b) => b.value - a.value)
       .slice(0, 6);
   }, [books]);
+
+  const topClickedTotalPages = Math.max(1, Math.ceil(topClicked.length / 5));
+  const paginatedTopClicked = useMemo(() => {
+    const start = (topClickedPage - 1) * 5;
+    return topClicked.slice(start, start + 5);
+  }, [topClicked, topClickedPage]);
+
+  useEffect(() => {
+    setTopClickedPage(1);
+  }, [topClicked]);
+
+  useEffect(() => {
+    if (topClickedPage > topClickedTotalPages) {
+      setTopClickedPage(topClickedTotalPages);
+    }
+  }, [topClickedPage, topClickedTotalPages]);
 
   useEffect(() => {
     fetchStats();
@@ -231,7 +248,7 @@ const AdminDashboard: React.FC = () => {
                     </td>
                   </tr>
                 ) : (
-                  topClicked.map((book) => (
+                  paginatedTopClicked.map((book) => (
                     <tr
                       key={book.id}
                       className="hover:bg-gray-50 cursor-pointer"
@@ -248,6 +265,29 @@ const AdminDashboard: React.FC = () => {
               </tbody>
             </table>
           </div>
+          {topClicked.length > 5 && (
+            <div className="mt-4 flex items-center justify-between text-xs text-gray-500">
+              <p>
+                Pagina {topClickedPage} de {topClickedTotalPages}
+              </p>
+              <div className="flex items-center gap-2">
+                <button
+                  className="px-3 py-1.5 rounded-lg border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => setTopClickedPage((page) => Math.max(1, page - 1))}
+                  disabled={topClickedPage === 1}
+                >
+                  Anterior
+                </button>
+                <button
+                  className="px-3 py-1.5 rounded-lg border border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                  onClick={() => setTopClickedPage((page) => Math.min(topClickedTotalPages, page + 1))}
+                  disabled={topClickedPage === topClickedTotalPages}
+                >
+                  Proxima
+                </button>
+              </div>
+            </div>
+          )}
         </Card>
       </div>
 
