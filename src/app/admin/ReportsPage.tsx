@@ -32,6 +32,10 @@ export const ReportsPage = () => {
   const [activityPageSize, setActivityPageSize] = useState(10);
   const [usersPageSize, setUsersPageSize] = useState(8);
   const [selectedBookInfo, setSelectedBookInfo] = useState<any | null>(null);
+  const getActivityUserLabel = (activity: any) =>
+    activity.isTempUser
+      ? `${activity.userName || activity.userEmail || activity.userId || 'N/D'} (Temp)`
+      : activity.userName || activity.userEmail || activity.userId || 'N/D';
 
   const topAdmin = useMemo(() => {
     const counts = activities.reduce((acc: Record<string, number>, a: any) => {
@@ -314,7 +318,7 @@ export const ReportsPage = () => {
         act.status;
       return [
         new Date(act.borrowedDate).toLocaleDateString(),
-        act.userName || act.userEmail || 'N/D',
+        getActivityUserLabel(act),
         act.bookTitle,
         statusLabel,
       ];
@@ -722,7 +726,16 @@ export const ReportsPage = () => {
                       })}
                     >
                       <td className="p-4 text-sm">{new Date(act.borrowedDate).toLocaleDateString()}</td>
-                      <td className="p-4 text-sm font-medium">{act.userName || act.userEmail || 'N/D'}</td>
+                      <td className="p-4 text-sm font-medium">
+                        <div className="flex items-center gap-2">
+                          <span>{getActivityUserLabel(act)}</span>
+                          {act.isTempUser && (
+                            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700">
+                              Temp
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="p-4 text-sm">
                         <p className="font-bold">{act.bookTitle}</p>
                       </td>

@@ -12,6 +12,8 @@ interface BorrowTicketProps {
     tid: string | number;
     userId: string;
     userName?: string;
+    userEmail?: string;
+    isTempUser?: boolean;
     bookTitle: string;
     bookAuthor: string;
     borrowedDate: string;
@@ -31,6 +33,8 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
     activity.status === 'borrowed' ? 'emprestado' :
     activity.status === 'returned' ? 'devolvido' :
     activity.status;
+  const userDisplay = activity.userName || activity.userEmail || activity.userId;
+  const userTypeLabel = activity.isTempUser ? 'Utilizador temporario' : 'Utilizador registado';
 
   const buildTicketPdf = async (format: 'ticket' | 'a4') => {
     const title = String(activity.bookTitle || 'N/D');
@@ -51,7 +55,7 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
     const issueDate = new Date(activity.borrowedDate);
     const year = issueDate.getFullYear();
     const serial = `EMP-${year}/${activity.tid}`;
-    const authorizedBy = activity.userName || activity.userEmail || activity.userId || 'Sistema';
+    const authorizedBy = userDisplay || 'Sistema';
 
     let logo: HTMLImageElement | null = null;
     try {
@@ -77,9 +81,10 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
 
     const rightX = pageW - marginX;
     doc.setFontSize(format === 'a4' ? 9 : 6);
-    doc.text(`Estudante/Cliente: ${activity.userName || activity.userEmail || activity.userId}`, rightX, topY + (format === 'a4' ? 40 : 14), { align: 'right' });
+    doc.text(`Estudante/Cliente: ${userDisplay}`, rightX, topY + (format === 'a4' ? 40 : 14), { align: 'right' });
+    doc.text(`Tipo: ${userTypeLabel}`, rightX, topY + (format === 'a4' ? 54 : 19), { align: 'right' });
     if (activity.returnedDate) {
-      doc.text(`Devolucao: ${new Date(activity.returnedDate).toLocaleDateString()}`, rightX, topY + (format === 'a4' ? 54 : 19), { align: 'right' });
+      doc.text(`Devolucao: ${new Date(activity.returnedDate).toLocaleDateString()}`, rightX, topY + (format === 'a4' ? 68 : 24), { align: 'right' });
     }
 
     const tableTop = topY + (format === 'a4' ? 78 : 32);
@@ -124,11 +129,12 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
 
     const qrPayload = JSON.stringify({
       tid: activity.tid,
-      user: activity.userName || activity.userEmail || activity.userId,
+      user: userDisplay,
       isbn: activity.isbn || '',
       status: statusLabel,
       date: activity.borrowedDate,
       fullName: activity.fullName || '',
+      userType: userTypeLabel,
     });
 
     try {
@@ -212,6 +218,12 @@ export const BorrowTicket = ({ activity, onClose }: BorrowTicketProps) => {
               <div>
                 <p className="text-[10px] text-gray-400 font-bold uppercase">ISBN</p>
                 <p className="font-mono text-xs">{activity.isbn || 'N/D'}</p>
+              </div>
+              <div>
+                <p className="text-[10px] text-gray-400 font-bold uppercase">Tipo de utilizador</p>
+                <p className={activity.isTempUser ? 'text-xs font-bold text-amber-600' : 'text-xs font-bold text-lime-600'}>
+                  {userTypeLabel}
+                </p>
               </div>
               <div>
                 <p className="text-[10px] text-gray-400 font-bold uppercase">Data</p>

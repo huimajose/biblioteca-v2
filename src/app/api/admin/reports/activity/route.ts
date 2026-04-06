@@ -26,6 +26,7 @@ export async function GET(req: NextRequest) {
       tid: schema.transactions.tid,
       physicalBookId: schema.transactions.physicalBookId,
       userId: schema.transactions.userId,
+      userNameRaw: schema.transactions.user_name,
       adminId: schema.transactions.adminId,
       status: schema.transactions.status,
       borrowedDate: schema.transactions.borrowedDate,
@@ -81,11 +82,14 @@ export async function GET(req: NextRequest) {
         : [];
       const userInfo = usersMap.get(t.userId);
       const adminInfo = usersMap.get(t.adminId);
+      const isTempUser = String(t.userId || "").startsWith("TEMP-");
+      const resolvedUserName = userInfo?.fullName || t.userNameRaw || null;
       return {
         tid: t.tid,
         userId: t.userId,
-        userName: userInfo?.fullName || null,
+        userName: resolvedUserName,
         userEmail: userInfo?.primaryEmail || null,
+        isTempUser,
         adminId: t.adminId,
         adminName: adminInfo?.fullName || null,
         adminEmail: adminInfo?.primaryEmail || null,

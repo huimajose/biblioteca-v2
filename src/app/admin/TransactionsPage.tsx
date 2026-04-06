@@ -19,6 +19,10 @@ export const TransactionsPage = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
   const [selectedBook, setSelectedBook] = useState<any | null>(null);
+  const getUserLabel = (transaction: any) =>
+    transaction.isTempUser
+      ? `${transaction.userName || transaction.userId} (Temp)`
+      : transaction.userName || transaction.userId || 'N/D';
 
   const fetchTransactions = async () => {
     const query = new URLSearchParams();
@@ -62,7 +66,7 @@ export const TransactionsPage = () => {
         status;
       return [
         t.borrowedDate ? new Date(t.borrowedDate).toLocaleDateString() : 'N/D',
-        t.userName || t.userId || 'N/D',
+        getUserLabel(t),
         t.bookTitle || 'N/D',
         statusLabel,
       ];
@@ -207,7 +211,16 @@ export const TransactionsPage = () => {
                   })}
                 >
                   <td className="p-4 text-sm">{t.borrowedDate ? new Date(t.borrowedDate).toLocaleDateString() : 'N/D'}</td>
-                  <td className="p-4 text-sm font-medium">{t.userName || t.userId}</td>
+                  <td className="p-4 text-sm font-medium">
+                    <div className="flex items-center gap-2">
+                      <span>{getUserLabel(t)}</span>
+                      {t.isTempUser && (
+                        <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700">
+                          Temp
+                        </span>
+                      )}
+                    </div>
+                  </td>
                   <td className="p-4 text-sm">
                     <p className="font-semibold">{t.bookTitle}</p>
                     <p className="text-[10px] text-gray-400 uppercase">ID: {t.physicalBookId || '-'}</p>
@@ -288,7 +301,16 @@ export const TransactionsPage = () => {
                     })}
                   >
                     <td className="p-4 text-sm">{t.borrowedDate ? new Date(t.borrowedDate).toLocaleDateString() : 'N/D'}</td>
-                    <td className="p-4 text-sm font-medium">{t.userName || t.userId}</td>
+                    <td className="p-4 text-sm font-medium">
+                      <div className="flex items-center gap-2">
+                        <span>{getUserLabel(t)}</span>
+                        {t.isTempUser && (
+                          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700">
+                            Temp
+                          </span>
+                        )}
+                      </div>
+                    </td>
                     <td className="p-4 text-sm">
                       <p className="font-semibold">{t.bookTitle}</p>
                       <p className="text-[10px] text-gray-400 uppercase">ID: {t.physicalBookId}</p>
