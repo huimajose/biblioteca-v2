@@ -9,9 +9,23 @@ interface PdfViewerProps {
   url: string | null;
   fallbackUrl?: string | null;
   watermarkText?: string;
+  initialPage?: number;
+  maxAccessiblePage?: number | null;
+  onDocumentLoad?: (numPages: number) => void;
+  onPageChange?: (pageNumber: number, numPages: number) => void;
+  onBlockedPageAttempt?: (attemptedPage: number) => void;
 }
 
-export const PdfViewer = ({ url, fallbackUrl, watermarkText }: PdfViewerProps) => {
+export const PdfViewer = ({
+  url,
+  fallbackUrl,
+  watermarkText,
+  initialPage = 1,
+  maxAccessiblePage = null,
+  onDocumentLoad,
+  onPageChange,
+  onBlockedPageAttempt,
+}: PdfViewerProps) => {
   const [numPages, setNumPages] = useState<number>(0);
   const [pageNumber, setPageNumber] = useState<number>(1);
   const [scale, setScale] = useState<number>(1.0);
@@ -26,19 +40,39 @@ export const PdfViewer = ({ url, fallbackUrl, watermarkText }: PdfViewerProps) =
     setLoadError(null);
   }, [url]);
 
-  const onDocumentLoadSuccess = ({ numPages: pages }: { numPages: number }) => {
-    setNumPages(pages);
-    setPageNumber(1);
-    setLoadError(null);
+  React.useEffect(() => {
+    const nextPage = Math.max(1, Number(initialPage || 1));
+    setPageNumber(numPages > 0 ? Math.min(nextPage, numPages) : nextPage);
+  }, [initialPage, numPages]);
+
+  const applyPageChange = (nextPage: number, pages = numPages) => {
+    const safeUpperBound = pages > 0 ? pages : Math.max(nextPage, 1);
+    const normalized = Math.min(Math.max(1, nextPage), safeUpperBound);
+    if (maxAccessiblePage && normalized > maxAccessiblePage) {
+      onBlockedPageAttempt?.(normalized);
+      return;
+    }
+    setPageNumber(normalized);
+    onPageChange?.(normalized, pages);
   };
 
-  const goToPrevPage = () => setPageNumber((prev) => (prev > 1 ? prev - 1 : prev));
-  const goToNextPage = () => setPageNumber((prev) => (prev < numPages ? prev + 1 : prev));
+  const onDocumentLoadSuccess = ({ numPages: pages }: { numPages: number }) => {
+    setNumPages(pages);
+    const nextPage = Math.min(Math.max(1, Number(initialPage || 1)), pages);
+    const accessiblePage = maxAccessiblePage ? Math.min(nextPage, maxAccessiblePage) : nextPage;
+    setPageNumber(accessiblePage);
+    setLoadError(null);
+    onDocumentLoad?.(pages);
+    onPageChange?.(accessiblePage, pages);
+  };
+
+  const goToPrevPage = () => applyPageChange(pageNumber - 1);
+  const goToNextPage = () => applyPageChange(pageNumber + 1);
   const onPageInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     let val = Number(e.target.value);
     if (val > numPages) val = numPages;
     else if (val < 1) val = 1;
-    setPageNumber(val);
+    applyPageChange(val);
   };
 
   const zoomIn = () => setScale((prev) => Math.min(prev + 0.25, 3));

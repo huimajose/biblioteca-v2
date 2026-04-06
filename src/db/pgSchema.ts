@@ -1,4 +1,4 @@
-import { boolean, date, integer, pgTable, serial, varchar, timestamp } from 'drizzle-orm/pg-core';
+import { boolean, date, integer, pgTable, serial, unique, varchar, timestamp } from 'drizzle-orm/pg-core';
 
 export const verifyPending = pgTable('verifyPending', {
   id: integer().primaryKey().generatedAlwaysAsIdentity(),
@@ -75,6 +75,22 @@ export const userDigitalBooks = pgTable('user_digital_books', {
   userId: varchar('user_id', { length: 255 }).notNull(),
   addedAt: timestamp('added_at').notNull().defaultNow(),
 });
+
+export const userReadingProgress = pgTable('user_reading_progress', {
+  id: serial('id').primaryKey(),
+  userId: varchar('user_id', { length: 255 }).notNull(),
+  bookId: integer('book_id').notNull(),
+  currentPage: integer('current_page').notNull().default(1),
+  maxPageRead: integer('max_page_read').notNull().default(1),
+  totalPages: integer('total_pages').notNull().default(0),
+  progressPercent: integer('progress_percent').notNull().default(0),
+  isCompleted: boolean('is_completed').notNull().default(false),
+  startedAt: timestamp('started_at').notNull().defaultNow(),
+  lastReadAt: timestamp('last_read_at').notNull().defaultNow(),
+  completedAt: timestamp('completed_at'),
+}, (table) => ({
+  userBookUnique: unique('user_reading_progress_user_book_unique').on(table.userId, table.bookId),
+}));
 
 export const bookClicks = pgTable('book_clicks', {
   id: serial('id').primaryKey(),

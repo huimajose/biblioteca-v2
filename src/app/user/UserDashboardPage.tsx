@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/Card.tsx';
 import { BookOpen, Sparkles, Library } from 'lucide-react';
 import { DEFAULT_BOOK_COVER } from '@/constants.ts';
@@ -23,12 +24,11 @@ interface UserDashboardPageProps {
 export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
   const [stats, setStats] = useState({ shelf: 0, borrowed: 0, points: 0 });
   const [recommendations, setRecommendations] = useState<any[]>([]);
-  const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
-  const [recentShelf, setRecentShelf] = useState<any[]>([]);
-  const [recentNotifications, setRecentNotifications] = useState<any[]>([]);
+  const [continueReading, setContinueReading] = useState<any[]>([]);
   const [nextReturn, setNextReturn] = useState<string | null>(null);
   const [historyItems, setHistoryItems] = useState<any[]>([]);
   const [selectedBook, setSelectedBook] = useState<any | null>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const clickedRaw = typeof window !== 'undefined' ? window.localStorage.getItem('recentBookClicks') : null;
@@ -49,16 +49,17 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
       fetch(`/api/books/recommendations?${recParams.toString()}`).then(r => r.json()),
       fetch('/api/user/student-info', { headers: { 'x-user-id': user.id } }).then(r => r.json()),
       fetch(`/api/notifications/${user.id}`).then(r => r.json()),
-    ]).then(([shelf, history, score, recs, studentInfo, notes]) => {
+      fetch('/api/user/continue-reading', { headers: { 'x-user-id': user.id } })
+        .then(r => r.json())
+        .catch(() => []),
+    ]).then(([shelf, history, score, recs, _studentInfo, _notes, continueData]) => {
       const shelfCount = Array.isArray(shelf) ? shelf.length : 0;
       const historyList = Array.isArray(history) ? history : [];
       const borrowed = historyList.filter((h) => h.status === 'borrowed').length;
       setStats({ shelf: shelfCount, borrowed, points: score?.points ?? 0 });
       setHistoryItems(historyList);
       setRecommendations(Array.isArray(recs) ? recs : []);
-      setVerificationStatus((studentInfo as any)?.status ?? null);
-      setRecentShelf(Array.isArray(shelf) ? shelf.slice(0, 3) : []);
-      setRecentNotifications(Array.isArray(notes) ? notes.slice(0, 2) : []);
+      setContinueReading(Array.isArray(continueData) ? continueData.slice(0, 4) : []);
       const next = historyList
         .filter((h) => h.status === 'borrowed' && h.expectedReturnDate)
         .sort((a, b) => new Date(a.expectedReturnDate).getTime() - new Date(b.expectedReturnDate).getTime())[0];
@@ -138,10 +139,6 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
         </Card>
       </div>
 
-      
-     
-     
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6">
           <h2 className="text-lg font-bold mb-4">Tendencia de requisicoes</h2>
@@ -173,33 +170,43 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
           </div>
         </Card>
       </div>
-       <Card className="p-6">
-          <h2 className="text-lg font-bold mb-3">Continuar a ler</h2>
-          {recentShelf.length === 0 ? (
-            <p className="text-sm text-gray-400">Sem livros digitais adicionados.</p>
-          ) : (
-            <div className="space-y-3">
-              {recentShelf.map((entry) => (
-                <div
-                  key={entry.id}
-                  className="flex items-center gap-3 cursor-pointer"
-                  onClick={() => setSelectedBook(entry.book)}
-                >
-                  <img
-                    src="/cover_2.jpeg"
-                    alt={entry.book?.title}
-                    className="w-10 h-14 rounded-lg object-cover"
-                    referrerPolicy="no-referrer"
-                  />
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold">{entry.book?.title}</p>
-                    <p className="text-xs text-gray-500">{entry.book?.author}</p>
+
+      <Card className="p-6">
+        <h2 className="text-lg font-bold mb-3">Continuar a ler</h2>
+        {continueReading.length === 0 ? (
+          <p className="text-sm text-gray-400">Sem leituras em curso neste momento.</p>
+        ) : (
+          <div className="space-y-3">
+            {continueReading.map((entry) => (
+              <div
+                key={entry.id}
+                className="flex items-center gap-3 cursor-pointer rounded-2xl border border-gray-100 p-3 hover:border-lime-200 hover:bg-lime-50/40 transition-all"
+                onClick={() => navigate(`/reader/${entry.book.id}`)}
+              >
+                <img
+                  src={entry.book?.cover || DEFAULT_BOOK_COVER}
+                  alt={entry.book?.title}
+                  className="w-10 h-14 rounded-lg object-cover"
+                  referrerPolicy="no-referrer"
+                />
+                <div className="flex-1">
+                  <p className="text-sm font-semibold">{entry.book?.title}</p>
+                  <p className="text-xs text-gray-500">{entry.book?.author}</p>
+                  <p className="text-[11px] text-lime-700 mt-1">
+                    Pagina {entry.currentPage} de {entry.totalPages || '?'} | {entry.progressPercent || 0}%
+                  </p>
+                  <div className="mt-2 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-lime-600"
+                      style={{ width: `${Math.max(6, entry.progressPercent || 0)}%` }}
+                    />
                   </div>
                 </div>
-              ))}
-            </div>
-          )}
-        </Card>
+              </div>
+            ))}
+          </div>
+        )}
+      </Card>
 
       <Card className="p-4">
         <h2 className="text-sm font-bold uppercase text-gray-500 mb-1">Resumo rapido</h2>

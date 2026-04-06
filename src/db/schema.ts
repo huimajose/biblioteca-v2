@@ -89,6 +89,30 @@ export const userDigitalBooks = sqliteTable(
   }
 );
 
+export const userReadingProgress = sqliteTable(
+  "user_reading_progress",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    userId: text("user_id")
+      .notNull()
+      .references(() => users.clerkId, { onDelete: "cascade" }),
+    bookId: integer("book_id")
+      .notNull()
+      .references(() => books.id, { onDelete: "cascade" }),
+    currentPage: integer("current_page").default(1).notNull(),
+    maxPageRead: integer("max_page_read").default(1).notNull(),
+    totalPages: integer("total_pages").default(0).notNull(),
+    progressPercent: integer("progress_percent").default(0).notNull(),
+    isCompleted: integer("is_completed", { mode: "boolean" }).default(false).notNull(),
+    startedAt: text("started_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+    lastReadAt: text("last_read_at").default(sql`CURRENT_TIMESTAMP`).notNull(),
+    completedAt: text("completed_at"),
+  },
+  (table) => ({
+    userBookUnique: unique().on(table.userId, table.bookId),
+  })
+);
+
 export const reservations = sqliteTable("reservations", {
   id: integer("id").primaryKey({ autoIncrement: true }),
   userId: text("user_id")
