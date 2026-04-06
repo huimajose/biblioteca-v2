@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
+import { notifyUser } from "@/app/api/_utils/notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -46,6 +47,15 @@ export async function POST(req: Request, { params }: { params: Params }) {
       .update(schema.users)
       .set({ role: approve ? "student" : "external" })
       .where(eq(schema.users.clerkId, entry[0].clerkId));
+
+    await notifyUser(
+      db,
+      entry[0].clerkId,
+      approve ? "Verificacao aprovada" : "Verificacao rejeitada",
+      approve
+        ? "O seu pedido foi aprovado. A sua conta agora e considerada estudante."
+        : "O seu pedido foi rejeitado. A sua conta permanece como externo."
+    );
 
     return NextResponse.json({ success: true });
   } catch (error: any) {

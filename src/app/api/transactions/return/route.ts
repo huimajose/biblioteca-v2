@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
+import { notifyUser } from "@/app/api/_utils/notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -62,6 +63,13 @@ export async function POST(req: Request) {
           .where(eq(schema.books.id, physical[0].bookId));
       }
     }
+
+    await notifyUser(
+      db,
+      transaction[0].userId,
+      "Livro devolvido",
+      "A devolucao foi registada com sucesso."
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {

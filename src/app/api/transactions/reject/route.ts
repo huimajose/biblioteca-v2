@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
+import { notifyUser } from "@/app/api/_utils/notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -47,6 +48,13 @@ export async function POST(req: Request) {
         returnedDate: new Date(),
       })
       .where(eq(schema.transactions.tid, tid));
+
+    await notifyUser(
+      db,
+      userId,
+      "Pedido rejeitado",
+      "O seu pedido de emprestimo foi rejeitado."
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {

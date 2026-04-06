@@ -10,7 +10,8 @@ import {
   Printer,
   ChevronRight,
   BookMarked,
-  Bell
+  Bell,
+  UserCircle
 } from 'lucide-react';
 import { User } from '@/hooks/useAuth.ts';
 import { cn } from '@/utils/cn.ts';
@@ -63,6 +64,15 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
           const payload = JSON.parse(text);
           if (payload?.title) {
             setToast({ title: payload.title, message: payload.message });
+            setNotifications((prev) => [
+              {
+                id: `live-${Date.now()}-${Math.random()}`,
+                title: payload.title,
+                message: payload.message,
+                read: false,
+              },
+              ...prev,
+            ].slice(0, 10));
             setUnreadCount((c) => c + 1);
           }
         } catch {}
@@ -115,11 +125,13 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
     { icon: History, label: 'Transacoes', path: '/admin/transactions' },
     { icon: Printer, label: 'Relatorios', path: '/admin/reports' },
     { icon: BookMarked, label: 'Modo leitor', path: '/admin/as-user' },
+    { icon: UserCircle, label: 'Perfil', path: '/profile' },
   ] : [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
     { icon: Library, label: 'Biblioteca', path: '/' },
     { icon: BookMarked, label: 'A Minha Estante', path: '/shelf' },
     { icon: History, label: 'O Meu Historico', path: '/history' },
+    { icon: UserCircle, label: 'Perfil', path: '/profile' },
     ...((user.role === 'student' || verificationStatus === 'pending')
       ? []
       : [{ icon: UsersIcon, label: 'Verificacao estudante', path: '/student-verification' }]),

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
+import { notifyUser } from "@/app/api/_utils/notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -117,6 +118,14 @@ export async function POST(req: Request) {
       bookAuthor: book[0]?.author,
       isbn: book[0]?.isbn,
     });
+  }
+
+  if (results.length > 0) {
+    const summary =
+      results.length === 1
+        ? `O livro "${results[0]?.bookTitle || "selecionado"}" foi emprestado com sucesso.`
+        : `${results.length} livros foram emprestados com sucesso.`;
+    await notifyUser(db, userId, "Emprestimo concluido", summary);
   }
 
   return NextResponse.json({ success: results.length > 0, results, errors });

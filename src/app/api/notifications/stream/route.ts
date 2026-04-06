@@ -1,20 +1,10 @@
 import { NextRequest } from "next/server";
+import { registerSseClient, unregisterSseClient } from "@/app/api/_utils/notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-type ClientSet = Set<ReadableStreamDefaultController<Uint8Array>>;
-
-const clientsByUser = new Map<string, ClientSet>();
 const encoder = new TextEncoder();
-
-const ensureClientSet = (userId: string) => {
-  const existing = clientsByUser.get(userId);
-  if (existing) return existing;
-  const created: ClientSet = new Set();
-  clientsByUser.set(userId, created);
-  return created;
-};
 
 const write = (controller: ReadableStreamDefaultController<Uint8Array>, text: string) => {
   controller.enqueue(encoder.encode(text));
@@ -31,8 +21,7 @@ export async function GET(req: NextRequest) {
   const stream = new ReadableStream<Uint8Array>({
     start(controller) {
       controllerRef = controller;
-      const clients = ensureClientSet(userId);
-      clients.add(controller);
+      registerSseClient(userId, controller);
 
       write(controller, "event: ready\n");
       write(controller, "data: {}\n\n");
@@ -47,21 +36,13 @@ export async function GET(req: NextRequest) {
 
       req.signal.addEventListener("abort", () => {
         if (keepAliveTimer) clearInterval(keepAliveTimer);
-        const set = clientsByUser.get(userId);
-        if (set) {
-          set.delete(controller);
-          if (set.size === 0) clientsByUser.delete(userId);
-        }
+        unregisterSseClient(userId, controller);
       });
     },
     cancel() {
       if (keepAliveTimer) clearInterval(keepAliveTimer);
       if (!controllerRef) return;
-      const set = clientsByUser.get(userId);
-      if (set) {
-        set.delete(controllerRef);
-        if (set.size === 0) clientsByUser.delete(userId);
-      }
+      unregisterSseClient(userId, controllerRef);
     },
   });
 

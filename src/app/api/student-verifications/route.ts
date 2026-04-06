@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
+import { notifyAdmins, notifyUser } from "@/app/api/_utils/notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,6 +54,18 @@ export async function POST(req: NextRequest) {
     status: "pending",
     createdAt: now,
   });
+
+  await notifyUser(
+    db,
+    userId,
+    "Verificacao enviada",
+    "O seu pedido de verificacao de estudante foi enviado com sucesso."
+  );
+  await notifyAdmins(
+    db,
+    "Nova verificacao de estudante",
+    `Pedido de verificacao: ${fullName} (${studentNumber})`
+  );
 
   return NextResponse.json({ success: true });
 }

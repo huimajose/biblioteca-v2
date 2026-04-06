@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
+import { notifyAdmins, notifyUser } from "@/app/api/_utils/notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -101,6 +102,18 @@ export async function POST(req: Request) {
         user_name: userId,
       })
       .returning();
+
+    await notifyUser(
+      db,
+      userId,
+      "Pedido enviado",
+      `O seu pedido do livro "${book[0].title}" foi enviado para aprovacao.`
+    );
+    await notifyAdmins(
+      db,
+      "Novo pedido de emprestimo",
+      `Pedido de ${userId} para "${book[0].title}".`
+    );
 
     return NextResponse.json({
       tid: transaction[0].tid,

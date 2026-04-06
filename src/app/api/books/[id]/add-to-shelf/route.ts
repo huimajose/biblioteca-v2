@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
+import { notifyUser } from "@/app/api/_utils/notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -51,6 +52,19 @@ export async function POST(req: Request, { params }: { params: Params }) {
       userId,
       bookId,
     });
+
+    const book = await db
+      .select()
+      .from(schema.books)
+      .where(eq(schema.books.id, bookId))
+      .limit(1);
+
+    await notifyUser(
+      db,
+      userId,
+      "Livro adicionado a estante",
+      `O livro "${book[0]?.title || "selecionado"}" foi adicionado a sua estante digital.`
+    );
 
     return NextResponse.json({
       success: true,

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
+import { notifyUser } from "@/app/api/_utils/notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -119,6 +120,13 @@ export async function POST(req: Request) {
       .update(schema.books)
       .set({ availableCopies: Math.max((book[0].availableCopies ?? 0) - 1, 0) })
       .where(eq(schema.books.id, bookId));
+
+    await notifyUser(
+      db,
+      userId,
+      "Pedido aprovado",
+      `O seu pedido do livro "${book[0].title}" foi aprovado.`
+    );
 
     return NextResponse.json({ success: true });
   } catch (error) {
