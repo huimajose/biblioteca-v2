@@ -3,6 +3,7 @@ import { asc } from 'drizzle-orm';
 import * as schema from '@/db/pgSchema';
 import { getDb } from '@/app/api/_utils/db';
 import { DEFAULT_BOOK_COVER } from '@/constants';
+import { notifyUser } from '@/app/api/_utils/notify';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -42,6 +43,7 @@ const createPhysicalCopies = async (db: ReturnType<typeof getDb>, bookId: number
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
+    const actorUserId = req.headers.get('x-user-id') || '';
     const db = getDb();
     const hasDigital =
       Boolean(body.fileUrl) || body.hasDigital === true || body.isDigital === true || body.documentType === 2;
@@ -73,6 +75,14 @@ export async function POST(req: NextRequest) {
     const created = inserted[0];
     if (isPhysical && availableCopies > 0) {
       await createPhysicalCopies(db, created.id, availableCopies);
+    }
+    if (actorUserId) {
+      await notifyUser(
+        db,
+        actorUserId,
+        'Livro criado',
+        `O livro "${created.title}" foi adicionado com sucesso.`
+      );
     }
     return NextResponse.json(mapBookRow(created));
   } catch (error: any) {

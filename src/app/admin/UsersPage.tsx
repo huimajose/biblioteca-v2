@@ -8,6 +8,7 @@ import { LOGO_WATERMARK } from '@/constants.ts';
 import { addCenteredWatermarkToAllPages, loadWatermarkImage } from '@/utils/pdfWatermark.ts';
 
 export const UsersPage = () => {
+  const actorUserId = typeof window !== 'undefined' ? window.localStorage.getItem('userId') || '' : '';
   const [users, setUsers] = useState<any[]>([]);
   const [roleFilter, setRoleFilter] = useState<'all' | 'student' | 'external' | 'admin'>('all');
   const [pdfOpen, setPdfOpen] = useState(false);
@@ -101,7 +102,7 @@ export const UsersPage = () => {
     try {
       const res = await fetch('/api/admin/users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-user-id': actorUserId },
         body: JSON.stringify({
           clerkId: editingUser.clerkId,
           fullName: editDraft.fullName.trim(),
@@ -133,7 +134,7 @@ export const UsersPage = () => {
     try {
       const res = await fetch('/api/admin/users', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-user-id': actorUserId },
         body: JSON.stringify({
           clerkId: user.clerkId,
           fullName: user.fullName || '',

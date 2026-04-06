@@ -28,6 +28,7 @@ import { BookInfoModal } from '../../components/BookInfoModal.tsx';
 import { InstantServiceModal } from './InstantServiceModal';
 
 const AdminDashboard: React.FC = () => {
+  const actorUserId = typeof window !== 'undefined' ? window.localStorage.getItem('userId') || '' : '';
 
   const [stats, setStats] = useState<any>(null);
   const [pendingUsers, setPendingUsers] = useState<any[]>([]);
@@ -83,7 +84,7 @@ const AdminDashboard: React.FC = () => {
   const handleApprove = async (clerkId: string, approve: boolean) => {
     await fetch('/api/admin/approve-user', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-user-id': actorUserId },
       body: JSON.stringify({ clerkId, approve })
     });
     fetchPending();

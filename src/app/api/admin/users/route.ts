@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
+import { clerkClient } from "@clerk/nextjs/server";
+import { notifyUser } from "@/app/api/_utils/notify";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -53,4 +55,63 @@ export async function GET(req: NextRequest) {
   }
 
   return NextResponse.json(mapped);
+}
+
+export async function POST(req: NextRequest) {
+  const body = await req.json().catch(() => ({}));
+  const actorUserId = req.headers.get("x-user-id") || "";
+  const clerkId = String(body?.clerkId || "").trim();
+  if (!clerkId) {
+    return NextResponse.json({ error: "clerkId requerido" }, { status: 400 });
+  }
+
+  const fullName = String(body?.fullName || "").trim();
+  const primaryEmail = String(body?.primaryEmail || "").trim();
+  const rawRole = String(body?.role || "external").toLowerCase();
+  const role = rawRole === "admin" || rawRole === "student" || rawRole === "external" ? rawRole : "external";
+
+  const db = getDb();
+  await db
+    .insert(schema.users)
+    .values({
+      clerkId,
+      fullName,
+      primaryEmail,
+      role,
+    })
+    .onConflictDoUpdate({
+      target: schema.users.clerkId,
+      set: {
+        fullName,
+        primaryEmail,
+        role,
+      },
+    });
+
+  try {
+    const clerk = await clerkClient();
+    await clerk.users.updateUser(clerkId, {
+      publicMetadata: { role },
+    });
+  } catch {
+    // ignore clerk update failure
+  }
+
+  await notifyUser(
+    db,
+    clerkId,
+    "Conta atualizada",
+    `Os dados da sua conta foram atualizados. Perfil atual: ${role}.`
+  );
+
+  if (actorUserId && actorUserId !== clerkId) {
+    await notifyUser(
+      db,
+      actorUserId,
+      "Utilizador atualizado",
+      `Os dados de ${fullName || primaryEmail || clerkId} foram atualizados com sucesso.`
+    );
+  }
+
+  return NextResponse.json({ success: true });
 }

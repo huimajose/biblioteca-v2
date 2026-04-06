@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
 
 export const StudentVerificationsPage = () => {
+  const actorUserId = typeof window !== 'undefined' ? window.localStorage.getItem('userId') || '' : '';
   const [requests, setRequests] = useState<any[]>([]);
 
   const load = async () => {
@@ -19,7 +20,7 @@ export const StudentVerificationsPage = () => {
   const decide = async (id: number, approve: boolean) => {
     await fetch(`/api/admin/student-verifications/${id}/decision`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-user-id': actorUserId },
       body: JSON.stringify({ approve }),
     });
     load();

@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import * as schema from '@/db/pgSchema';
 import { getDb } from '@/app/api/_utils/db';
 import { DEFAULT_BOOK_COVER } from '@/constants';
+import { notifyUser } from '@/app/api/_utils/notify';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -51,6 +52,7 @@ export async function PUT(
 
   try {
     const body = await req.json();
+    const actorUserId = req.headers.get('x-user-id') || '';
     const db = getDb();
 
     const existing = await db
@@ -104,6 +106,14 @@ export async function PUT(
     }
     if (!isPhysical) {
       await db.delete(schema.physicalBooks).where(eq(schema.physicalBooks.bookId, bookId));
+    }
+    if (actorUserId) {
+      await notifyUser(
+        db,
+        actorUserId,
+        'Livro atualizado',
+        `As alteracoes do livro "${updated[0].title}" foram guardadas com sucesso.`
+      );
     }
 
     return NextResponse.json(mapBookRow(updated[0]));

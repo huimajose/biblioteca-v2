@@ -14,6 +14,7 @@ interface InstantServiceModalProps {
 }
 
 export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceModalProps) => {
+  const actorUserId = typeof window !== 'undefined' ? window.localStorage.getItem('userId') || '' : '';
   const [step, setStep] = useState<'user' | 'books' | 'confirm'>('user');
   const [userSearch, setUserSearch] = useState('');
   const [bookSearch, setBookSearch] = useState('');
@@ -98,7 +99,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
     try {
       const res = await fetch('/api/transactions/borrow-bulk', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-is-admin': 'true' },
+        headers: { 'Content-Type': 'application/json', 'x-is-admin': 'true', 'x-user-id': actorUserId },
         body: JSON.stringify({ 
           bookIds: selectedBooks.map(b => b.id), 
           userId: selectedUser.clerkId

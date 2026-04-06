@@ -15,6 +15,7 @@ export const BookForm = () => {
   const [searchParams] = useSearchParams();
   const bookId = searchParams.get('id');
   const isEdit = Boolean(bookId);
+  const actorUserId = typeof window !== 'undefined' ? window.localStorage.getItem('userId') || '' : '';
 
   const [activeTab, setActiveTab] = useState<'dados' | 'disponibilidade' | 'media'>('dados');
   const [genres, setGenres] = useState<any[]>([]);
@@ -209,7 +210,7 @@ export const BookForm = () => {
 
     const res = await fetch(isEdit ? `/api/admin/books/${bookId}` : '/api/admin/books', {
       method: isEdit ? 'PUT' : 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', 'x-user-id': actorUserId },
       body: JSON.stringify(payload),
     });
     if (!res.ok) {

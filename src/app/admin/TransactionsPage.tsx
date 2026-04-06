@@ -10,6 +10,7 @@ import { LOGO_WATERMARK } from '@/constants.ts';
 import { addCenteredWatermarkToAllPages, loadWatermarkImage } from '@/utils/pdfWatermark.ts';
 
 export const TransactionsPage = () => {
+  const actorUserId = typeof window !== 'undefined' ? window.localStorage.getItem('userId') || '' : '';
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'borrowed' | 'returned' | 'rejected'>('all');
@@ -90,7 +91,7 @@ export const TransactionsPage = () => {
     try {
       const res = await fetch('/api/transactions/return', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-user-id': actorUserId },
         body: JSON.stringify({ transactionId: tid }),
       });
       if (res.ok) {
@@ -106,7 +107,7 @@ export const TransactionsPage = () => {
     try {
       const res = await fetch('/api/transactions/accept', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-user-id': actorUserId },
         body: JSON.stringify({ tid, userId }),
       });
       if (res.ok) fetchTransactions();
@@ -120,7 +121,7 @@ export const TransactionsPage = () => {
     try {
       const res = await fetch('/api/transactions/reject', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'x-user-id': actorUserId },
         body: JSON.stringify({ tid, userId }),
       });
       if (res.ok) fetchTransactions();
