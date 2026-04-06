@@ -33,6 +33,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
   const [genres, setGenres] = useState<any[]>([]);
   const [genreFilter, setGenreFilter] = useState<string>('all');
   const [shelfIds, setShelfIds] = useState<Set<number>>(new Set());
+  const [activeBorrowMap, setActiveBorrowMap] = useState<Record<number, { tid: number; status: string }>>({});
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [borrowLoading, setBorrowLoading] = useState<Record<number, boolean>>({});
   const [reserveLoading, setReserveLoading] = useState<Record<number, boolean>>({});
@@ -55,6 +56,10 @@ export const UserPortal = ({ user }: UserPortalProps) => {
         setShelfIds(ids);
       })
       .catch(() => setShelfIds(new Set()));
+    fetch('/api/user/borrow-status', { headers: { 'x-user-id': user.id } })
+      .then(res => res.json())
+      .then(data => setActiveBorrowMap(data?.byBookId ?? {}))
+      .catch(() => setActiveBorrowMap({}));
     fetch('/api/genres')
       .then(res => res.json())
       .then(data => setGenres(Array.isArray(data) ? data : []))
@@ -100,6 +105,16 @@ export const UserPortal = ({ user }: UserPortalProps) => {
       notify('Ja esta na estante', 'Este livro ja esta na sua estante digital.');
       return;
     }
+    if (activeBorrowMap[bookId]) {
+      const currentStatus = String(activeBorrowMap[bookId]?.status || '').toLowerCase();
+      notify(
+        'Pedido ja existente',
+        currentStatus === 'borrowed'
+          ? 'Este livro ja esta emprestado para si.'
+          : 'Ja existe um pedido pendente para este livro.'
+      );
+      return;
+    }
     setBorrowLoading((prev) => ({ ...prev, [bookId]: true }));
     try {
       const res = await fetch('/api/transactions/borrow', {
@@ -118,6 +133,13 @@ export const UserPortal = ({ user }: UserPortalProps) => {
         } else {
           notify('Pedido enviado', data?.message || 'Pedido enviado para aprovacao.');
         }
+        setActiveBorrowMap((prev) => ({
+          ...prev,
+          [bookId]: {
+            tid: Number(data?.tid || 0),
+            status: String(data?.status || 'pending').toLowerCase(),
+          },
+        }));
         fetch('/api/books').then(res => res.json()).then(setBooks);
       } else {
         notify('Erro ao requisitar', data?.error || 'Nao foi possivel requisitar.');
@@ -218,6 +240,10 @@ export const UserPortal = ({ user }: UserPortalProps) => {
   const isBorrowing = (bookId: number) => Boolean(borrowLoading[bookId]);
   const isReserving = (bookId: number) => Boolean(reserveLoading[bookId]);
   const isAddingShelf = (bookId: number) => Boolean(shelfLoading[bookId]);
+  const getBorrowStatus = (bookId: number) => String(activeBorrowMap[bookId]?.status || '').toLowerCase();
+  const hasActiveBorrowRequest = (bookId: number) => Boolean(activeBorrowMap[bookId]);
+  const getBorrowDisabledLabel = (bookId: number) =>
+    getBorrowStatus(bookId) === 'borrowed' ? 'Ja emprestado' : 'Pedido pendente';
 
   return (
     <div className="space-y-8">
@@ -414,15 +440,19 @@ export const UserPortal = ({ user }: UserPortalProps) => {
                       {book.availableCopies > 0 ? (
                         <button 
                           onClick={(e) => { e.stopPropagation(); handleBorrow(book.id); }}
-                          disabled={isBorrowing(book.id)}
+                          disabled={isBorrowing(book.id) || hasActiveBorrowRequest(book.id)}
                           className={cn(
                             "text-[10px] px-2 py-1 rounded transition-colors font-bold uppercase",
-                            isBorrowing(book.id)
+                            (isBorrowing(book.id) || hasActiveBorrowRequest(book.id))
                               ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                               : "bg-lime-600 text-white hover:bg-lime-700"
                           )}
                         >
-                          {isBorrowing(book.id) ? 'A processar...' : 'Requisitar'}
+                          {hasActiveBorrowRequest(book.id)
+                            ? getBorrowDisabledLabel(book.id)
+                            : isBorrowing(book.id)
+                              ? 'A processar...'
+                              : 'Requisitar'}
                         </button>
                       ) : (
                         <button 
@@ -490,6 +520,8 @@ export const UserPortal = ({ user }: UserPortalProps) => {
             reserveLoading={isReserving(selectedBook?.id)}
             shelfLoading={isAddingShelf(selectedBook?.id)}
             shelfDisabled={shelfIds.has(selectedBook?.id)}
+            borrowDisabled={hasActiveBorrowRequest(selectedBook?.id)}
+            borrowDisabledLabel={getBorrowDisabledLabel(selectedBook?.id)}
           />
         )}
       </AnimatePresence>

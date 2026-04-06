@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { and, eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
 import { notifyAdmins, notifyUser } from "@/app/api/_utils/notify";
@@ -50,6 +50,45 @@ export async function POST(req: Request) {
       return NextResponse.json(
         { error: "Sem exemplares disponiveis" },
         { status: 400 }
+      );
+    }
+
+    const activeTransactions = await db
+      .select()
+      .from(schema.transactions)
+      .where(
+        and(
+          eq(schema.transactions.userId, userId),
+          eq(schema.transactions.status, "PENDING")
+        )
+      );
+
+    const activeBorrows = await db
+      .select()
+      .from(schema.transactions)
+      .where(
+        and(
+          eq(schema.transactions.userId, userId),
+          eq(schema.transactions.status, "BORROWED")
+        )
+      );
+
+    const activeBookIds = new Set<number>();
+
+    for (const tx of [...activeTransactions, ...activeBorrows]) {
+      const physical = await db
+        .select()
+        .from(schema.physicalBooks)
+        .where(eq(schema.physicalBooks.pid, tx.physicalBookId))
+        .limit(1);
+      const currentBookId = physical[0]?.bookId;
+      if (currentBookId) activeBookIds.add(currentBookId);
+    }
+
+    if (activeBookIds.has(bookId)) {
+      return NextResponse.json(
+        { error: "Ja existe um pedido ou emprestimo ativo para este livro." },
+        { status: 409 }
       );
     }
 

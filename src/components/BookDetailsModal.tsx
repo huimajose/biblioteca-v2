@@ -15,6 +15,8 @@ interface BookDetailsModalProps {
   reserveLoading?: boolean;
   shelfLoading?: boolean;
   shelfDisabled?: boolean;
+  borrowDisabled?: boolean;
+  borrowDisabledLabel?: string;
 }
 
 export const BookDetailsModal = ({
@@ -29,6 +31,8 @@ export const BookDetailsModal = ({
   reserveLoading = false,
   shelfLoading = false,
   shelfDisabled = false,
+  borrowDisabled = false,
+  borrowDisabledLabel = 'Ja requisitado',
 }: BookDetailsModalProps) => {
   const cover = book.cover || DEFAULT_BOOK_COVER;
   const pdfUrl = resolveFileUrl(book.fileUrl);
@@ -104,8 +108,8 @@ export const BookDetailsModal = ({
               )}
               {hasPhysical && (
                 book.availableCopies > 0 ? (
-                  <Button className="text-xs uppercase" onClick={() => onBorrow(book.id)} disabled={borrowLoading}>
-                    {borrowLoading ? 'A processar...' : 'Requisitar emprestimo'}
+                  <Button className="text-xs uppercase" onClick={() => onBorrow(book.id)} disabled={borrowLoading || borrowDisabled}>
+                    {borrowDisabled ? borrowDisabledLabel : borrowLoading ? 'A processar...' : 'Requisitar emprestimo'}
                   </Button>
                 ) : (
                   <Button className="text-xs uppercase" variant="secondary" onClick={() => onReserve(book.id)} disabled={reserveLoading || isOutOfStock}>
