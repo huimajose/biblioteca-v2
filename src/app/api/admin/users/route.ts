@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
-import { clerkClient } from "@clerk/nextjs/server";
 import { notifyUser } from "@/app/api/_utils/notify";
 
 export const runtime = "nodejs";
@@ -87,15 +86,6 @@ export async function POST(req: NextRequest) {
         role,
       },
     });
-
-  try {
-    const clerk = await clerkClient();
-    await clerk.users.updateUser(clerkId, {
-      publicMetadata: { role },
-    });
-  } catch {
-    // ignore clerk update failure
-  }
 
   await notifyUser(
     db,
