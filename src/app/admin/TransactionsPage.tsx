@@ -19,6 +19,8 @@ export const TransactionsPage = () => {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
   const [selectedBook, setSelectedBook] = useState<any | null>(null);
+  const [quickReturnCode, setQuickReturnCode] = useState('');
+  const [quickReturnMessage, setQuickReturnMessage] = useState<string | null>(null);
   const getUserLabel = (transaction: any) =>
     transaction.isTempUser
       ? `${transaction.userName || transaction.userId} (Temp)`
@@ -99,11 +101,43 @@ export const TransactionsPage = () => {
         body: JSON.stringify({ transactionId: tid }),
       });
       if (res.ok) {
+        setQuickReturnMessage('Devolucao registada com sucesso.');
         fetchTransactions();
+      } else {
+        setQuickReturnMessage('Nao foi possivel concluir a devolucao.');
       }
     } finally {
       setLoading(false);
     }
+  };
+
+  const normalizeScan = (value: string) =>
+    String(value || '').trim().toLowerCase();
+
+  const handleQuickReturn = async (event?: React.FormEvent) => {
+    event?.preventDefault();
+    const normalized = normalizeScan(quickReturnCode);
+    if (!normalized) return;
+
+    const borrowedMatches = transactions.filter((transaction) => {
+      const status = String(transaction.status || '').toLowerCase();
+      if (status !== 'borrowed') return false;
+      return [
+        transaction.catalogCode,
+        transaction.isbn,
+        transaction.physicalBookId,
+        transaction.tid,
+      ].some((candidate) => normalizeScan(String(candidate || '')) === normalized);
+    });
+
+    if (borrowedMatches.length === 0) {
+      setQuickReturnMessage('Nenhum emprestimo ativo encontrado para o codigo lido.');
+      return;
+    }
+
+    setQuickReturnMessage(null);
+    await handleReturn(borrowedMatches[0].tid);
+    setQuickReturnCode('');
   };
 
   const handleApprove = async (tid: number, userId: string) => {
@@ -171,6 +205,24 @@ export const TransactionsPage = () => {
         </div>
       </Card>
 
+      <Card className="p-4">
+        <form className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end" onSubmit={handleQuickReturn}>
+          <div>
+            <label className="text-xs uppercase text-gray-400">Leitor de codigo para devolucao</label>
+            <input
+              className="w-full px-4 py-3 border-2 border-dashed border-lime-200 rounded-2xl focus:border-lime-500 outline-none transition-all text-sm font-mono"
+              placeholder="Leia catalogo, ISBN ou ID da transacao e pressione Enter"
+              value={quickReturnCode}
+              onChange={(e) => setQuickReturnCode(e.target.value)}
+            />
+            {quickReturnMessage && <p className="mt-2 text-xs text-gray-500">{quickReturnMessage}</p>}
+          </div>
+          <Button className="h-[50px]" disabled={loading || !quickReturnCode.trim()}>
+            {loading ? 'A processar...' : 'Devolver rapido'}
+          </Button>
+        </form>
+      </Card>
+
       <Card className="overflow-hidden">
         <div className="p-4 border-b border-gray-100 bg-amber-50/40">
           <h2 className="text-sm font-bold text-amber-700 uppercase tracking-wider">Pedidos pendentes</h2>
@@ -222,9 +274,9 @@ export const TransactionsPage = () => {
                     </div>
                   </td>
                   <td className="p-4 text-sm">
-                    <p className="font-semibold">{t.bookTitle}</p>
-                    <p className="text-[10px] text-gray-400 uppercase">ID: {t.physicalBookId || '-'}</p>
-                  </td>
+                      <p className="font-semibold">{t.bookTitle}</p>
+                      <p className="text-[10px] text-gray-400 uppercase">{t.catalogCode || `ID: ${t.physicalBookId || '-'}`}</p>
+                    </td>
                   <td className="p-4 text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Button
@@ -313,7 +365,7 @@ export const TransactionsPage = () => {
                     </td>
                     <td className="p-4 text-sm">
                       <p className="font-semibold">{t.bookTitle}</p>
-                      <p className="text-[10px] text-gray-400 uppercase">ID: {t.physicalBookId}</p>
+                      <p className="text-[10px] text-gray-400 uppercase">{t.catalogCode || `ID: ${t.physicalBookId}`}</p>
                     </td>
                     <td className="p-4">
                       <span className={cn(

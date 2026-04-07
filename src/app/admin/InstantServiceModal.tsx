@@ -18,6 +18,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
   const [step, setStep] = useState<'user' | 'books' | 'confirm'>('user');
   const [userSearch, setUserSearch] = useState('');
   const [bookSearch, setBookSearch] = useState('');
+  const [scanCode, setScanCode] = useState('');
   const [bookGenreFilter, setBookGenreFilter] = useState('all');
   const [allUsers, setAllUsers] = useState<any[]>([]);
   const [selectedUser, setSelectedUser] = useState<any>(null);
@@ -79,6 +80,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
       setError(null);
       setUserSearch('');
       setBookSearch('');
+      setScanCode('');
       setBookGenreFilter('all');
     }
   }, [isOpen]);
@@ -96,8 +98,25 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
     (bookGenreFilter === 'all' || b.genre === bookGenreFilter) &&
     (b.title.toLowerCase().includes(bookSearch.toLowerCase()) || 
      b.author.toLowerCase().includes(bookSearch.toLowerCase()) ||
-     b.isbn.toLowerCase().includes(bookSearch.toLowerCase()))
+     b.isbn.toLowerCase().includes(bookSearch.toLowerCase()) ||
+     String(b.catalogCode || '').toLowerCase().includes(bookSearch.toLowerCase()))
   );
+
+  const normalizeScan = (value: string) =>
+    String(value || '').trim().toLowerCase();
+
+  const findBookByScan = (value: string) => {
+    const normalized = normalizeScan(value);
+    if (!normalized) return null;
+    return safeBooks.find((book) => {
+      if (book.isDigital || book.availableCopies <= 0) return false;
+      return [
+        book.isbn,
+        book.catalogCode,
+        book.id,
+      ].some((candidate) => normalizeScan(String(candidate || '')) === normalized);
+    }) || null;
+  };
 
   const handleSelectUser = (user: any) => {
     setSelectedUser(user);
@@ -110,6 +129,24 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
     } else {
       setSelectedBooks([...selectedBooks, book]);
     }
+  };
+
+  const handleScanSubmit = (event?: React.FormEvent) => {
+    event?.preventDefault();
+    const matchedBook = findBookByScan(scanCode);
+    if (!matchedBook) {
+      setError('Nenhum livro fisico disponivel encontrado para o codigo lido.');
+      return;
+    }
+    setError(null);
+    setBookGenreFilter('all');
+    setBookSearch('');
+    setSelectedBooks((prev) => (
+      prev.some((book) => book.id === matchedBook.id)
+        ? prev
+        : [...prev, matchedBook]
+    ));
+    setScanCode('');
   };
 
   const handleBorrow = async () => {
@@ -267,6 +304,18 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
                             onChange={e => setBookSearch(e.target.value)}
                           />
                         </div>
+                        <form className="mt-3" onSubmit={handleScanSubmit}>
+                          <label className="text-xs uppercase text-gray-400">Leitor de codigo</label>
+                          <div className="mt-1 flex gap-2">
+                            <input
+                              className="w-full px-4 py-3 border-2 border-dashed border-lime-200 rounded-2xl focus:border-lime-500 outline-none transition-all text-sm font-mono"
+                              placeholder="Leia ISBN ou codigo catalogo e pressione Enter"
+                              value={scanCode}
+                              onChange={(e) => setScanCode(e.target.value)}
+                            />
+                            <Button type="submit" variant="secondary">Ler</Button>
+                          </div>
+                        </form>
                         <div className="mt-3">
                           <label className="text-xs uppercase text-gray-400">Curso</label>
                           <select
@@ -307,6 +356,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
                                 <p className="text-xs text-gray-500 truncate">{b.author}</p>
                                 <div className="flex items-center gap-2 mt-1">
                                   <span className="text-[10px] font-mono text-gray-400 bg-white px-1.5 py-0.5 rounded border border-gray-100">{b.isbn}</span>
+                                  {b.catalogCode && <span className="text-[10px] font-mono text-lime-700 bg-lime-50 px-1.5 py-0.5 rounded border border-lime-100">{b.catalogCode}</span>}
                                   <span className="text-[10px] font-bold text-emerald-600">{b.availableCopies} restantes</span>
                                 </div>
                               </div>
@@ -364,7 +414,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
                                 <img src={b.cover} className="w-8 h-10 object-cover rounded shadow-sm" alt="" referrerPolicy="no-referrer" />
                                 <div className="overflow-hidden flex-grow">
                                   <p className="text-sm font-bold truncate">{b.title}</p>
-                                  <p className="text-[10px] text-gray-400 font-mono">{b.isbn}</p>
+                                  <p className="text-[10px] text-gray-400 font-mono">{b.catalogCode || b.isbn}</p>
                                 </div>
                               </div>
                             ))}

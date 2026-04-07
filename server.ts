@@ -1345,6 +1345,9 @@ async function startServer() {
         bookTitle: book[0]?.title ?? 'N/D',
         bookAuthor: book[0]?.author ?? 'N/D',
         isbn: book[0]?.isbn ?? 'N/D',
+        catalogCode: book[0]?.catalogCode ?? book[0]?.catalog_code ?? null,
+        bookArmario: book[0]?.armario ?? null,
+        bookPrateleira: book[0]?.prateleira ?? null,
         bookGenre: book[0]?.genre ?? null,
       };
     }));
