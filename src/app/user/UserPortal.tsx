@@ -35,6 +35,11 @@ export const UserPortal = ({ user }: UserPortalProps) => {
   const [genreFilter, setGenreFilter] = useState<string>('all');
   const [shelfIds, setShelfIds] = useState<Set<number>>(new Set());
   const [activeBorrowMap, setActiveBorrowMap] = useState<Record<number, { tid: number; status: string }>>({});
+  const [borrowBlock, setBorrowBlock] = useState<{
+    blocked: boolean;
+    reason: string | null;
+    blockedItems: Array<{ title: string; overdueDays: number }>;
+  }>({ blocked: false, reason: null, blockedItems: [] });
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [borrowLoading, setBorrowLoading] = useState<Record<number, boolean>>({});
   const [reserveLoading, setReserveLoading] = useState<Record<number, boolean>>({});
@@ -59,8 +64,18 @@ export const UserPortal = ({ user }: UserPortalProps) => {
       .catch(() => setShelfIds(new Set()));
     fetch('/api/user/borrow-status', { headers: { 'x-user-id': user.id } })
       .then(res => res.json())
-      .then(data => setActiveBorrowMap(data?.byBookId ?? {}))
-      .catch(() => setActiveBorrowMap({}));
+      .then(data => {
+        setActiveBorrowMap(data?.byBookId ?? {});
+        setBorrowBlock({
+          blocked: Boolean(data?.blocked),
+          reason: data?.blockReason || null,
+          blockedItems: Array.isArray(data?.blockedItems) ? data.blockedItems : [],
+        });
+      })
+      .catch(() => {
+        setActiveBorrowMap({});
+        setBorrowBlock({ blocked: false, reason: null, blockedItems: [] });
+      });
     fetch('/api/genres')
       .then(res => res.json())
       .then(data => setGenres(Array.isArray(data) ? data : []))
@@ -100,6 +115,10 @@ export const UserPortal = ({ user }: UserPortalProps) => {
 
   const handleBorrow = async (bookId: number) => {
     if (borrowLoading[bookId]) return;
+    if (borrowBlock.blocked) {
+      notify('Conta bloqueada', borrowBlock.reason || 'Existe atraso prolongado em pelo menos um emprestimo ativo.');
+      return;
+    }
     const book = books.find((b) => b.id === bookId);
     const isDigital = Boolean(book?.fileUrl) || Boolean(book?.isDigital);
     if (isDigital && shelfIds.has(bookId)) {
@@ -143,6 +162,13 @@ export const UserPortal = ({ user }: UserPortalProps) => {
         }));
         fetch('/api/books').then(res => res.json()).then(setBooks);
       } else {
+        if (data?.blocked) {
+          setBorrowBlock({
+            blocked: true,
+            reason: data?.sanctions?.reason || data?.error || 'Conta bloqueada por atraso prolongado.',
+            blockedItems: Array.isArray(data?.sanctions?.blockedItems) ? data.sanctions.blockedItems : [],
+          });
+        }
         notify('Erro ao requisitar', data?.error || 'Nao foi possivel requisitar.');
       }
     } finally {
@@ -243,8 +269,9 @@ export const UserPortal = ({ user }: UserPortalProps) => {
   const isAddingShelf = (bookId: number) => Boolean(shelfLoading[bookId]);
   const getBorrowStatus = (bookId: number) => String(activeBorrowMap[bookId]?.status || '').toLowerCase();
   const hasActiveBorrowRequest = (bookId: number) => Boolean(activeBorrowMap[bookId]);
+  const borrowBlockedLabel = borrowBlock.blocked ? 'Bloqueado por atraso' : null;
   const getBorrowDisabledLabel = (bookId: number) =>
-    getBorrowStatus(bookId) === 'borrowed' ? 'Ja emprestado' : 'Pedido pendente';
+    borrowBlockedLabel || (getBorrowStatus(bookId) === 'borrowed' ? 'Ja emprestado' : 'Pedido pendente');
 
   return (
     <div className="space-y-8">
@@ -313,6 +340,23 @@ export const UserPortal = ({ user }: UserPortalProps) => {
           ))}
         </select>
       </div>
+
+      {borrowBlock.blocked && (
+        <Card className="border border-rose-200 bg-rose-50 p-4">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-rose-700">Conta bloqueada</h2>
+          <p className="mt-1 text-sm text-rose-700">
+            {borrowBlock.reason || 'Existem livros com atraso prolongado. Regularize as devolucoes para voltar a requisitar.'}
+          </p>
+          {borrowBlock.blockedItems.length > 0 && (
+            <p className="mt-2 text-xs text-rose-600">
+              {borrowBlock.blockedItems
+                .slice(0, 3)
+                .map((item) => `${item.title} (${item.overdueDays} dia(s) em atraso)`)
+                .join(' | ')}
+            </p>
+          )}
+        </Card>
+      )}
 
       <Card className="p-5">
         <div className="flex items-center justify-between mb-4">
@@ -450,15 +494,15 @@ export const UserPortal = ({ user }: UserPortalProps) => {
                       {book.availableCopies > 0 ? (
                         <button 
                           onClick={(e) => { e.stopPropagation(); handleBorrow(book.id); }}
-                          disabled={isBorrowing(book.id) || hasActiveBorrowRequest(book.id)}
+                          disabled={borrowBlock.blocked || isBorrowing(book.id) || hasActiveBorrowRequest(book.id)}
                           className={cn(
                             "text-[10px] px-2 py-1 rounded transition-colors font-bold uppercase inline-flex items-center gap-1",
-                            (isBorrowing(book.id) || hasActiveBorrowRequest(book.id))
+                            (borrowBlock.blocked || isBorrowing(book.id) || hasActiveBorrowRequest(book.id))
                               ? "bg-gray-200 text-gray-500 cursor-not-allowed"
                               : "bg-lime-600 text-white hover:bg-lime-700"
                           )}
                         >
-                          {hasActiveBorrowRequest(book.id)
+                          {(borrowBlock.blocked || hasActiveBorrowRequest(book.id))
                             ? getBorrowDisabledLabel(book.id)
                             : isBorrowing(book.id)
                               ? (
@@ -530,12 +574,12 @@ export const UserPortal = ({ user }: UserPortalProps) => {
             onReserve={handleReserve}
             onAddToShelf={handleAddToShelf}
             resolveFileUrl={(fileUrl) => resolveFileUrl(fileUrl, selectedBook?.id)}
-            onReadPdf={openReader}
-            borrowLoading={isBorrowing(selectedBook?.id)}
-            reserveLoading={isReserving(selectedBook?.id)}
-            shelfLoading={isAddingShelf(selectedBook?.id)}
-            shelfDisabled={shelfIds.has(selectedBook?.id)}
-            borrowDisabled={hasActiveBorrowRequest(selectedBook?.id)}
+                          onReadPdf={openReader}
+                          borrowLoading={isBorrowing(selectedBook?.id)}
+                          reserveLoading={isReserving(selectedBook?.id)}
+                          shelfLoading={isAddingShelf(selectedBook?.id)}
+                          shelfDisabled={shelfIds.has(selectedBook?.id)}
+            borrowDisabled={borrowBlock.blocked || hasActiveBorrowRequest(selectedBook?.id)}
             borrowDisabledLabel={getBorrowDisabledLabel(selectedBook?.id)}
           />
         )}

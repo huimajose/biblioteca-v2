@@ -3,6 +3,7 @@ import { and, eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
 import { notifyAdmins, notifyUser } from "@/app/api/_utils/notify";
+import { applyLoanSanctions } from "@/app/api/_utils/loanSanctions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,6 +29,18 @@ export async function POST(req: Request) {
 
     const db = getDb();
     const now = new Date();
+    const sanctions = await applyLoanSanctions(db, userId);
+
+    if (sanctions.blocked) {
+      return NextResponse.json(
+        {
+          error: sanctions.reason || "Conta bloqueada por atraso prolongado.",
+          blocked: true,
+          sanctions,
+        },
+        { status: 403 }
+      );
+    }
 
     const book = await db
       .select()

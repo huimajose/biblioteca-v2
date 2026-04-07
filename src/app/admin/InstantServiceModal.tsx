@@ -170,7 +170,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
       if (res.ok && data.success) {
         setTickets(data.results);
       } else {
-        setError(data.errors?.[0]?.error || "Falha ao processar a transacao.");
+        setError(data?.error || data.errors?.[0]?.error || "Falha ao processar a transacao.");
       }
     } catch (err) {
       setError("Falha ao processar a transacao.");

@@ -23,6 +23,10 @@ interface UserDashboardPageProps {
 
 export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
   const [stats, setStats] = useState({ shelf: 0, borrowed: 0, points: 0 });
+  const [borrowBlock, setBorrowBlock] = useState<{ blocked: boolean; reason: string | null }>({
+    blocked: false,
+    reason: null,
+  });
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [continueReading, setContinueReading] = useState<any[]>([]);
   const [nextReturn, setNextReturn] = useState<string | null>(null);
@@ -49,14 +53,19 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
       fetch(`/api/books/recommendations?${recParams.toString()}`).then(r => r.json()),
       fetch('/api/user/student-info', { headers: { 'x-user-id': user.id } }).then(r => r.json()),
       fetch(`/api/notifications/${user.id}`).then(r => r.json()),
+      fetch('/api/user/borrow-status', { headers: { 'x-user-id': user.id } }).then(r => r.json()).catch(() => ({})),
       fetch('/api/user/continue-reading', { headers: { 'x-user-id': user.id } })
         .then(r => r.json())
         .catch(() => []),
-    ]).then(([shelf, history, score, recs, _studentInfo, _notes, continueData]) => {
+    ]).then(([shelf, history, score, recs, _studentInfo, _notes, borrowStatus, continueData]) => {
       const shelfCount = Array.isArray(shelf) ? shelf.length : 0;
       const historyList = Array.isArray(history) ? history : [];
       const borrowed = historyList.filter((h) => h.status === 'borrowed').length;
       setStats({ shelf: shelfCount, borrowed, points: score?.points ?? 0 });
+      setBorrowBlock({
+        blocked: Boolean(borrowStatus?.blocked),
+        reason: borrowStatus?.blockReason || null,
+      });
       setHistoryItems(historyList);
       setRecommendations(Array.isArray(recs) ? recs : []);
       setContinueReading(Array.isArray(continueData) ? continueData.slice(0, 4) : []);
@@ -138,6 +147,15 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
           </div>
         </Card>
       </div>
+
+      {borrowBlock.blocked && (
+        <Card className="border border-rose-200 bg-rose-50 p-4">
+          <h2 className="text-sm font-bold uppercase tracking-wider text-rose-700">Emprestimos bloqueados</h2>
+          <p className="mt-1 text-sm text-rose-700">
+            {borrowBlock.reason || 'Existem livros com atraso prolongado. Regularize as devolucoes para voltar a requisitar.'}
+          </p>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card className="p-6">

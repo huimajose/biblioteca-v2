@@ -4,6 +4,7 @@ import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
 import { notifyUser } from "@/app/api/_utils/notify";
 import { appendAuditLog, resolveActorRole } from "@/app/api/_utils/audit";
+import { applyLoanSanctions } from "@/app/api/_utils/loanSanctions";
 import { canAccessAdminSection } from "@/utils/roles";
 
 export const runtime = "nodejs";
@@ -29,6 +30,19 @@ export async function POST(req: Request) {
     const actorRole = await resolveActorRole(db, adminId);
     if (!canAccessAdminSection(actorRole, "transactions")) {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+    }
+    const sanctions = await applyLoanSanctions(db, userId);
+    if (sanctions.blocked) {
+      return NextResponse.json(
+        {
+          error:
+            sanctions.reason ||
+            "Utilizador bloqueado por atraso prolongado.",
+          blocked: true,
+          sanctions,
+        },
+        { status: 403 }
+      );
     }
 
     const tx = await db

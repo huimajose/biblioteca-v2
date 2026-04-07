@@ -148,7 +148,13 @@ export const TransactionsPage = () => {
         headers: { 'Content-Type': 'application/json', 'x-user-id': actorUserId },
         body: JSON.stringify({ tid, userId }),
       });
-      if (res.ok) fetchTransactions();
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) {
+        setQuickReturnMessage(null);
+        fetchTransactions();
+      } else {
+        setQuickReturnMessage(data?.error || 'Nao foi possivel aprovar o pedido.');
+      }
     } finally {
       setLoading(false);
     }

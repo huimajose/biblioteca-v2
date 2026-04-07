@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
+import { applyLoanSanctions } from "@/app/api/_utils/loanSanctions";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,6 +19,7 @@ export async function GET(req: NextRequest) {
   }
 
   const db = getDb();
+  const sanctions = await applyLoanSanctions(db, userId);
   const transactions = await db
     .select()
     .from(schema.transactions)
@@ -52,5 +54,12 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     activeBookIds: Object.keys(byBookId).map(Number),
     byBookId,
+    blocked: sanctions.blocked,
+    blockReason: sanctions.reason,
+    overdueItems: sanctions.overdueItems,
+    blockedItems: sanctions.blockedItems,
+    blockedThresholdDays: sanctions.blockedThresholdDays,
+    finePointsPerLoan: sanctions.finePointsPerLoan,
+    finePointsApplied: sanctions.finePointsApplied,
   });
 }

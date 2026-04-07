@@ -25,6 +25,8 @@ if (!databaseUrl) {
 const db = drizzle(databaseUrl);
 const DEFAULT_MAX_DAYS = 15;
 const DEFAULT_BOOK_COVER_URL = '/cover_2.jpeg';
+const PROLONGED_OVERDUE_DAYS = 7;
+const PROLONGED_OVERDUE_FINE_POINTS = 10;
 
 const vapidPublic = process.env.VAPID_PUBLIC_KEY;
 const vapidPrivate = process.env.VAPID_PRIVATE_KEY;
@@ -113,6 +115,136 @@ const createPhysicalCopies = async (bookId: number, copies: number) => {
     currTransactionId: 0,
   }));
   await db.insert(schema.physicalBooks).values(rows);
+};
+
+const toValidDate = (value: unknown) => {
+  if (!value) return null;
+  const parsed = value instanceof Date ? value : new Date(String(value));
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+};
+
+const startOfDay = (value: Date) =>
+  new Date(value.getFullYear(), value.getMonth(), value.getDate());
+
+const getOverdueDays = (dueDate: Date, now = new Date()) =>
+  Math.max(
+    0,
+    Math.floor((startOfDay(now).getTime() - startOfDay(dueDate).getTime()) / (24 * 60 * 60 * 1000))
+  );
+
+const buildSanctionReason = (items: Array<{ title: string; overdueDays: number }>) => {
+  if (items.length === 0) return null;
+  if (items.length === 1) {
+    return `Conta bloqueada: "${items[0].title}" esta ${items[0].overdueDays} dia(s) em atraso.`;
+  }
+  return `Conta bloqueada: existem ${items.length} livros com atraso prolongado.`;
+};
+
+const ensureUserScoreRow = async (userId: string) => {
+  const score = await db.select().from(schema.userScores).where(eq(schema.userScores.userId, userId)).limit(1);
+  if (score[0]) return score[0];
+  const created = await db.insert(schema.userScores).values({
+    userId,
+    points: 100,
+    lastUpdated: new Date(),
+  }).returning();
+  return created[0];
+};
+
+const applyLoanSanctions = async (userId: string) => {
+  if (!userId) {
+    return {
+      blocked: false,
+      reason: null,
+      blockedItems: [],
+      overdueItems: [],
+      finePointsApplied: 0,
+      blockedThresholdDays: PROLONGED_OVERDUE_DAYS,
+      finePointsPerLoan: PROLONGED_OVERDUE_FINE_POINTS,
+    };
+  }
+
+  const borrowedTransactions = await db.select().from(schema.transactions).where(and(
+    eq(schema.transactions.userId, userId),
+    eq(schema.transactions.status, 'BORROWED')
+  ));
+
+  const overdueItems: Array<{
+    tid: number;
+    bookId: number | null;
+    title: string;
+    catalogCode: string | null;
+    dueDate: string | null;
+    overdueDays: number;
+    fineApplied: boolean;
+  }> = [];
+  const newlyPenalizedTransactionIds: number[] = [];
+
+  for (const transaction of borrowedTransactions) {
+    const physical = await db.select().from(schema.physicalBooks)
+      .where(eq(schema.physicalBooks.pid, transaction.physicalBookId))
+      .limit(1);
+    const dueDate = toValidDate(physical[0]?.returnDate);
+    if (!dueDate) continue;
+    const overdueDays = getOverdueDays(dueDate);
+    if (overdueDays <= 0) continue;
+
+    const book = physical[0]?.bookId
+      ? await db.select({
+        id: schema.books.id,
+        title: schema.books.title,
+        catalogCode: schema.books.catalogCode,
+      }).from(schema.books).where(eq(schema.books.id, physical[0].bookId)).limit(1)
+      : [];
+
+    overdueItems.push({
+      tid: transaction.tid,
+      bookId: book[0]?.id ?? null,
+      title: book[0]?.title ?? 'Livro sem titulo',
+      catalogCode: book[0]?.catalogCode ?? null,
+      dueDate: dueDate.toISOString(),
+      overdueDays,
+      fineApplied: Boolean(transaction.scoreApplied),
+    });
+
+    if (overdueDays >= PROLONGED_OVERDUE_DAYS && !transaction.scoreApplied) {
+      newlyPenalizedTransactionIds.push(transaction.tid);
+    }
+  }
+
+  let finePointsApplied = 0;
+  if (newlyPenalizedTransactionIds.length > 0) {
+    const score = await ensureUserScoreRow(userId);
+    finePointsApplied = newlyPenalizedTransactionIds.length * PROLONGED_OVERDUE_FINE_POINTS;
+    await db.update(schema.userScores).set({
+      points: Math.max((score?.points ?? 100) - finePointsApplied, 0),
+      lastUpdated: new Date(),
+    }).where(eq(schema.userScores.userId, userId));
+
+    for (const tid of newlyPenalizedTransactionIds) {
+      await db.update(schema.transactions)
+        .set({ scoreApplied: true })
+        .where(eq(schema.transactions.tid, tid));
+    }
+
+    await addNotification(
+      userId,
+      'Multa por atraso prolongado',
+      `Foram descontados ${finePointsApplied} ponto(s) por atraso prolongado em ${newlyPenalizedTransactionIds.length} emprestimo(s).`
+    );
+  }
+
+  const blockedItems = overdueItems.filter((item) => item.overdueDays >= PROLONGED_OVERDUE_DAYS);
+
+  return {
+    blocked: blockedItems.length > 0,
+    reason: buildSanctionReason(blockedItems),
+    blockedItems,
+    overdueItems,
+    finePointsApplied,
+    blockedThresholdDays: PROLONGED_OVERDUE_DAYS,
+    finePointsPerLoan: PROLONGED_OVERDUE_FINE_POINTS,
+  };
 };
 
 const normalizeCourseCode = (value: string | null | undefined) =>
@@ -674,6 +806,14 @@ async function startServer() {
   app.post('/api/transactions/borrow', async (req, res) => {
     const { bookId, userId } = req.body;
     if (!bookId || !userId) return res.status(400).json({ error: 'Dados em falta' });
+    const sanctions = await applyLoanSanctions(userId);
+    if (sanctions.blocked) {
+      return res.status(403).json({
+        error: sanctions.reason || 'Conta bloqueada por atraso prolongado.',
+        blocked: true,
+        sanctions,
+      });
+    }
 
     const now = new Date();
     const book = await db.select().from(schema.books).where(eq(schema.books.id, bookId)).limit(1);
@@ -724,6 +864,14 @@ async function startServer() {
     const adminId = (req as any).user?.id || 'system';
 
     if (!Array.isArray(bookIds) || !userId) return res.status(400).json({ error: 'Dados em falta' });
+    const sanctions = await applyLoanSanctions(userId);
+    if (sanctions.blocked) {
+      return res.status(403).json({
+        error: sanctions.reason || 'Utilizador bloqueado por atraso prolongado.',
+        blocked: true,
+        sanctions,
+      });
+    }
 
     const userRecord = await db.select().from(schema.users)
       .where(eq(schema.users.clerkId, userId))
@@ -803,6 +951,14 @@ async function startServer() {
   app.post('/api/transactions/accept', async (req, res) => {
     const { tid, userId } = req.body || {};
     if (!tid || !userId) return res.status(400).json({ error: 'Dados invalidos' });
+    const sanctions = await applyLoanSanctions(userId);
+    if (sanctions.blocked) {
+      return res.status(403).json({
+        error: sanctions.reason || 'Utilizador bloqueado por atraso prolongado.',
+        blocked: true,
+        sanctions,
+      });
+    }
 
     const adminId = (req as any).user?.id ?? 'system';
     const tx = await db.select().from(schema.transactions).where(eq(schema.transactions.tid, tid)).limit(1);
@@ -1250,8 +1406,53 @@ async function startServer() {
   app.get('/api/user/score', async (req, res) => {
     const userId = (req as any).user?.id;
     if (!userId) return res.status(401).json({ error: 'Nao autorizado' });
+    await applyLoanSanctions(userId);
     const score = await db.select().from(schema.userScores).where(eq(schema.userScores.userId, userId)).limit(1);
     res.json({ points: score[0]?.points ?? 100 });
+  });
+
+  app.get('/api/user/borrow-status', async (req, res) => {
+    const userId = (req as any).user?.id;
+    if (!userId) return res.status(401).json({ error: 'Nao autorizado' });
+
+    const sanctions = await applyLoanSanctions(userId);
+    const transactions = await db.select().from(schema.transactions).where(eq(schema.transactions.userId, userId));
+
+    const activeRows = await Promise.all(
+      transactions
+        .filter((tx) => {
+          const status = normalizeStatus(tx.status);
+          return status === 'pending' || status === 'borrowed';
+        })
+        .map(async (tx) => {
+          const physical = await db.select().from(schema.physicalBooks)
+            .where(eq(schema.physicalBooks.pid, tx.physicalBookId))
+            .limit(1);
+          return {
+            tid: tx.tid,
+            status: normalizeStatus(tx.status),
+            bookId: physical[0]?.bookId ?? null,
+          };
+        })
+    );
+
+    const byBookId = activeRows.reduce<Record<number, { tid: number; status: string }>>((acc, row) => {
+      if (!row.bookId) return acc;
+      acc[row.bookId] = { tid: row.tid, status: row.status || '' };
+      return acc;
+    }, {});
+
+    res.json({
+      activeBookIds: Object.keys(byBookId).map(Number),
+      byBookId,
+      blocked: sanctions.blocked,
+      blockReason: sanctions.reason,
+      overdueItems: sanctions.overdueItems,
+      blockedItems: sanctions.blockedItems,
+      blockedThresholdDays: sanctions.blockedThresholdDays,
+      finePointsPerLoan: sanctions.finePointsPerLoan,
+      finePointsApplied: sanctions.finePointsApplied,
+    });
   });
 
   app.get('/api/user/student-info', async (req, res) => {
