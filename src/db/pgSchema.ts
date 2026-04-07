@@ -122,6 +122,18 @@ export const notifications = pgTable('notifications', {
   createdAt: timestamp('created_at').defaultNow().notNull(),
 });
 
+export const auditLogs = pgTable('audit_logs', {
+  id: serial('id').primaryKey(),
+  actorUserId: varchar('actor_user_id', { length: 255 }).notNull(),
+  actorRole: varchar('actor_role', { length: 30 }).notNull(),
+  action: varchar('action', { length: 120 }).notNull(),
+  entityType: varchar('entity_type', { length: 60 }).notNull(),
+  entityId: varchar('entity_id', { length: 255 }),
+  details: varchar('details', { length: 500 }).notNull(),
+  metadata: varchar('metadata', { length: 4000 }),
+  createdAt: timestamp('created_at').defaultNow().notNull(),
+});
+
 export const pushSubscriptions = pgTable('push_subscriptions', {
   id: serial('id').primaryKey(),
   userId: varchar('user_id', { length: 255 }).notNull(),

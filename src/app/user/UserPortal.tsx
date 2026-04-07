@@ -11,6 +11,7 @@ import { StudentSticker } from '@/components/StudentSticker.tsx';
 import { BookDetailsModal } from '@/components/BookDetailsModal.tsx';
 import { useNavigate } from 'react-router-dom';
 import { resolveBookFileUrl } from '@/utils/file.ts';
+import { getRoleLabel } from '@/utils/roles.ts';
 import { Toast } from '@/components/Toast.tsx';
 
 interface UserPortalProps {
@@ -251,7 +252,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
         <div className="flex-1">
           <h1 className="text-3xl font-bold">Bem-vindo, leitor</h1>
           <p className="text-gray-500">
-            Perfil: {user.isAdmin ? 'Administrador' : user.role === 'student' ? 'Estudante' : 'Externo'}.
+            Perfil: {getRoleLabel(user.role)}.
             Explore a nossa colecao de {books.length} livros.
           </p>
         </div>

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getUserRole } from "@/utils/roles";
+import { getUserRole } from "@/utils/serverRoles";
 
 export async function POST(request: Request) {
   try {

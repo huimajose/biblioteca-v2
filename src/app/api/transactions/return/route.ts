@@ -3,6 +3,8 @@ import { eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
 import { notifyUser } from "@/app/api/_utils/notify";
+import { appendAuditLog, resolveActorRole } from "@/app/api/_utils/audit";
+import { canAccessAdminSection } from "@/utils/roles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -20,6 +22,11 @@ export async function POST(req: Request) {
     }
 
     const db = getDb();
+    const actorUserId = req.headers.get("x-user-id") || "system";
+    const actorRole = await resolveActorRole(db, actorUserId);
+    if (!canAccessAdminSection(actorRole, "transactions")) {
+      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+    }
     const transaction = await db
       .select()
       .from(schema.transactions)
@@ -70,6 +77,17 @@ export async function POST(req: Request) {
       "Livro devolvido",
       "A devolucao foi registada com sucesso."
     );
+    await appendAuditLog(db, {
+      actorUserId,
+      action: "return-transaction",
+      entityType: "transaction",
+      entityId: transactionId,
+      details: `Devolucao registada para a transacao ${transactionId}.`,
+      metadata: {
+        physicalBookId: transaction[0].physicalBookId,
+        userId: transaction[0].userId,
+      },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

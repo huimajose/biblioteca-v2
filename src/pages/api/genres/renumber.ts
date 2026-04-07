@@ -1,6 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { drizzle } from "drizzle-orm/neon-http";
 import { sql } from "drizzle-orm";
+import { appendAuditLog, resolveActorRole } from "@/app/api/_utils/audit";
+import { canAccessAdminSection } from "@/utils/roles";
 
 type ErrorResponse = { error: string };
 
@@ -107,8 +109,21 @@ export default async function handler(
 
   try {
     const db = getDb();
+    const actorUserId = String(req.headers["x-user-id"] || "");
+    const actorRole = await resolveActorRole(db, actorUserId);
+    if (!canAccessAdminSection(actorRole, "courses")) {
+      return res.status(403).json({ error: "Acesso negado" });
+    }
     const genreName = String(req.body?.genreName || "").trim();
     await renumberBooksForGenre(db, genreName || undefined);
+    await appendAuditLog(db, {
+      actorUserId,
+      action: "renumber-course",
+      entityType: "course",
+      entityId: genreName || "all",
+      details: genreName ? `Curso "${genreName}" renumerado.` : "Todos os cursos foram renumerados.",
+      metadata: { scope: genreName || "all" },
+    });
     return res.status(200).json({ success: true, scope: genreName || "all" });
   } catch (error: any) {
     return res.status(500).json({ error: error?.message || "Erro ao renumerar curso" });

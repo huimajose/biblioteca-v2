@@ -10,7 +10,7 @@ import { addCenteredWatermarkToAllPages, loadWatermarkImage } from '@/utils/pdfW
 export const UsersPage = () => {
   const actorUserId = typeof window !== 'undefined' ? window.localStorage.getItem('userId') || '' : '';
   const [users, setUsers] = useState<any[]>([]);
-  const [roleFilter, setRoleFilter] = useState<'all' | 'student' | 'external' | 'admin'>('all');
+  const [roleFilter, setRoleFilter] = useState<'all' | 'student' | 'external' | 'admin' | 'operator' | 'catalogador'>('all');
   const [pdfOpen, setPdfOpen] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(15);
@@ -25,10 +25,10 @@ export const UsersPage = () => {
   });
 
   useEffect(() => {
-    fetch('/api/admin/users')
+    fetch('/api/admin/users', { headers: { 'x-user-id': actorUserId } })
       .then(res => res.json())
       .then(data => setUsers(Array.isArray(data) ? data : data?.data ?? []));
-  }, []);
+  }, [actorUserId]);
 
   useEffect(() => {
     if (!pdfOpen) return;
@@ -61,7 +61,7 @@ export const UsersPage = () => {
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
-  const exportUsersPdf = async (role: 'all' | 'student' | 'external' | 'admin') => {
+  const exportUsersPdf = async (role: 'all' | 'student' | 'external' | 'admin' | 'operator' | 'catalogador') => {
     const list = role === 'all' ? users : users.filter((u) => (u.role || 'external') === role);
     const doc = new jsPDF('p', 'pt');
     doc.setFontSize(16);
@@ -170,6 +170,8 @@ export const UsersPage = () => {
               <option value="student">Estudantes</option>
               <option value="external">Externos</option>
               <option value="admin">Administradores</option>
+              <option value="operator">Operadores</option>
+              <option value="catalogador">Catalogadores</option>
             </select>
           </div>
           <div className="relative" ref={pdfMenuRef}>
@@ -191,6 +193,12 @@ export const UsersPage = () => {
                 </button>
                 <button className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50" onClick={() => exportUsersPdf('admin')}>
                   Apenas administradores
+                </button>
+                <button className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50" onClick={() => exportUsersPdf('operator')}>
+                  Apenas operadores
+                </button>
+                <button className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50" onClick={() => exportUsersPdf('catalogador')}>
+                  Apenas catalogadores
                 </button>
               </div>
             )}
@@ -230,6 +238,8 @@ export const UsersPage = () => {
                       <option value="external">Externo</option>
                       <option value="student">Estudante</option>
                       <option value="admin">Administrador</option>
+                      <option value="operator">Operador</option>
+                      <option value="catalogador">Catalogador</option>
                     </select>
                   </td>
                   <td className="p-4 text-right">
@@ -296,6 +306,8 @@ export const UsersPage = () => {
                   <option value="external">Externo</option>
                   <option value="student">Estudante</option>
                   <option value="admin">Administrador</option>
+                  <option value="operator">Operador</option>
+                  <option value="catalogador">Catalogador</option>
                 </select>
               </div>
               {saveError && <p className="text-xs text-red-600">{saveError}</p>}

@@ -2,7 +2,7 @@ import { db } from '@/db';
 import * as schema from '@/db/schema';
 import { eq, and } from 'drizzle-orm';
 import { STUDENT_BORROW_LIMIT, EXTERNAL_BORROW_LIMIT } from '@/constants';
-import { getUserRole } from '@/utils/roles';
+import { getUserRole } from '@/utils/serverRoles';
 
 const ADMIN_FALLBACK_ID = 'admin';
 

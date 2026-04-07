@@ -3,6 +3,8 @@ import { eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
 import { notifyUser } from "@/app/api/_utils/notify";
+import { appendAuditLog, resolveActorRole } from "@/app/api/_utils/audit";
+import { canAccessAdminSection } from "@/utils/roles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -22,6 +24,10 @@ export async function POST(req: Request) {
 
     const adminId = req.headers.get("x-admin-id") || req.headers.get("x-user-id") || "system";
     const db = getDb();
+    const actorRole = await resolveActorRole(db, adminId);
+    if (!canAccessAdminSection(actorRole, "transactions")) {
+      return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
+    }
 
     const tx = await db
       .select()
@@ -55,6 +61,14 @@ export async function POST(req: Request) {
       "Pedido rejeitado",
       "O seu pedido de emprestimo foi rejeitado."
     );
+    await appendAuditLog(db, {
+      actorUserId: adminId,
+      action: "reject-transaction",
+      entityType: "transaction",
+      entityId: tid,
+      details: `Pedido de emprestimo rejeitado para o utilizador ${userId}.`,
+      metadata: { userId },
+    });
 
     return NextResponse.json({ success: true });
   } catch (error) {

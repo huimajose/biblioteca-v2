@@ -1,4 +1,4 @@
-import { getUserRole } from '@/utils/roles';
+import { getUserRole } from '@/utils/serverRoles';
 
 export async function isStudent(userId: string): Promise<boolean> {
   const role = await getUserRole(userId);

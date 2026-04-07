@@ -1,10 +1,10 @@
 import { useClerk, useUser } from '@clerk/clerk-react';
-
-export type UserRole = 'admin' | 'student' | 'external';
+import { isStaffRole, normalizeUserRole, type UserRole } from '@/utils/roles.ts';
 
 export interface User {
   id: string;
   isAdmin: boolean;
+  isStaff: boolean;
   email: string;
   role: UserRole;
   fullName?: string;
@@ -19,11 +19,7 @@ export function useAuth() {
     isSignedIn && user
       ? (() => {
           const metadata = user.publicMetadata as { role?: string; userType?: string } | undefined;
-          const rawRole = metadata?.role || metadata?.userType || 'external';
-          const role: UserRole =
-            rawRole === 'admin' || rawRole === 'student' || rawRole === 'external'
-              ? rawRole
-              : 'external';
+          const role = normalizeUserRole(metadata?.role || metadata?.userType || 'external');
           return {
             id: user.id,
             email:
@@ -32,6 +28,7 @@ export function useAuth() {
               '',
             role,
             isAdmin: role === 'admin',
+            isStaff: isStaffRole(role),
             fullName: user.fullName ?? undefined,
             imageUrl: user.imageUrl ?? undefined,
           };

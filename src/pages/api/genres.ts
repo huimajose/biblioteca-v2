@@ -2,6 +2,8 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { drizzle } from "drizzle-orm/neon-http";
 import { and, asc, eq, sql } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
+import { appendAuditLog, resolveActorRole } from "@/app/api/_utils/audit";
+import { canAccessAdminSection } from "@/utils/roles";
 
 type ErrorResponse = { error: string };
 
@@ -36,6 +38,11 @@ export default async function handler(
     }
 
     if (req.method === "POST") {
+      const actorUserId = String(req.headers["x-user-id"] || "");
+      const actorRole = await resolveActorRole(db, actorUserId);
+      if (!canAccessAdminSection(actorRole, "courses")) {
+        return res.status(403).json({ error: "Acesso negado" });
+      }
       const body = req.body || {};
       const name = String(body.name || "").trim();
       if (!name) return res.status(400).json({ error: "Nome do curso obrigatorio" });
@@ -52,10 +59,27 @@ export default async function handler(
         })
         .returning();
 
+      await appendAuditLog(db, {
+        actorUserId,
+        action: "create-course",
+        entityType: "course",
+        entityId: created[0].id,
+        details: `Curso "${created[0].name}" criado.`,
+        metadata: {
+          code: created[0].code ?? null,
+          displayOrder: created[0].displayOrder ?? null,
+        },
+      });
+
       return res.status(200).json(created[0]);
     }
 
     if (req.method === "PUT") {
+      const actorUserId = String(req.headers["x-user-id"] || "");
+      const actorRole = await resolveActorRole(db, actorUserId);
+      if (!canAccessAdminSection(actorRole, "courses")) {
+        return res.status(403).json({ error: "Acesso negado" });
+      }
       const id = Number((Array.isArray(req.query.id) ? req.query.id[0] : req.query.id) || req.body?.id);
       if (Number.isNaN(id)) return res.status(400).json({ error: "Curso invalido" });
 
@@ -87,6 +111,18 @@ export default async function handler(
         .update(schema.books)
         .set({ armario: String(updated[0].defaultArmario || "").trim() || null })
         .where(and(eq(schema.books.genre, updated[0].name), sql`(armario IS NULL OR trim(armario) = '')`));
+
+      await appendAuditLog(db, {
+        actorUserId,
+        action: "update-course",
+        entityType: "course",
+        entityId: id,
+        details: `Curso "${updated[0].name}" atualizado.`,
+        metadata: {
+          previousName: existing[0].name,
+          nextName: updated[0].name,
+        },
+      });
 
       return res.status(200).json(updated[0]);
     }

@@ -1,4 +1,4 @@
-import { getUserRole } from "@/utils/roles";
+import { getUserRole } from "@/utils/serverRoles";
 import { NextResponse } from "next/server";
 
 

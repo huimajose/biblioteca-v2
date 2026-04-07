@@ -53,8 +53,8 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
   useEffect(() => {
     if (isOpen) {
       Promise.all([
-        fetch('/api/admin/users?verified=true').then(res => res.json()).catch(() => []),
-        fetch('/api/admin/student-verifications').then(res => res.json()).catch(() => []),
+        fetch('/api/admin/users?verified=true', { headers: { 'x-user-id': actorUserId } }).then(res => res.json()).catch(() => []),
+        fetch('/api/admin/student-verifications', { headers: { 'x-user-id': actorUserId } }).then(res => res.json()).catch(() => []),
       ]).then(([usersResp, verificationsResp]) => {
         const list = Array.isArray(usersResp) ? usersResp : usersResp?.data ?? [];
         const verifications = Array.isArray(verificationsResp) ? verificationsResp : [];
@@ -83,7 +83,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
       setScanCode('');
       setBookGenreFilter('all');
     }
-  }, [isOpen]);
+  }, [actorUserId, isOpen]);
 
   const filteredUsers = allUsers.filter(u =>
     u.primaryEmail.toLowerCase().includes(userSearch.toLowerCase()) ||

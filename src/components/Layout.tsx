@@ -13,13 +13,15 @@ import {
   ChevronRight,
   BookMarked,
   Bell,
-  UserCircle
+  UserCircle,
+  ShieldCheck
 } from 'lucide-react';
 import { User } from '@/hooks/useAuth.ts';
 import { cn } from '@/utils/cn.ts';
 import { initPushNotifications } from '@/utils/push.ts';
 import { Toast } from '@/components/Toast.tsx';
 import { Button } from './ui/Button';
+import { canAccessAdminSection, getRoleLabel } from '@/utils/roles.ts';
 
 interface LayoutProps {
   user: User;
@@ -43,15 +45,15 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
   const displayEmail = user.email || user.id;
   const displayName = user.fullName || displayEmail;
   const displayInitial = displayName ? displayName[0].toUpperCase() : '?';
-  const roleLabel = user.isAdmin ? 'Administrador' : user.role === 'student' ? 'Estudante' : 'Externo';
+  const roleLabel = getRoleLabel(user.role);
 
   useEffect(() => {
-    if (user.isAdmin) return;
+    if (user.isStaff) return;
     fetch('/api/user/student-info', { headers: { 'x-user-id': user.id } })
       .then(res => res.json())
       .then(data => setVerificationStatus(data?.status ?? null))
       .catch(() => setVerificationStatus(null));
-  }, [user.id, user.isAdmin]);
+  }, [user.id, user.isStaff]);
 
   useEffect(() => {
     initPushNotifications(user.id);
@@ -122,7 +124,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
   }, [user.id]);
 
   useEffect(() => {
-    if (!user.isAdmin) return;
+    if (!user.isStaff) return;
 
     Promise.all([
       fetch('/api/admin/stats').then((res) => res.json()).catch(() => null),
@@ -131,20 +133,23 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
       setPendingTransactionsCount(Number(stats?.pending ?? 0));
       setPendingUsersCount(Array.isArray(pendingUsers) ? pendingUsers.length : 0);
     });
-  }, [user.id, user.isAdmin]);
+  }, [user.id, user.isStaff]);
 
-  const menuItems = user.isAdmin ? [
-    { icon: LayoutDashboard, label: 'Painel', path: '/admin' },
-    { icon: BookOpen, label: 'Livros', path: '/admin/books' },
-    { icon: AlertTriangle, label: 'Revisao acervo', path: '/admin/catalog-review' },
-    { icon: FolderTree, label: 'Cursos', path: '/admin/courses' },
-    { icon: UsersIcon, label: 'Utilizadores', path: '/admin/users', badge: pendingUsersCount },
-    { icon: UsersIcon, label: 'Verificacao estudantes', path: '/admin/student-verifications' },
-    { icon: History, label: 'Transacoes', path: '/admin/transactions', badge: pendingTransactionsCount },
-    { icon: Printer, label: 'Relatorios', path: '/admin/reports' },
-    { icon: BookMarked, label: 'Modo leitor', path: '/admin/as-user' },
+  const adminMenuItems = [
+    canAccessAdminSection(user.role, 'dashboard') ? { icon: LayoutDashboard, label: 'Painel', path: '/admin' } : null,
+    canAccessAdminSection(user.role, 'books') ? { icon: BookOpen, label: 'Livros', path: '/admin/books' } : null,
+    canAccessAdminSection(user.role, 'catalog-review') ? { icon: AlertTriangle, label: 'Revisao acervo', path: '/admin/catalog-review' } : null,
+    canAccessAdminSection(user.role, 'courses') ? { icon: FolderTree, label: 'Cursos', path: '/admin/courses' } : null,
+    canAccessAdminSection(user.role, 'users') ? { icon: UsersIcon, label: 'Utilizadores', path: '/admin/users', badge: pendingUsersCount } : null,
+    canAccessAdminSection(user.role, 'student-verifications') ? { icon: UsersIcon, label: 'Verificacao estudantes', path: '/admin/student-verifications' } : null,
+    canAccessAdminSection(user.role, 'transactions') ? { icon: History, label: 'Transacoes', path: '/admin/transactions', badge: pendingTransactionsCount } : null,
+    canAccessAdminSection(user.role, 'reports') ? { icon: Printer, label: 'Relatorios', path: '/admin/reports' } : null,
+    canAccessAdminSection(user.role, 'audit') ? { icon: ShieldCheck, label: 'Auditoria', path: '/admin/audit' } : null,
+    canAccessAdminSection(user.role, 'reader-mode') ? { icon: BookMarked, label: 'Modo leitor', path: '/admin/as-user' } : null,
     { icon: UserCircle, label: 'Perfil', path: '/profile' },
-  ] : [
+  ].filter(Boolean) as Array<{ icon: any; label: string; path: string; badge?: number }>;
+
+  const menuItems = user.isStaff ? adminMenuItems : [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
     { icon: Library, label: 'Biblioteca', path: '/' },
     { icon: BookMarked, label: 'A Minha Estante', path: '/shelf' },
@@ -267,7 +272,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
               <p className="text-sm font-bold">{displayName}</p>
               <div className="flex items-center justify-end gap-2">
                 <p className="text-[10px] text-gray-500 uppercase tracking-widest">{roleLabel}</p>
-                {user.role === 'student' && !user.isAdmin && (
+                {user.role === 'student' && !user.isStaff && (
                   <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-lime-100 text-lime-700">
                     Estudante
                   </span>

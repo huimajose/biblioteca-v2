@@ -12,6 +12,7 @@ import { TransactionsPage } from './app/admin/TransactionsPage.tsx';
 import { StudentVerificationsPage } from './app/admin/StudentVerificationsPage.tsx';
 import CoursesPage from './app/admin/CoursesPage.tsx';
 import CatalogReviewPage from './app/admin/CatalogReviewPage.tsx';
+import AdminAuditPage from './app/admin/AdminAuditPage.tsx';
 import { StudentVerificationForm } from './app/user/StudentVerificationForm.tsx';
 import { UserShelfPage } from './app/user/UserShelfPage.tsx';
 import { UserHistoryPage } from './app/user/UserHistoryPage.tsx';
@@ -22,11 +23,16 @@ import { HomePage } from './app/public/HomePage.tsx';
 import { ContactsPage } from './app/public/ContactsPage.tsx';
 import { AuthShell } from './components/AuthShell.tsx';
 import { PdfReaderPage } from './app/shared/PdfReaderPage.tsx';
+import { canAccessAdminSection } from './utils/roles.ts';
 
 export default function App() {
   const { auth, logout, isLoaded } = useAuth();
 
   if (!isLoaded) return null;
+
+  const staffHome = auth?.role === 'operator' ? '/admin/transactions' : auth?.role === 'catalogador' ? '/admin/books' : '/admin';
+  const staffRoute = (section: Parameters<typeof canAccessAdminSection>[1], element: JSX.Element) =>
+    auth && canAccessAdminSection(auth.role, section) ? element : <Navigate to={staffHome} replace />;
 
   const clerkAppearance = {
     variables: {
@@ -94,22 +100,23 @@ export default function App() {
         {auth && (
           <Layout user={auth} onLogout={logout}>
             <Routes>
-              {auth.isAdmin ? (
+              {auth.isStaff ? (
                 <>
-                  <Route path="/admin" element={<AdminDashboard />} />
-                  <Route path="/admin/books" element={<AdminBooksPage />} />
-                  <Route path="/admin/catalog-review" element={<CatalogReviewPage />} />
-                  <Route path="/admin/courses" element={<CoursesPage />} />
-                  <Route path="/admin/books/new" element={<BookForm />} />
-                  <Route path="/admin/books/edit" element={<BookForm />} />
-                  <Route path="/admin/users" element={<UsersPage />} />
-                  <Route path="/admin/student-verifications" element={<StudentVerificationsPage />} />
-                  <Route path="/admin/transactions" element={<TransactionsPage />} />
-                  <Route path="/admin/reports" element={<ReportsPage />} />
-                  <Route path="/admin/as-user" element={<UserPortal user={auth} />} />
+                  <Route path="/admin" element={staffRoute('dashboard', <AdminDashboard />)} />
+                  <Route path="/admin/books" element={staffRoute('books', <AdminBooksPage />)} />
+                  <Route path="/admin/catalog-review" element={staffRoute('catalog-review', <CatalogReviewPage />)} />
+                  <Route path="/admin/courses" element={staffRoute('courses', <CoursesPage />)} />
+                  <Route path="/admin/books/new" element={staffRoute('books', <BookForm />)} />
+                  <Route path="/admin/books/edit" element={staffRoute('books', <BookForm />)} />
+                  <Route path="/admin/users" element={staffRoute('users', <UsersPage />)} />
+                  <Route path="/admin/student-verifications" element={staffRoute('student-verifications', <StudentVerificationsPage />)} />
+                  <Route path="/admin/transactions" element={staffRoute('transactions', <TransactionsPage />)} />
+                  <Route path="/admin/reports" element={staffRoute('reports', <ReportsPage />)} />
+                  <Route path="/admin/audit" element={staffRoute('audit', <AdminAuditPage />)} />
+                  <Route path="/admin/as-user" element={staffRoute('reader-mode', <UserPortal user={auth} />)} />
                   <Route path="/profile/*" element={<UserProfilePage user={auth} />} />
                   <Route path="/reader/:bookId" element={<PdfReaderPage user={auth} />} />
-                  <Route path="*" element={<Navigate to="/admin" />} />
+                  <Route path="*" element={<Navigate to={staffHome} />} />
                 </>
               ) : (
                 <>
