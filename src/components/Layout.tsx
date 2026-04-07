@@ -166,12 +166,22 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
       : [{ icon: UsersIcon, label: 'Verificacao estudante', path: '/student-verification' }]),
   ];
 
+  const userTourDescriptions: Record<string, string> = {
+    '/dashboard': 'Veja o resumo da sua atividade, continue leituras em curso, acompanhe metas e consulte os indicadores mais importantes da sua conta.',
+    '/': 'Explore o catalogo completo, pesquise livros, abra detalhes, guarde favoritos e encontre rapidamente livros fisicos ou digitais.',
+    '/shelf': 'Aceda aos livros digitais que ja adicionou, retome leituras guardadas e organize os seus favoritos num unico lugar.',
+    '/lists': 'Crie listas pessoais de leitura para separar livros por tema, prioridade, curso ou qualquer plano de estudo que queira seguir.',
+    '/history': 'Consulte o seu historico de pedidos, devolucoes e requisicoes rejeitadas para acompanhar tudo o que ja passou pela sua conta.',
+    '/profile': 'Atualize os seus dados pessoais, reveja informacoes da conta e mantenha o seu perfil pronto para uso dentro do sistema.',
+    '/student-verification': 'Envie ou acompanhe a verificacao estudantil para desbloquear beneficios e garantir o acesso correto aos recursos da biblioteca.',
+  };
+
   const userTourSteps = !user.isStaff
     ? [
         ...menuItems.map((item) => ({
           key: `menu-${item.path === '/' ? 'home' : item.path.replace(/[^a-z0-9]+/gi, '-')}`,
           title: item.label,
-          description: `Use esta opcao para abrir ${item.label.toLowerCase()} e explorar essa area do sistema.`,
+          description: userTourDescriptions[item.path] || `Use esta opcao para abrir ${item.label.toLowerCase()} e explorar essa area do sistema.`,
         })),
         {
           key: 'notifications',
