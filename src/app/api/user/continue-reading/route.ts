@@ -23,7 +23,7 @@ const mapBookRow = (row: any) => ({
   isbn: row.isbn,
   fileUrl: row.fileUrl ?? null,
   documentType: row.document_type ?? 1,
-  isDigital: row.is_digital ?? Boolean(row.fileUrl),
+  isDigital: Boolean(row.is_digital || row.fileUrl),
   createdAt: row.created_at ?? row.createdAt,
 });
 
@@ -68,7 +68,7 @@ export async function GET(req: Request) {
 
         const bookRow = book[0];
         if (!bookRow) return null;
-        const isDigital = bookRow.is_digital ?? Boolean(bookRow.fileUrl);
+        const isDigital = Boolean(bookRow.is_digital || bookRow.fileUrl);
         if (!isDigital) return null;
 
         return {
