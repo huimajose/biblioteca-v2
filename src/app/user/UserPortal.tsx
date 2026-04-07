@@ -582,6 +582,16 @@ export const UserPortal = ({ user }: UserPortalProps) => {
                   <span className="text-xs font-medium text-gray-400">{book.genre}</span>
                   {book.isDigital || book.fileUrl ? (
                     <div className="flex items-center gap-2">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          trackClick(book);
+                          setSelectedBook(book);
+                        }}
+                        className="text-[10px] bg-gray-100 text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-200 transition-colors font-bold uppercase"
+                      >
+                        Detalhes
+                      </button>
                       {resolveFileUrl(book.fileUrl, book.id) && (
                         <button
                           onClick={(e) => { e.stopPropagation(); openReader(book); }}
@@ -619,6 +629,16 @@ export const UserPortal = ({ user }: UserPortalProps) => {
                       {book.availableCopies > 0 ? `${book.availableCopies} disponiveis` : 'Esgotado'}
                     </span>
                     <div className="flex gap-1">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          trackClick(book);
+                          setSelectedBook(book);
+                        }}
+                        className="text-[10px] bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200 transition-colors font-bold uppercase"
+                      >
+                        Detalhes
+                      </button>
                       {user.isAdmin && (
                         <button 
                           onClick={(e) => { e.stopPropagation(); setSelectedLabel(book); }}
