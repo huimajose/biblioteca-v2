@@ -459,6 +459,10 @@ export const UserPortal = ({ user }: UserPortalProps) => {
         </select>
       </div>
 
+      <p className="text-xs text-gray-400">
+        Para guardar um livro numa lista de leitura, abra o detalhe do livro e use o botao `Guardar em lista`.
+      </p>
+
       {borrowBlock.blocked && (
         <Card className="border border-rose-200 bg-rose-50 p-4">
           <h2 className="text-sm font-bold uppercase tracking-wider text-rose-700">Conta bloqueada</h2>
