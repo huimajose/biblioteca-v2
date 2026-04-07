@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, BookOpen, Loader2 } from 'lucide-react';
+import { Search, BookOpen, Loader2, Star } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Card } from '@/components/ui/Card.tsx';
 import { User } from '@/hooks/useAuth.ts';
@@ -34,6 +34,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
   const [genres, setGenres] = useState<any[]>([]);
   const [genreFilter, setGenreFilter] = useState<string>('all');
   const [shelfIds, setShelfIds] = useState<Set<number>>(new Set());
+  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
   const [activeBorrowMap, setActiveBorrowMap] = useState<Record<number, { tid: number; status: string }>>({});
   const [borrowBlock, setBorrowBlock] = useState<{
     blocked: boolean;
@@ -44,6 +45,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
   const [borrowLoading, setBorrowLoading] = useState<Record<number, boolean>>({});
   const [reserveLoading, setReserveLoading] = useState<Record<number, boolean>>({});
   const [shelfLoading, setShelfLoading] = useState<Record<number, boolean>>({});
+  const [favoriteLoading, setFavoriteLoading] = useState<Record<number, boolean>>({});
   const [toast, setToast] = useState<{ title: string; message: string } | null>(null);
 
   useEffect(() => {
@@ -62,6 +64,13 @@ export const UserPortal = ({ user }: UserPortalProps) => {
         setShelfIds(ids);
       })
       .catch(() => setShelfIds(new Set()));
+    fetch('/api/user/favorites', { headers: { 'x-user-id': user.id } })
+      .then(res => res.json())
+      .then(data => {
+        const ids = Array.isArray(data?.bookIds) ? data.bookIds : [];
+        setFavoriteIds(new Set(ids.filter(Boolean)));
+      })
+      .catch(() => setFavoriteIds(new Set()));
     fetch('/api/user/borrow-status', { headers: { 'x-user-id': user.id } })
       .then(res => res.json())
       .then(data => {
@@ -230,6 +239,36 @@ export const UserPortal = ({ user }: UserPortalProps) => {
     }
   };
 
+  const handleToggleFavorite = async (bookId: number) => {
+    if (favoriteLoading[bookId]) return;
+    const nextFavorite = !favoriteIds.has(bookId);
+    setFavoriteLoading((prev) => ({ ...prev, [bookId]: true }));
+    try {
+      const res = await fetch(`/api/books/${bookId}/favorite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user.id,
+        },
+        body: JSON.stringify({ favorite: nextFavorite }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        notify('Erro ao atualizar favorito', data?.message || 'Nao foi possivel atualizar favoritos.');
+        return;
+      }
+      setFavoriteIds((prev) => {
+        const next = new Set(prev);
+        if (nextFavorite) next.add(bookId);
+        else next.delete(bookId);
+        return next;
+      });
+      notify(nextFavorite ? 'Adicionado a ler depois' : 'Removido dos favoritos', data?.message || '');
+    } finally {
+      setFavoriteLoading((prev) => ({ ...prev, [bookId]: false }));
+    }
+  };
+
   const resolveFileUrl = (fileUrl?: string | null, bookId?: number) =>
     resolveBookFileUrl(fileUrl, bookId);
 
@@ -267,6 +306,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
   const isBorrowing = (bookId: number) => Boolean(borrowLoading[bookId]);
   const isReserving = (bookId: number) => Boolean(reserveLoading[bookId]);
   const isAddingShelf = (bookId: number) => Boolean(shelfLoading[bookId]);
+  const isTogglingFavorite = (bookId: number) => Boolean(favoriteLoading[bookId]);
   const getBorrowStatus = (bookId: number) => String(activeBorrowMap[bookId]?.status || '').toLowerCase();
   const hasActiveBorrowRequest = (bookId: number) => Boolean(activeBorrowMap[bookId]);
   const borrowBlockedLabel = borrowBlock.blocked ? 'Bloqueado por atraso' : null;
@@ -423,6 +463,21 @@ export const UserPortal = ({ user }: UserPortalProps) => {
                   className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
                   referrerPolicy="no-referrer" 
                 />
+                <button
+                  className={`absolute top-2 left-2 rounded-full p-2 shadow-sm transition-colors ${favoriteIds.has(book.id) ? 'bg-amber-500 text-white' : 'bg-white/90 text-gray-500 hover:text-amber-500'}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleToggleFavorite(book.id);
+                  }}
+                  disabled={isTogglingFavorite(book.id)}
+                  title={favoriteIds.has(book.id) ? 'Remover de ler depois' : 'Marcar para ler depois'}
+                >
+                  {isTogglingFavorite(book.id) ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Star className={`w-4 h-4 ${favoriteIds.has(book.id) ? 'fill-current' : ''}`} />
+                  )}
+                </button>
                 <div className="absolute top-2 right-2 flex flex-col gap-1 items-end">
                   {book.fileUrl && book.availableCopies > 0 ? (
                     <span className="px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider shadow-sm bg-lime-100 text-lime-700">
@@ -573,6 +628,9 @@ export const UserPortal = ({ user }: UserPortalProps) => {
             onBorrow={handleBorrow}
             onReserve={handleReserve}
             onAddToShelf={handleAddToShelf}
+            onToggleFavorite={handleToggleFavorite}
+            favoriteActive={favoriteIds.has(selectedBook?.id)}
+            favoriteLoading={isTogglingFavorite(selectedBook?.id)}
             resolveFileUrl={(fileUrl) => resolveFileUrl(fileUrl, selectedBook?.id)}
                           onReadPdf={openReader}
                           borrowLoading={isBorrowing(selectedBook?.id)}

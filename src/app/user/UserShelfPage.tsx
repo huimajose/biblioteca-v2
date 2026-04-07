@@ -171,6 +171,9 @@ export const UserShelfPage = ({ user }: UserShelfPageProps) => {
           onBorrow={() => {}}
           onReserve={() => {}}
           onAddToShelf={() => {}}
+          onToggleFavorite={toggleFavorite}
+          favoriteActive={Boolean(shelf.find((entry) => entry?.book?.id === selected?.id)?.favorite)}
+          favoriteLoading={Boolean(favoriteLoading[selected?.id])}
           resolveFileUrl={(fileUrl) => resolveFileUrl(fileUrl, selected?.id)}
           onReadPdf={openReader}
         />

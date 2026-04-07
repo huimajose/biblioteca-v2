@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
-import { ensureUserShelfFavoriteColumn } from "@/app/api/_utils/userShelf";
+import { ensureUserFavoritesTable } from "@/app/api/_utils/userShelf";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -25,33 +25,31 @@ export async function POST(req: Request, { params }: { params: Params }) {
     }
 
     const db = getDb();
-    await ensureUserShelfFavoriteColumn(db);
+    await ensureUserFavoritesTable(db);
 
     const [existing] = await db
       .select()
-      .from(schema.userDigitalBooks)
+      .from(schema.userBookFavorites)
       .where(
         and(
-          eq(schema.userDigitalBooks.userId, userId),
-          eq(schema.userDigitalBooks.bookId, bookId)
+          eq(schema.userBookFavorites.userId, userId),
+          eq(schema.userBookFavorites.bookId, bookId)
         )
       )
       .limit(1);
 
-    if (!existing) {
-      return NextResponse.json(
-        { success: false, message: "Adicione primeiro o livro a estante." },
-        { status: 400 }
-      );
-    }
-
     const nextFavorite =
-      typeof body.favorite === "boolean" ? body.favorite : !Boolean(existing.favorite);
+      typeof body.favorite === "boolean" ? body.favorite : !Boolean(existing);
 
-    await db
-      .update(schema.userDigitalBooks)
-      .set({ favorite: nextFavorite })
-      .where(eq(schema.userDigitalBooks.id, existing.id));
+    if (nextFavorite) {
+      if (!existing) {
+        await db.insert(schema.userBookFavorites).values({ userId, bookId });
+      }
+    } else if (existing) {
+      await db
+        .delete(schema.userBookFavorites)
+        .where(eq(schema.userBookFavorites.id, existing.id));
+    }
 
     return NextResponse.json({
       success: true,

@@ -1,5 +1,5 @@
 import React from 'react';
-import { X, BookOpen, BookmarkPlus, Loader2 } from 'lucide-react';
+import { X, BookOpen, BookmarkPlus, Loader2, Star } from 'lucide-react';
 import { Button } from '@/components/ui/Button.tsx';
 import { DEFAULT_BOOK_COVER } from '@/constants.ts';
 
@@ -9,12 +9,15 @@ interface BookDetailsModalProps {
   onBorrow: (bookId: number) => void;
   onReserve: (bookId: number) => void;
   onAddToShelf: (bookId: number) => void;
+  onToggleFavorite?: (bookId: number) => void;
   resolveFileUrl: (fileUrl?: string | null) => string | null;
   onReadPdf: (book: any) => void;
   borrowLoading?: boolean;
   reserveLoading?: boolean;
   shelfLoading?: boolean;
   shelfDisabled?: boolean;
+  favoriteLoading?: boolean;
+  favoriteActive?: boolean;
   borrowDisabled?: boolean;
   borrowDisabledLabel?: string;
 }
@@ -25,12 +28,15 @@ export const BookDetailsModal = ({
   onBorrow,
   onReserve,
   onAddToShelf,
+  onToggleFavorite,
   resolveFileUrl,
   onReadPdf,
   borrowLoading = false,
   reserveLoading = false,
   shelfLoading = false,
   shelfDisabled = false,
+  favoriteLoading = false,
+  favoriteActive = false,
   borrowDisabled = false,
   borrowDisabledLabel = 'Ja requisitado',
 }: BookDetailsModalProps) => {
@@ -109,6 +115,21 @@ export const BookDetailsModal = ({
                     {shelfDisabled ? 'Ja na estante' : shelfLoading ? 'A processar...' : 'Adicionar a estante'}
                   </Button>
                 </>
+              )}
+              {onToggleFavorite && (
+                <Button
+                  className={`text-xs uppercase ${favoriteActive ? 'bg-amber-500 hover:bg-amber-600 text-white' : ''}`}
+                  variant={favoriteActive ? 'primary' : 'secondary'}
+                  onClick={() => onToggleFavorite(book.id)}
+                  disabled={favoriteLoading}
+                >
+                  {favoriteLoading ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Star className={`w-4 h-4 ${favoriteActive ? 'fill-current' : ''}`} />
+                  )}
+                  {favoriteActive ? 'Favorito' : 'Ler depois'}
+                </Button>
               )}
               {hasPhysical && (
                 book.availableCopies > 0 ? (

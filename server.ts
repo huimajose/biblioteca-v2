@@ -124,6 +124,28 @@ const ensureUserShelfFavoriteColumn = async () => {
   `);
 };
 
+const ensureUserFavoritesTable = async () => {
+  await db.execute(sql`
+    CREATE TABLE IF NOT EXISTS user_book_favorites (
+      id serial PRIMARY KEY,
+      user_id varchar(255) NOT NULL,
+      book_id integer NOT NULL,
+      created_at timestamp NOT NULL DEFAULT now(),
+      CONSTRAINT user_book_favorites_user_book_unique UNIQUE (user_id, book_id)
+    )
+  `);
+
+  await ensureUserShelfFavoriteColumn();
+
+  await db.execute(sql`
+    INSERT INTO user_book_favorites (user_id, book_id)
+    SELECT user_id, book_id
+    FROM user_digital_books
+    WHERE favorite = true
+    ON CONFLICT (user_id, book_id) DO NOTHING
+  `);
+};
+
 const toValidDate = (value: unknown) => {
   if (!value) return null;
   const parsed = value instanceof Date ? value : new Date(String(value));
@@ -818,20 +840,22 @@ async function startServer() {
     if (!userId) return res.status(401).json({ success: false, message: 'Nao autorizado' });
     if (Number.isNaN(bookId)) return res.status(400).json({ success: false, message: 'Livro invalido' });
 
-    await ensureUserShelfFavoriteColumn();
-    const existing = await db.select().from(schema.userDigitalBooks).where(and(
-      eq(schema.userDigitalBooks.userId, userId),
-      eq(schema.userDigitalBooks.bookId, bookId)
+    await ensureUserFavoritesTable();
+    const existing = await db.select().from(schema.userBookFavorites).where(and(
+      eq(schema.userBookFavorites.userId, userId),
+      eq(schema.userBookFavorites.bookId, bookId)
     )).limit(1);
 
-    if (!existing[0]) {
-      return res.status(400).json({ success: false, message: 'Adicione primeiro o livro a estante.' });
-    }
+    const requestedFavorite = typeof req.body?.favorite === 'boolean' ? req.body.favorite : !Boolean(existing[0]);
 
-    const requestedFavorite = typeof req.body?.favorite === 'boolean' ? req.body.favorite : !Boolean(existing[0].favorite);
-    await db.update(schema.userDigitalBooks)
-      .set({ favorite: requestedFavorite })
-      .where(eq(schema.userDigitalBooks.id, existing[0].id));
+    if (requestedFavorite) {
+      if (!existing[0]) {
+        await db.insert(schema.userBookFavorites).values({ userId, bookId });
+      }
+    } else if (existing[0]) {
+      await db.delete(schema.userBookFavorites)
+        .where(eq(schema.userBookFavorites.id, existing[0].id));
+    }
 
     res.json({
       success: true,
@@ -1398,15 +1422,18 @@ async function startServer() {
     const userId = (req as any).user?.id;
     if (!userId) return res.status(401).json({ error: 'Nao autorizado' });
 
-    await ensureUserShelfFavoriteColumn();
+    await ensureUserFavoritesTable();
     const shelf = await db.select().from(schema.userDigitalBooks)
       .where(eq(schema.userDigitalBooks.userId, userId));
+    const favorites = await db.select().from(schema.userBookFavorites)
+      .where(eq(schema.userBookFavorites.userId, userId));
+    const favoriteBookIds = new Set(favorites.map((entry) => entry.bookId));
 
     const enriched = await Promise.all(shelf.map(async (row) => {
       const book = await db.select().from(schema.books).where(eq(schema.books.id, row.bookId)).limit(1);
       return {
         id: row.id,
-        favorite: Boolean(row.favorite),
+        favorite: favoriteBookIds.has(row.bookId),
         addedAt: row.addedAt,
         book: book[0] ? mapBookRow(book[0]) : null,
       };
@@ -1421,6 +1448,20 @@ async function startServer() {
           return new Date(b.addedAt || 0).getTime() - new Date(a.addedAt || 0).getTime();
         })
     );
+  });
+
+  app.get('/api/user/favorites', async (req, res) => {
+    const userId = (req as any).user?.id;
+    if (!userId) return res.status(401).json({ error: 'Nao autorizado' });
+
+    await ensureUserFavoritesTable();
+    const favorites = await db.select().from(schema.userBookFavorites)
+      .where(eq(schema.userBookFavorites.userId, userId));
+
+    res.json({
+      bookIds: favorites.map((entry) => entry.bookId),
+      items: favorites,
+    });
   });
 
   app.get('/api/user/history', async (req, res) => {

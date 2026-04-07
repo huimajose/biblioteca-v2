@@ -85,6 +85,15 @@ export const userDigitalBooks = pgTable('user_digital_books', {
   addedAt: timestamp('added_at').notNull().defaultNow(),
 });
 
+export const userBookFavorites = pgTable('user_book_favorites', {
+  id: serial('id').primaryKey(),
+  userId: varchar('user_id', { length: 255 }).notNull(),
+  bookId: integer('book_id').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => ({
+  userBookFavoriteUnique: unique('user_book_favorites_user_book_unique').on(table.userId, table.bookId),
+}));
+
 export const userReadingProgress = pgTable('user_reading_progress', {
   id: serial('id').primaryKey(),
   userId: varchar('user_id', { length: 255 }).notNull(),
