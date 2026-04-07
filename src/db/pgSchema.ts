@@ -127,6 +127,19 @@ export const userReadingProgress = pgTable('user_reading_progress', {
   userBookUnique: unique('user_reading_progress_user_book_unique').on(table.userId, table.bookId),
 }));
 
+export const userReadingGoals = pgTable('user_reading_goals', {
+  id: serial('id').primaryKey(),
+  userId: varchar('user_id', { length: 255 }).notNull(),
+  title: varchar('title', { length: 160 }),
+  targetBooks: integer('target_books').notNull().default(0),
+  targetPages: integer('target_pages').notNull().default(0),
+  startDate: date('start_date').notNull(),
+  endDate: date('end_date').notNull(),
+  archived: boolean('archived').notNull().default(false),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+});
+
 export const bookClicks = pgTable('book_clicks', {
   id: serial('id').primaryKey(),
   bookId: integer('book_id').notNull(),
