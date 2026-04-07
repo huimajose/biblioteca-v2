@@ -282,6 +282,46 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
       ]
     : [];
   const currentTourStep = userTourSteps[tourStepIndex] ?? null;
+  const isSmallScreen = typeof window !== 'undefined' && window.innerWidth < 768;
+
+  const getTourCardStyle = () => {
+    if (!isSmallScreen) {
+      return undefined;
+    }
+
+    const viewportWidth = typeof window !== 'undefined' ? window.innerWidth : 0;
+    const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 0;
+    const sideMargin = 12;
+    const cardHeight = 250;
+
+    if (!tourRect) {
+      return {
+        left: sideMargin,
+        right: sideMargin,
+        bottom: sideMargin,
+      } as const;
+    }
+
+    const spaceBelow = viewportHeight - tourRect.bottom;
+    const topPosition = Math.min(
+      Math.max(sideMargin, tourRect.bottom + 12),
+      Math.max(sideMargin, viewportHeight - cardHeight - sideMargin)
+    );
+
+    if (spaceBelow >= cardHeight + 24) {
+      return {
+        left: sideMargin,
+        right: Math.max(sideMargin, viewportWidth - Math.max(tourRect.right + 12, viewportWidth * 0.78)),
+        top: topPosition,
+      } as const;
+    }
+
+    return {
+      left: sideMargin,
+      right: sideMargin,
+      bottom: sideMargin,
+    } as const;
+  };
 
   const finishTour = (markSeen = true) => {
     setTourActive(false);
@@ -613,7 +653,10 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
               }}
             />
           )}
-          <div className="absolute inset-x-3 bottom-3 md:inset-x-auto md:right-6 md:bottom-6 md:w-[380px]">
+          <div
+            className="absolute md:inset-x-auto md:right-6 md:bottom-6 md:w-[380px]"
+            style={getTourCardStyle()}
+          >
             <div className="rounded-2xl bg-white p-5 shadow-2xl">
               <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-lime-700">
                 Tutorial do leitor
