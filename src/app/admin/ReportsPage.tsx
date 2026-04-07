@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Printer, Ticket, X, ListFilter, History, Package, RotateCcw, AlertTriangle, Users, TrendingUp } from 'lucide-react';
+import { Printer, Ticket, X, ListFilter, History, Package, RotateCcw, AlertTriangle, Users, TrendingUp, MapPinned, BookX } from 'lucide-react';
 import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
 import { cn } from '@/utils/cn.ts';
@@ -12,17 +12,18 @@ import { LOGO_WATERMARK } from '@/constants.ts';
 import { addCenteredWatermarkToAllPages, loadWatermarkImage } from '@/utils/pdfWatermark.ts';
 
 export const ReportsPage = () => {
-  const [reportType, setReportType] = useState<'activity' | 'genre' | 'inventory' | 'users' | 'top-books'>('activity');
+  const [reportType, setReportType] = useState<'activity' | 'genre' | 'inventory' | 'location-inventory' | 'users' | 'top-books' | 'never-borrowed'>('activity');
   const [activities, setActivities] = useState<any[]>([]);
   const [activitySummary, setActivitySummary] = useState<any | null>(null);
   const [books, setBooks] = useState<any[]>([]);
   const [userReports, setUserReports] = useState<any[]>([]);
   const [topBooks, setTopBooks] = useState<any[]>([]);
+  const [neverBorrowedBooks, setNeverBorrowedBooks] = useState<any[]>([]);
   const [topRange, setTopRange] = useState({ start: '', end: '' });
   const [topLimit, setTopLimit] = useState(10);
   const [dates, setDates] = useState({ start: '', end: '' });
   const [statusFilter, setStatusFilter] = useState<'all' | 'borrowed' | 'returned' | 'pending' | 'rejected'>('all');
-  const [groupBy, setGroupBy] = useState<'none' | 'user' | 'week' | 'day'>('none');
+  const [groupBy, setGroupBy] = useState<'none' | 'user' | 'week' | 'day' | 'genre'>('none');
   const [selectedTicket, setSelectedTicket] = useState<any>(null);
   const [confirmReturn, setConfirmReturn] = useState<any>(null);
   const [loading, setLoading] = useState(false);
@@ -116,7 +117,7 @@ export const ReportsPage = () => {
 
 
   useEffect(() => {
-    if (reportType === 'genre' || reportType === 'inventory') {
+    if (reportType === 'genre' || reportType === 'inventory' || reportType === 'location-inventory') {
       fetch('/api/books').then(res => res.json()).then(setBooks);
     }
     if (reportType === 'activity') {
@@ -127,6 +128,9 @@ export const ReportsPage = () => {
     }
     if (reportType === 'top-books') {
       fetchTopBooks();
+    }
+    if (reportType === 'never-borrowed') {
+      fetchNeverBorrowedBooks();
     }
   }, [reportType]);
 
@@ -506,6 +510,73 @@ export const ReportsPage = () => {
     return acc;
   }, {});
 
+  const physicalBooksByLocation = useMemo(() => {
+    const physicalBooks = books
+      .filter((book) => !book.isDigital)
+      .sort((a, b) => {
+        const armarioA = String(a.armario || '').trim();
+        const armarioB = String(b.armario || '').trim();
+        const shelfA = Number.isFinite(Number(a.prateleira)) ? Number(a.prateleira) : Number.MAX_SAFE_INTEGER;
+        const shelfB = Number.isFinite(Number(b.prateleira)) ? Number(b.prateleira) : Number.MAX_SAFE_INTEGER;
+        const sequenceA = Number.isFinite(Number(a.courseSequence)) ? Number(a.courseSequence) : Number.MAX_SAFE_INTEGER;
+        const sequenceB = Number.isFinite(Number(b.courseSequence)) ? Number(b.courseSequence) : Number.MAX_SAFE_INTEGER;
+
+        return (
+          armarioA.localeCompare(armarioB, undefined, { numeric: true, sensitivity: 'base' }) ||
+          shelfA - shelfB ||
+          sequenceA - sequenceB ||
+          String(a.title || '').localeCompare(String(b.title || ''), undefined, { sensitivity: 'base' }) ||
+          Number(a.id || 0) - Number(b.id || 0)
+        );
+      });
+
+    return physicalBooks.reduce((acc: any[], book: any) => {
+      const armario = String(book.armario || '').trim() || 'Sem armario';
+      const prateleira = book.prateleira ?? 'Sem prateleira';
+      let armarioGroup = acc.find((entry) => entry.armario === armario);
+      if (!armarioGroup) {
+        armarioGroup = { armario, shelves: [], totalBooks: 0 };
+        acc.push(armarioGroup);
+      }
+
+      let shelfGroup = armarioGroup.shelves.find((entry: any) => entry.prateleira === prateleira);
+      if (!shelfGroup) {
+        shelfGroup = { prateleira, books: [] };
+        armarioGroup.shelves.push(shelfGroup);
+      }
+
+      shelfGroup.books.push(book);
+      armarioGroup.totalBooks += 1;
+      return acc;
+    }, []);
+  }, [books]);
+
+  const locationInventoryStats = useMemo(() => {
+    const physicalBooks = books.filter((book) => !book.isDigital);
+    const locatedBooks = physicalBooks.filter(
+      (book) => String(book.armario || '').trim() && book.prateleira !== null && book.prateleira !== undefined
+    );
+
+    return {
+      armarios: physicalBooksByLocation.filter((group: any) => group.armario !== 'Sem armario').length,
+      prateleiras: physicalBooksByLocation.reduce((acc: number, group: any) => acc + group.shelves.length, 0),
+      locatedBooks: locatedBooks.length,
+      pendingLocation: physicalBooks.length - locatedBooks.length,
+    };
+  }, [books, physicalBooksByLocation]);
+
+  const neverBorrowedStats = useMemo(() => {
+    const physical = neverBorrowedBooks.filter((book) => !book.isDigital).length;
+    const digital = neverBorrowedBooks.filter((book) => book.isDigital).length;
+    const withoutCatalog = neverBorrowedBooks.filter((book) => !String(book.catalogCode || '').trim()).length;
+    return {
+      total: neverBorrowedBooks.length,
+      physical,
+      digital,
+      withoutCatalog,
+    };
+  }, [neverBorrowedBooks]);
+
   const inventoryStats = {
     totalBooks: books.length,
     physicalBooks: books.filter(b => !b.isDigital).length,
@@ -514,6 +585,11 @@ export const ReportsPage = () => {
     lowStock: books.filter(b => !b.isDigital && b.availableCopies > 0 && b.availableCopies < 2).length,
     totalCopies: books.reduce((acc, b) => acc + (b.totalCopies || 0), 0),
     availableCopies: books.reduce((acc, b) => acc + (b.availableCopies || 0), 0),
+  };
+
+  const fetchNeverBorrowedBooks = async () => {
+    const res = await fetch('/api/admin/reports/never-borrowed');
+    setNeverBorrowedBooks(await res.json());
   };
 
   const exportGenrePdf = async () => {
@@ -614,6 +690,109 @@ export const ReportsPage = () => {
     } catch {}
 
     doc.save('relatorio-estado-stock.pdf');
+  };
+
+  const exportLocationInventoryPdf = async () => {
+    const doc = new jsPDF('p', 'pt');
+    doc.setFontSize(16);
+    doc.text('Relatorio de inventario por armario e prateleira', 40, 40);
+    doc.setFontSize(10);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 40, 58);
+    doc.text(
+      `Armarios: ${locationInventoryStats.armarios} | Prateleiras: ${locationInventoryStats.prateleiras} | Livros localizados: ${locationInventoryStats.locatedBooks}`,
+      40,
+      72
+    );
+    doc.text(`Pendentes de localizacao: ${locationInventoryStats.pendingLocation}`, 40, 86);
+
+    let currentY = 116;
+    if (!physicalBooksByLocation.length) {
+      autoTable(doc, {
+        startY: currentY,
+        head: [['Armario', 'Prateleira', 'Livros']],
+        body: [['Sem dados', '-', '0']],
+        styles: { fontSize: 9 },
+        headStyles: { fillColor: [14, 116, 144] },
+      });
+    } else {
+      for (const group of physicalBooksByLocation) {
+        if (currentY > 700) {
+          doc.addPage();
+          currentY = 50;
+        }
+
+        doc.setFontSize(12);
+        doc.text(`Armario ${group.armario} (${group.totalBooks} livros)`, 40, currentY);
+
+        for (const shelf of group.shelves) {
+          autoTable(doc, {
+            startY: currentY + 10,
+            head: [[`Prateleira ${shelf.prateleira}`, 'Codigo', 'Titulo', 'Autor', 'Disponiveis']],
+            body: shelf.books.map((book: any) => [
+              String(shelf.prateleira),
+              book.catalogCode || `ID ${book.id}`,
+              book.title || 'N/D',
+              book.author || 'N/D',
+              String(book.availableCopies ?? 0),
+            ]),
+            styles: { fontSize: 9 },
+            headStyles: { fillColor: [14, 116, 144] },
+          });
+          currentY = ((doc as any).lastAutoTable?.finalY || currentY + 20) + 18;
+          if (currentY > 700) {
+            doc.addPage();
+            currentY = 50;
+          }
+        }
+
+        currentY += 8;
+      }
+    }
+
+    try {
+      const logo = await loadWatermarkImage(LOGO_WATERMARK);
+      addCenteredWatermarkToAllPages(doc, logo, { width: 160 });
+    } catch {}
+
+    doc.save('relatorio-inventario-armario-prateleira.pdf');
+  };
+
+  const exportNeverBorrowedPdf = async () => {
+    const doc = new jsPDF('p', 'pt');
+    doc.setFontSize(16);
+    doc.text('Relatorio de livros nunca emprestados', 40, 40);
+    doc.setFontSize(10);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 40, 58);
+    doc.text(
+      `Titulos: ${neverBorrowedStats.total} | Fisicos: ${neverBorrowedStats.physical} | Digitais: ${neverBorrowedStats.digital}`,
+      40,
+      72
+    );
+    doc.text(`Sem codigo de catalogo: ${neverBorrowedStats.withoutCatalog}`, 40, 86);
+
+    autoTable(doc, {
+      startY: 106,
+      head: [['Codigo', 'Titulo', 'Autor', 'Curso', 'Localizacao', 'Tipo']],
+      body: neverBorrowedBooks.length
+        ? neverBorrowedBooks.map((book: any) => [
+            book.catalogCode || `ID ${book.id}`,
+            book.title || 'N/D',
+            book.author || 'N/D',
+            book.genre || 'Sem curso',
+            book.isDigital ? 'Digital' : `ARM ${book.armario || '-'} / PRAT ${book.prateleira ?? '-'}`,
+            book.isDigital ? 'Digital' : 'Fisico',
+          ])
+        : [['-', 'Sem dados', '-', '-', '-', '-']],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [245, 158, 11] },
+    });
+
+    try {
+      const logo = await loadWatermarkImage(LOGO_WATERMARK);
+      addCenteredWatermarkToAllPages(doc, logo, { width: 160 });
+    } catch {}
+
+    doc.save('relatorio-livros-nunca-emprestados.pdf');
   };
 
   const exportUsersPdf = async () => {
@@ -745,6 +924,15 @@ export const ReportsPage = () => {
           <Package className="w-4 h-4" /> Estado do stock
         </button>
         <button 
+          onClick={() => setReportType('location-inventory')}
+          className={cn(
+            "px-6 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2",
+            reportType === 'location-inventory' ? "bg-lime-600 text-white shadow-lg" : "bg-white text-gray-500 hover:bg-gray-50"
+          )}
+        >
+          <MapPinned className="w-4 h-4" /> Por armario/prateleira
+        </button>
+        <button 
           onClick={() => setReportType('users')}
           className={cn(
             "px-6 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2",
@@ -761,6 +949,15 @@ export const ReportsPage = () => {
           )}
         >
           <TrendingUp className="w-4 h-4" /> Mais requisitados
+        </button>
+        <button 
+          onClick={() => setReportType('never-borrowed')}
+          className={cn(
+            "px-6 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2",
+            reportType === 'never-borrowed' ? "bg-lime-600 text-white shadow-lg" : "bg-white text-gray-500 hover:bg-gray-50"
+          )}
+        >
+          <BookX className="w-4 h-4" /> Nunca emprestados
         </button>
       </div>
 
@@ -1354,6 +1551,106 @@ export const ReportsPage = () => {
         </div>
       )}
 
+      {reportType === 'location-inventory' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 print:grid-cols-4">
+            <Card className="p-4 bg-sky-50 border-sky-100">
+              <p className="text-[10px] font-bold text-sky-500 uppercase tracking-widest mb-1">Armarios mapeados</p>
+              <p className="text-2xl font-black text-sky-700">{locationInventoryStats.armarios}</p>
+              <p className="text-[10px] text-sky-500 mt-1">Grupos fisicos com localizacao definida</p>
+            </Card>
+            <Card className="p-4 bg-cyan-50 border-cyan-100">
+              <p className="text-[10px] font-bold text-cyan-500 uppercase tracking-widest mb-1">Prateleiras</p>
+              <p className="text-2xl font-black text-cyan-700">{locationInventoryStats.prateleiras}</p>
+              <p className="text-[10px] text-cyan-500 mt-1">Faixas ativas no inventario fisico</p>
+            </Card>
+            <Card className="p-4 bg-emerald-50 border-emerald-100">
+              <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1">Livros localizados</p>
+              <p className="text-2xl font-black text-emerald-700">{locationInventoryStats.locatedBooks}</p>
+              <p className="text-[10px] text-emerald-400 mt-1">Titulos fisicos com armario e prateleira</p>
+            </Card>
+            <Card className="p-4 bg-amber-50 border-amber-100">
+              <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest mb-1">Pendentes</p>
+              <p className="text-2xl font-black text-amber-700">{locationInventoryStats.pendingLocation}</p>
+              <p className="text-[10px] text-amber-400 mt-1">Livros fisicos sem localizacao completa</p>
+            </Card>
+          </div>
+
+          <Card className="overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center print:hidden">
+              <div>
+                <h2 className="text-xl font-bold">Inventario por armario e prateleira</h2>
+                <p className="text-sm text-gray-500">Agrupamento fisico para impressao e conferencia no armario.</p>
+              </div>
+              <Button variant="secondary" onClick={exportLocationInventoryPdf} className="flex items-center gap-2">
+                <Printer className="w-4 h-4" /> Baixar PDF
+              </Button>
+            </div>
+            <div className="p-6 space-y-6">
+              {physicalBooksByLocation.length === 0 ? (
+                <div className="text-center py-12 text-gray-400">
+                  <MapPinned className="w-10 h-10 mx-auto mb-3 opacity-20" />
+                  <p className="text-sm font-medium italic">Ainda nao ha livros fisicos para organizar por localizacao.</p>
+                </div>
+              ) : (
+                physicalBooksByLocation.map((group: any) => (
+                  <Card key={group.armario} className="border border-sky-100 shadow-none">
+                    <div className="p-4 border-b border-sky-50 bg-sky-50/60 flex items-center justify-between">
+                      <div>
+                        <h3 className="text-lg font-bold text-sky-900">Armario {group.armario}</h3>
+                        <p className="text-xs text-sky-600">{group.totalBooks} livros fisicos neste armario</p>
+                      </div>
+                      <span className="px-3 py-1 rounded-full bg-white text-sky-700 text-xs font-bold uppercase">
+                        {group.shelves.length} prateleiras
+                      </span>
+                    </div>
+                    <div className="p-4 space-y-4">
+                      {group.shelves.map((shelf: any) => (
+                        <div key={`${group.armario}-${shelf.prateleira}`} className="rounded-2xl border border-gray-100 overflow-hidden">
+                          <div className="px-4 py-3 bg-gray-50 flex items-center justify-between">
+                            <h4 className="text-sm font-bold text-gray-800">Prateleira {String(shelf.prateleira)}</h4>
+                            <span className="text-[10px] uppercase tracking-widest text-gray-400">{shelf.books.length} livros</span>
+                          </div>
+                          <table className="w-full text-left border-collapse">
+                            <thead className="bg-white border-b border-gray-100">
+                              <tr>
+                                <th className="p-3 font-semibold text-[11px] uppercase text-gray-400">Codigo</th>
+                                <th className="p-3 font-semibold text-[11px] uppercase text-gray-400">Titulo</th>
+                                <th className="p-3 font-semibold text-[11px] uppercase text-gray-400">Autor</th>
+                                <th className="p-3 font-semibold text-[11px] uppercase text-gray-400">Curso</th>
+                                <th className="p-3 font-semibold text-[11px] uppercase text-gray-400 text-right">Disponiveis</th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-50">
+                              {shelf.books.map((book: any) => (
+                                <tr
+                                  key={book.id}
+                                  className="hover:bg-gray-50 transition-colors cursor-pointer"
+                                  onClick={() => setSelectedBookInfo(book)}
+                                >
+                                  <td className="p-3 text-xs font-mono text-sky-700">{book.catalogCode || `ID ${book.id}`}</td>
+                                  <td className="p-3">
+                                    <p className="text-sm font-bold">{book.title}</p>
+                                    <p className="text-[11px] text-gray-400">ISBN {book.isbn || 'N/D'}</p>
+                                  </td>
+                                  <td className="p-3 text-sm text-gray-600">{book.author || 'N/D'}</td>
+                                  <td className="p-3 text-sm text-gray-600">{book.genre || 'Sem curso'}</td>
+                                  <td className="p-3 text-right text-sm font-mono">{book.availableCopies ?? 0}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                ))
+              )}
+            </div>
+          </Card>
+        </div>
+      )}
+
       {reportType === 'top-books' && (
         <div className="space-y-6">
           <Card className="p-6 print:hidden flex flex-wrap gap-4 items-end justify-between">
@@ -1429,6 +1726,94 @@ export const ReportsPage = () => {
                       <td className="p-4 text-sm text-gray-600">{b.author}</td>
                       <td className="p-4 text-xs font-mono text-gray-400">{b.isbn}</td>
                       <td className="p-4 text-sm text-right font-bold">{b.totalBorrows}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </Card>
+        </div>
+      )}
+
+      {reportType === 'never-borrowed' && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 print:grid-cols-4">
+            <Card className="p-4 bg-amber-50 border-amber-100">
+              <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest mb-1">Nunca emprestados</p>
+              <p className="text-2xl font-black text-amber-700">{neverBorrowedStats.total}</p>
+              <p className="text-[10px] text-amber-400 mt-1">Titulos sem nenhuma requisicao registada</p>
+            </Card>
+            <Card className="p-4 bg-blue-50 border-blue-100">
+              <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">Fisicos</p>
+              <p className="text-2xl font-black text-blue-700">{neverBorrowedStats.physical}</p>
+              <p className="text-[10px] text-blue-400 mt-1">Acervo fisico parado no inventario</p>
+            </Card>
+            <Card className="p-4 bg-purple-50 border-purple-100">
+              <p className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mb-1">Digitais</p>
+              <p className="text-2xl font-black text-purple-700">{neverBorrowedStats.digital}</p>
+              <p className="text-[10px] text-purple-400 mt-1">Titulos digitais sem historico</p>
+            </Card>
+            <Card className="p-4 bg-rose-50 border-rose-100">
+              <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest mb-1">Sem catalogo</p>
+              <p className="text-2xl font-black text-rose-700">{neverBorrowedStats.withoutCatalog}</p>
+              <p className="text-[10px] text-rose-400 mt-1">Itens que ainda merecem revisao</p>
+            </Card>
+          </div>
+
+          <Card className="overflow-hidden">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center print:hidden">
+              <div>
+                <h2 className="text-xl font-bold">Livros nunca emprestados</h2>
+                <p className="text-sm text-gray-500">Ajuda a identificar titulos que ainda nao circularam na biblioteca.</p>
+              </div>
+              <Button variant="secondary" onClick={exportNeverBorrowedPdf} className="flex items-center gap-2">
+                <Printer className="w-4 h-4" /> Baixar PDF
+              </Button>
+            </div>
+            <table className="w-full text-left border-collapse">
+              <thead className="bg-gray-50 border-b border-gray-100">
+                <tr>
+                  <th className="p-4 font-semibold text-xs uppercase text-gray-400">Codigo</th>
+                  <th className="p-4 font-semibold text-xs uppercase text-gray-400">Titulo</th>
+                  <th className="p-4 font-semibold text-xs uppercase text-gray-400">Curso</th>
+                  <th className="p-4 font-semibold text-xs uppercase text-gray-400">Localizacao</th>
+                  <th className="p-4 font-semibold text-xs uppercase text-gray-400">Tipo</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-50">
+                {neverBorrowedBooks.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-12 text-center">
+                      <div className="flex flex-col items-center gap-2 text-gray-400">
+                        <BookX className="w-8 h-8 opacity-20" />
+                        <p className="text-sm font-medium italic">Todos os livros ja tiveram pelo menos uma requisicao.</p>
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  neverBorrowedBooks.map((book: any) => (
+                    <tr
+                      key={book.id}
+                      className="hover:bg-gray-50 transition-colors cursor-pointer"
+                      onClick={() => setSelectedBookInfo(book)}
+                    >
+                      <td className="p-4 text-xs font-mono text-amber-700">{book.catalogCode || `ID ${book.id}`}</td>
+                      <td className="p-4">
+                        <p className="text-sm font-bold">{book.title}</p>
+                        <p className="text-xs text-gray-500">{book.author || 'N/D'}</p>
+                      </td>
+                      <td className="p-4 text-sm text-gray-600">{book.genre || 'Sem curso'}</td>
+                      <td className="p-4 text-xs text-gray-500">
+                        {book.isDigital ? 'Biblioteca digital' : `ARM ${book.armario || '-'} | PRAT ${book.prateleira ?? '-'}`}
+                      </td>
+                      <td className="p-4">
+                        <span className={cn(
+                          "px-2 py-0.5 rounded text-[9px] font-bold uppercase",
+                          book.isDigital ? "bg-purple-100 text-purple-700" : "bg-blue-100 text-blue-700"
+                        )}>
+                          {book.isDigital ? 'Digital' : 'Fisico'}
+                        </span>
+                      </td>
                     </tr>
                   ))
                 )}
