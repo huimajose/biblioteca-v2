@@ -4,6 +4,7 @@ import { AlertTriangle, BookOpenCheck, Filter, Pencil } from 'lucide-react';
 import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
 import { BookInfoModal } from '@/components/BookInfoModal.tsx';
+import { DEFAULT_BOOK_COVER } from '@/constants.ts';
 
 type ReviewIssue =
   | 'general'
@@ -55,13 +56,14 @@ const getTitleSimilarity = (left: string, right: string) => {
 const getBaseBookIssues = (book: any): ReviewIssue[] => {
   const issues: ReviewIssue[] = [];
   const genre = String(book.genre || '').trim();
+  const cover = String(book.cover || '').trim();
   if (!genre) issues.push('missing-genre');
   if (genre.toLowerCase() === 'geral') issues.push('general');
   if (!String(book.catalogCode || '').trim()) issues.push('missing-catalog');
   if (!String(book.armario || '').trim()) issues.push('missing-armario');
   if (book.prateleira === null || book.prateleira === undefined || String(book.prateleira).trim() === '') issues.push('missing-prateleira');
   if (!String(book.isbn || '').trim()) issues.push('missing-isbn');
-  if (!String(book.cover || '').trim()) issues.push('missing-cover');
+  if (!cover || cover === DEFAULT_BOOK_COVER) issues.push('missing-cover');
   if (!String(book.editora || '').trim()) issues.push('missing-editora');
   if (!String(book.cdu || '').trim()) issues.push('missing-cdu');
   return issues;
@@ -154,15 +156,19 @@ export const CatalogReviewPage = () => {
     };
   }, [books]);
 
-  const reviewBooks = useMemo(() => {
-    const query = search.toLowerCase();
+  const reviewUniverse = useMemo(() => {
     return books
       .map((book) => {
         const baseIssues = getBaseBookIssues(book);
         const duplicateIssues = Array.from(duplicateInfo.duplicateById.get(book.id) || []);
         return { ...book, reviewIssues: [...new Set([...baseIssues, ...duplicateIssues])] };
       })
-      .filter((book) => book.reviewIssues.length > 0)
+      .filter((book) => book.reviewIssues.length > 0);
+  }, [books, duplicateInfo]);
+
+  const reviewBooks = useMemo(() => {
+    const query = search.toLowerCase();
+    return reviewUniverse
       .filter((book) => {
         const matchesIssue = issueFilter === 'all' || book.reviewIssues.includes(issueFilter);
         const matchesSearch = !query || [
@@ -181,17 +187,17 @@ export const CatalogReviewPage = () => {
         if (issueDiff !== 0) return issueDiff;
         return String(a.title || '').localeCompare(String(b.title || ''));
       });
-  }, [books, search, issueFilter, duplicateInfo]);
+  }, [reviewUniverse, search, issueFilter]);
 
   const summary = useMemo(() => {
     const counts: Record<string, number> = {};
-    reviewBooks.forEach((book) => {
+    reviewUniverse.forEach((book) => {
       book.reviewIssues.forEach((issue: ReviewIssue) => {
         counts[issue] = (counts[issue] || 0) + 1;
       });
     });
     return counts;
-  }, [reviewBooks]);
+  }, [reviewUniverse]);
 
   const totalPages = Math.max(1, Math.ceil(reviewBooks.length / PAGE_SIZE));
   const paged = reviewBooks.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -222,7 +228,7 @@ export const CatalogReviewPage = () => {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card className="p-5">
           <p className="text-xs uppercase text-gray-400">Livros a rever</p>
-          <p className="mt-2 text-3xl font-black">{reviewBooks.length}</p>
+          <p className="mt-2 text-3xl font-black">{reviewUniverse.length}</p>
         </Card>
         <Card className="p-5">
           <p className="text-xs uppercase text-gray-400">Curso Geral</p>
