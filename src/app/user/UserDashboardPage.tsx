@@ -69,7 +69,7 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
       });
       setHistoryItems(historyList);
       setRecommendations(Array.isArray(recs) ? recs : []);
-      setContinueReading(Array.isArray(continueData) ? continueData.slice(0, 4) : []);
+      setContinueReading(Array.isArray(continueData) ? continueData.slice(0, 3) : []);
       const next = historyList
         .filter((h) => h.status === 'borrowed' && h.expectedReturnDate)
         .sort((a, b) => new Date(a.expectedReturnDate).getTime() - new Date(b.expectedReturnDate).getTime())[0];
