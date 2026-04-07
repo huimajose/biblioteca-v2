@@ -43,6 +43,7 @@ export const getAuditEntityLabel = (entityType: string | null | undefined) => {
 export const getAuditRoleLabel = (role: string | null | undefined) => getRoleLabel(role);
 
 export const getAuditSearchText = (log: {
+  actorName?: string | null;
   actorUserId?: string | null;
   actorRole?: string | null;
   action?: string | null;
@@ -51,6 +52,7 @@ export const getAuditSearchText = (log: {
   details?: string | null;
 }) =>
   [
+    log.actorName,
     log.actorUserId,
     log.actorRole,
     getAuditRoleLabel(log.actorRole),

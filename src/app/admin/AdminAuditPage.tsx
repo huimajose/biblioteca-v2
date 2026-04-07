@@ -59,7 +59,7 @@ export const AdminAuditPage = () => {
       body: filtered.length
         ? filtered.map((log) => [
             log.createdAt ? new Date(log.createdAt).toLocaleString() : 'N/D',
-            `${log.actorUserId || 'N/D'} (${getAuditRoleLabel(log.actorRole)})`,
+            `${log.actorName || log.actorUserId || 'N/D'} (${getAuditRoleLabel(log.actorRole)})`,
             getAuditActionLabel(log.action),
             `${getAuditEntityLabel(log.entityType)}${log.entityId ? ` #${log.entityId}` : ''}`,
             log.details || 'Sem detalhe',
@@ -140,7 +140,7 @@ export const AdminAuditPage = () => {
                     {log.createdAt ? new Date(log.createdAt).toLocaleString() : 'N/D'}
                   </td>
                   <td className="p-4">
-                    <p className="text-sm font-semibold">{log.actorUserId}</p>
+                    <p className="text-sm font-semibold">{log.actorName || log.actorUserId}</p>
                     <p className="text-[10px] uppercase text-gray-400">{getAuditRoleLabel(log.actorRole)}</p>
                   </td>
                   <td className="p-4 text-sm font-medium">{getAuditActionLabel(log.action)}</td>
