@@ -287,6 +287,9 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
     setTourActive(false);
     setTourStepIndex(0);
     setTourRect(null);
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setIsMobileMenuOpen(false);
+    }
     if (markSeen && !user.isStaff && typeof window !== 'undefined') {
       window.localStorage.setItem(`user-tour-seen:${user.id}`, '1');
     }
@@ -295,6 +298,9 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
   const startTour = () => {
     if (user.isStaff) return;
     setIsSidebarOpen(true);
+    if (typeof window !== 'undefined' && window.innerWidth < 768) {
+      setIsMobileMenuOpen(true);
+    }
     setTourStepIndex(0);
     setTourActive(true);
   };
@@ -305,6 +311,9 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
     if (!seen) {
       const timer = window.setTimeout(() => {
         setIsSidebarOpen(true);
+        if (window.innerWidth < 768) {
+          setIsMobileMenuOpen(true);
+        }
         setTourActive(true);
       }, 300);
       return () => window.clearTimeout(timer);
@@ -450,11 +459,11 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
           <div className="flex items-center gap-2 sm:gap-4">
             {!user.isStaff && (
               <button
-                className="hidden items-center gap-2 rounded-full border border-lime-200 bg-lime-50 px-3 py-1.5 text-xs font-bold text-lime-700 hover:bg-lime-100 sm:inline-flex"
+                className="inline-flex items-center gap-2 rounded-full border border-lime-200 bg-lime-50 px-3 py-1.5 text-xs font-bold text-lime-700 hover:bg-lime-100"
                 onClick={startTour}
               >
                 <HelpCircle className="w-4 h-4" />
-                Tutorial
+                <span className="hidden sm:inline">Tutorial</span>
               </button>
             )}
             <div className="relative">
@@ -513,15 +522,17 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
                 </div>
               )}
             </div>
-            <div className="hidden text-right sm:block" data-user-tour={!user.isStaff ? 'profile-summary' : undefined}>
-              <p className="max-w-[10rem] truncate text-sm font-bold lg:max-w-none">{displayName}</p>
-              <div className="flex items-center justify-end gap-2">
-                <p className="text-[10px] text-gray-500 uppercase tracking-widest">{roleLabel}</p>
-                {user.role === 'student' && !user.isStaff && (
-                  <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-lime-100 text-lime-700">
-                    Estudante
-                  </span>
-                )}
+            <div data-user-tour={!user.isStaff ? 'profile-summary' : undefined}>
+              <div className="hidden text-right sm:block">
+                <p className="max-w-[10rem] truncate text-sm font-bold lg:max-w-none">{displayName}</p>
+                <div className="flex items-center justify-end gap-2">
+                  <p className="text-[10px] text-gray-500 uppercase tracking-widest">{roleLabel}</p>
+                  {user.role === 'student' && !user.isStaff && (
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-lime-100 text-lime-700">
+                      Estudante
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
             <div className="w-10 h-10 bg-lime-100 rounded-full flex items-center justify-center text-lime-700 font-bold">
