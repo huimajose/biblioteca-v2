@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { createClient } from '@supabase/supabase-js';
 import { Card } from '@/components/ui/Card.tsx';
@@ -34,12 +34,18 @@ export const BookForm = () => {
     hasDigital: false,
     editora: '',
     cdu: '',
+    armario: '',
     prateleira: '',
     anoEdicao: '',
     edicao: '',
     addCopies: 0,
   });
   const [pendingPdf, setPendingPdf] = useState<{ name: string; base64: string } | null>(null);
+
+  const getGenreMeta = (genreName: string) =>
+    genres.find((genre) => String(genre.name || '').toLowerCase() === String(genreName || '').toLowerCase()) || null;
+
+  const selectedGenreMeta = useMemo(() => getGenreMeta(formData.genre), [formData.genre, genres]);
 
   useEffect(() => {
     fetch('/api/genres')
@@ -87,6 +93,7 @@ export const BookForm = () => {
           hasDigital: Boolean(apiFileUrl),
           editora: data.editora ?? '',
           cdu: data.cdu ?? '',
+          armario: data.armario?.toString() ?? '',
           prateleira: apiPrateleira?.toString() ?? '',
           anoEdicao: apiAnoEdicao?.toString() ?? '',
           edicao: apiEdicao?.toString() ?? '',
@@ -98,8 +105,23 @@ export const BookForm = () => {
       });
   }, [bookId, isEdit]);
 
+  const handleGenreChange = (nextGenre: string) => {
+    setFormData((prev) => {
+      const previousMeta = getGenreMeta(prev.genre);
+      const nextMeta = getGenreMeta(nextGenre);
+      const currentArmario = String(prev.armario || '').trim();
+      const previousDefaultArmario = String(previousMeta?.defaultArmario || '').trim();
+      const nextDefaultArmario = String(nextMeta?.defaultArmario || '').trim();
+      const shouldAutofillArmario =
+        !currentArmario || (previousDefaultArmario && currentArmario === previousDefaultArmario);
 
-  console.log('Form data:', formData);
+      return {
+        ...prev,
+        genre: nextGenre,
+        armario: shouldAutofillArmario ? nextDefaultArmario : prev.armario,
+      };
+    });
+  };
 
   const resolveStorageUrl = (fileUrl?: string | null) => {
     if (pendingPdf && !bookId) return null;
@@ -202,6 +224,7 @@ export const BookForm = () => {
       ...formData,
       cover: formData.cover || DEFAULT_BOOK_COVER,
       isDigital: formData.hasDigital || formData.documentType === 2,
+      armario: formData.armario ? String(formData.armario) : null,
       prateleira: formData.prateleira ? Number(formData.prateleira) : null,
       anoEdicao: formData.anoEdicao ? Number(formData.anoEdicao) : null,
       edicao: formData.edicao ? Number(formData.edicao) : null,
@@ -281,12 +304,17 @@ export const BookForm = () => {
               </div>
               <div className="col-span-2">
                 <label className="block text-sm font-medium mb-1">curso</label>
-                <select className="w-full px-4 py-2 border rounded-lg" value={formData.genre} onChange={e => setFormData({ ...formData, genre: e.target.value })}>
+                <select className="w-full px-4 py-2 border rounded-lg" value={formData.genre} onChange={e => handleGenreChange(e.target.value)}>
                   <option value="">Selecionar curso</option>
                   {genres.map((g) => (
                     <option key={g.id} value={g.name}>{g.name}</option>
                   ))}
                 </select>
+                {selectedGenreMeta && (
+                  <p className="mt-1 text-xs text-gray-500">
+                    Codigo {selectedGenreMeta.code || 'CUR'} | Ordem {selectedGenreMeta.displayOrder || 'N/D'} | Armario padrao {selectedGenreMeta.defaultArmario || 'N/D'}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Editora</label>
@@ -295,6 +323,15 @@ export const BookForm = () => {
               <div>
                 <label className="block text-sm font-medium mb-1">CDU</label>
                 <input className="w-full px-4 py-2 border rounded-lg" value={formData.cdu} onChange={e => setFormData({ ...formData, cdu: e.target.value })} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Armario</label>
+                <input
+                  className="w-full px-4 py-2 border rounded-lg"
+                  value={formData.armario}
+                  onChange={e => setFormData({ ...formData, armario: e.target.value })}
+                  placeholder="Deixar vazio para usar o padrao do curso"
+                />
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Prateleira</label>
