@@ -15,7 +15,8 @@ import {
   ListChecks,
   Bell,
   UserCircle,
-  ShieldCheck
+  ShieldCheck,
+  HelpCircle
 } from 'lucide-react';
 import { User } from '@/hooks/useAuth.ts';
 import { cn } from '@/utils/cn.ts';
@@ -43,6 +44,9 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
   const [fullNameRequired, setFullNameRequired] = useState(false);
   const [fullNameDraft, setFullNameDraft] = useState('');
   const [savingFullName, setSavingFullName] = useState(false);
+  const [tourActive, setTourActive] = useState(false);
+  const [tourStepIndex, setTourStepIndex] = useState(0);
+  const [tourRect, setTourRect] = useState<DOMRect | null>(null);
   const displayEmail = user.email || user.id;
   const displayName = user.fullName || displayEmail;
   const displayInitial = displayName ? displayName[0].toUpperCase() : '?';
@@ -162,6 +166,72 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
       : [{ icon: UsersIcon, label: 'Verificacao estudante', path: '/student-verification' }]),
   ];
 
+  const userTourSteps = !user.isStaff
+    ? [
+        ...menuItems.map((item) => ({
+          key: `menu-${item.path === '/' ? 'home' : item.path.replace(/[^a-z0-9]+/gi, '-')}`,
+          title: item.label,
+          description: `Use esta opcao para abrir ${item.label.toLowerCase()} e explorar essa area do sistema.`,
+        })),
+        {
+          key: 'notifications',
+          title: 'Notificacoes',
+          description: 'Aqui acompanha avisos importantes, reservas, devolucoes e mensagens do sistema.',
+        },
+        {
+          key: 'profile-summary',
+          title: 'Resumo do perfil',
+          description: 'Nesta zona encontra o seu nome, o papel atual e os dados rapidos da sua sessao.',
+        },
+      ]
+    : [];
+  const currentTourStep = userTourSteps[tourStepIndex] ?? null;
+
+  const finishTour = (markSeen = true) => {
+    setTourActive(false);
+    setTourStepIndex(0);
+    setTourRect(null);
+    if (markSeen && !user.isStaff && typeof window !== 'undefined') {
+      window.localStorage.setItem(`user-tour-seen:${user.id}`, '1');
+    }
+  };
+
+  const startTour = () => {
+    if (user.isStaff) return;
+    setIsSidebarOpen(true);
+    setTourStepIndex(0);
+    setTourActive(true);
+  };
+
+  useEffect(() => {
+    if (user.isStaff || typeof window === 'undefined') return;
+    const seen = window.localStorage.getItem(`user-tour-seen:${user.id}`);
+    if (!seen) {
+      const timer = window.setTimeout(() => {
+        setIsSidebarOpen(true);
+        setTourActive(true);
+      }, 300);
+      return () => window.clearTimeout(timer);
+    }
+  }, [user.id, user.isStaff]);
+
+  useEffect(() => {
+    if (!tourActive || !currentTourStep || typeof window === 'undefined') return;
+
+    const updateRect = () => {
+      const target = document.querySelector(`[data-user-tour="${currentTourStep.key}"]`) as HTMLElement | null;
+      setTourRect(target ? target.getBoundingClientRect() : null);
+    };
+
+    updateRect();
+    window.addEventListener('resize', updateRect);
+    window.addEventListener('scroll', updateRect, true);
+    return () => {
+      window.removeEventListener('resize', updateRect);
+      window.removeEventListener('scroll', updateRect, true);
+    };
+  }, [tourActive, currentTourStep, isSidebarOpen]);
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
       {/* Sidebar */}
@@ -181,6 +251,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
             <Link 
               key={item.path} 
               to={item.path}
+              data-user-tour={!user.isStaff ? `menu-${item.path === '/' ? 'home' : item.path.replace(/[^a-z0-9]+/gi, '-')}` : undefined}
               className="relative flex items-center gap-3 p-3 rounded-xl text-gray-600 hover:bg-lime-50 hover:text-lime-700 transition-all group"
             >
               <item.icon className="w-5 h-5" />
@@ -215,8 +286,18 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
             <ChevronRight className={cn("w-5 h-5 transition-transform", isSidebarOpen && "rotate-180")} />
           </button>
           <div className="flex items-center gap-4">
+            {!user.isStaff && (
+              <button
+                className="inline-flex items-center gap-2 rounded-full border border-lime-200 bg-lime-50 px-3 py-1.5 text-xs font-bold text-lime-700 hover:bg-lime-100"
+                onClick={startTour}
+              >
+                <HelpCircle className="w-4 h-4" />
+                Tutorial
+              </button>
+            )}
             <div className="relative">
               <button
+                data-user-tour={!user.isStaff ? 'notifications' : undefined}
                 className="p-2 rounded-full hover:bg-gray-100 relative"
                 onClick={() => {
                   const next = !notifOpen;
@@ -270,7 +351,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
                 </div>
               )}
             </div>
-            <div className="text-right">
+            <div className="text-right" data-user-tour={!user.isStaff ? 'profile-summary' : undefined}>
               <p className="text-sm font-bold">{displayName}</p>
               <div className="flex items-center justify-end gap-2">
                 <p className="text-[10px] text-gray-500 uppercase tracking-widest">{roleLabel}</p>
@@ -340,6 +421,58 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
               >
                 {savingFullName ? 'A guardar...' : 'Guardar'}
               </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {tourActive && !user.isStaff && currentTourStep && (
+        <div className="fixed inset-0 z-[60]">
+          <div className="absolute inset-0 bg-black/55" />
+          {tourRect && (
+            <div
+              className="absolute rounded-2xl border-2 border-lime-400 shadow-[0_0_0_9999px_rgba(0,0,0,0.55)] transition-all"
+              style={{
+                top: Math.max(8, tourRect.top - 8),
+                left: Math.max(8, tourRect.left - 8),
+                width: tourRect.width + 16,
+                height: tourRect.height + 16,
+              }}
+            />
+          )}
+          <div className="absolute inset-x-4 bottom-4 md:inset-x-auto md:right-6 md:bottom-6 md:w-[380px]">
+            <div className="rounded-2xl bg-white p-5 shadow-2xl">
+              <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-lime-700">
+                Tutorial do leitor
+              </p>
+              <h3 className="mt-2 text-lg font-bold text-gray-900">{currentTourStep.title}</h3>
+              <p className="mt-2 text-sm text-gray-600">{currentTourStep.description}</p>
+              <p className="mt-3 text-xs text-gray-400">
+                Passo {tourStepIndex + 1} de {userTourSteps.length}
+              </p>
+              <div className="mt-4 flex items-center gap-3">
+                <Button variant="secondary" onClick={() => finishTour(false)}>
+                  Fechar
+                </Button>
+                <Button
+                  variant="secondary"
+                  onClick={() => setTourStepIndex((current) => Math.max(0, current - 1))}
+                  disabled={tourStepIndex === 0}
+                >
+                  Anterior
+                </Button>
+                <Button
+                  onClick={() => {
+                    if (tourStepIndex >= userTourSteps.length - 1) {
+                      finishTour(true);
+                      return;
+                    }
+                    setTourStepIndex((current) => current + 1);
+                  }}
+                >
+                  {tourStepIndex >= userTourSteps.length - 1 ? 'Concluir' : 'Seguinte'}
+                </Button>
+              </div>
             </div>
           </div>
         </div>
