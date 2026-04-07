@@ -13,7 +13,9 @@ type ReviewIssue =
   | 'missing-prateleira'
   | 'missing-isbn'
   | 'missing-editora'
-  | 'missing-cdu';
+  | 'missing-cdu'
+  | 'duplicate-isbn'
+  | 'duplicate-title-author';
 
 const ISSUE_LABELS: Record<ReviewIssue, string> = {
   general: 'Curso Geral',
@@ -24,9 +26,31 @@ const ISSUE_LABELS: Record<ReviewIssue, string> = {
   'missing-isbn': 'Sem ISBN',
   'missing-editora': 'Sem editora',
   'missing-cdu': 'Sem CDU',
+  'duplicate-isbn': 'ISBN duplicado',
+  'duplicate-title-author': 'Titulo/autor parecido',
 };
 
-const getBookIssues = (book: any): ReviewIssue[] => {
+const normalizeText = (value: string | null | undefined) =>
+  String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+
+const getTitleSimilarity = (left: string, right: string) => {
+  if (!left || !right) return 0;
+  if (left === right) return 1;
+  if (left.includes(right) || right.includes(left)) return 0.9;
+  const leftTokens = new Set(left.split(' ').filter(Boolean));
+  const rightTokens = new Set(right.split(' ').filter(Boolean));
+  const intersection = [...leftTokens].filter((token) => rightTokens.has(token)).length;
+  const union = new Set([...leftTokens, ...rightTokens]).size;
+  return union === 0 ? 0 : intersection / union;
+};
+
+const getBaseBookIssues = (book: any): ReviewIssue[] => {
   const issues: ReviewIssue[] = [];
   const genre = String(book.genre || '').trim();
   if (!genre) issues.push('missing-genre');
@@ -59,10 +83,78 @@ export const CatalogReviewPage = () => {
     setPage(1);
   }, [search, issueFilter, pageSize]);
 
+  const duplicateInfo = useMemo(() => {
+    const isbnGroups = new Map<string, any[]>();
+    const probableGroups: any[][] = [];
+    const duplicateById = new Map<number, Set<ReviewIssue>>();
+
+    books.forEach((book) => {
+      const isbnKey = normalizeText(book.isbn);
+      if (!isbnKey) return;
+      const current = isbnGroups.get(isbnKey) || [];
+      current.push(book);
+      isbnGroups.set(isbnKey, current);
+    });
+
+    isbnGroups.forEach((group) => {
+      if (group.length < 2) return;
+      group.forEach((book) => {
+        const issues = duplicateById.get(book.id) || new Set<ReviewIssue>();
+        issues.add('duplicate-isbn');
+        duplicateById.set(book.id, issues);
+      });
+    });
+
+    const booksByAuthor = new Map<string, any[]>();
+    books.forEach((book) => {
+      const authorKey = normalizeText(book.author);
+      if (!authorKey) return;
+      const current = booksByAuthor.get(authorKey) || [];
+      current.push(book);
+      booksByAuthor.set(authorKey, current);
+    });
+
+    booksByAuthor.forEach((group) => {
+      if (group.length < 2) return;
+      const visited = new Set<number>();
+      for (let i = 0; i < group.length; i += 1) {
+        if (visited.has(group[i].id)) continue;
+        const titleA = normalizeText(group[i].title);
+        const cluster = [group[i]];
+        for (let j = i + 1; j < group.length; j += 1) {
+          const titleB = normalizeText(group[j].title);
+          const similarity = getTitleSimilarity(titleA, titleB);
+          if (similarity >= 0.75) {
+            cluster.push(group[j]);
+            visited.add(group[j].id);
+          }
+        }
+        if (cluster.length > 1) {
+          probableGroups.push(cluster);
+          cluster.forEach((book) => {
+            const issues = duplicateById.get(book.id) || new Set<ReviewIssue>();
+            issues.add('duplicate-title-author');
+            duplicateById.set(book.id, issues);
+          });
+        }
+      }
+    });
+
+    return {
+      duplicateById,
+      duplicateIsbnGroups: Array.from(isbnGroups.values()).filter((group) => group.length > 1),
+      probableGroups,
+    };
+  }, [books]);
+
   const reviewBooks = useMemo(() => {
     const query = search.toLowerCase();
     return books
-      .map((book) => ({ ...book, reviewIssues: getBookIssues(book) }))
+      .map((book) => {
+        const baseIssues = getBaseBookIssues(book);
+        const duplicateIssues = Array.from(duplicateInfo.duplicateById.get(book.id) || []);
+        return { ...book, reviewIssues: [...new Set([...baseIssues, ...duplicateIssues])] };
+      })
       .filter((book) => book.reviewIssues.length > 0)
       .filter((book) => {
         const matchesIssue = issueFilter === 'all' || book.reviewIssues.includes(issueFilter);
@@ -82,7 +174,7 @@ export const CatalogReviewPage = () => {
         if (issueDiff !== 0) return issueDiff;
         return String(a.title || '').localeCompare(String(b.title || ''));
       });
-  }, [books, search, issueFilter]);
+  }, [books, search, issueFilter, duplicateInfo]);
 
   const summary = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -131,6 +223,14 @@ export const CatalogReviewPage = () => {
           <p className="text-xs uppercase text-gray-400">Sem catalogo</p>
           <p className="mt-2 text-3xl font-black">{summary['missing-catalog'] || 0}</p>
         </Card>
+        <Card className="p-5">
+          <p className="text-xs uppercase text-gray-400">ISBN duplicado</p>
+          <p className="mt-2 text-3xl font-black">{summary['duplicate-isbn'] || 0}</p>
+        </Card>
+        <Card className="p-5">
+          <p className="text-xs uppercase text-gray-400">Titulo/autor parecido</p>
+          <p className="mt-2 text-3xl font-black">{summary['duplicate-title-author'] || 0}</p>
+        </Card>
       </div>
 
       <Card className="p-4">
@@ -173,6 +273,58 @@ export const CatalogReviewPage = () => {
           ))}
         </div>
       </Card>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <Card className="overflow-hidden">
+          <div className="p-4 border-b border-gray-100 bg-rose-50">
+            <h2 className="text-sm font-bold text-rose-700 uppercase tracking-wider">Grupos com ISBN duplicado</h2>
+          </div>
+          <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
+            {duplicateInfo.duplicateIsbnGroups.length === 0 ? (
+              <p className="p-6 text-sm text-gray-400">Nenhum duplicado por ISBN encontrado.</p>
+            ) : (
+              duplicateInfo.duplicateIsbnGroups.slice(0, 12).map((group, index) => (
+                <div key={`isbn-${index}`} className="p-4">
+                  <p className="text-xs font-bold text-rose-700">ISBN {group[0]?.isbn || 'N/D'}</p>
+                  <div className="mt-3 space-y-2">
+                    {group.map((book) => (
+                      <button key={book.id} className="w-full rounded-xl border border-gray-100 px-3 py-2 text-left hover:bg-gray-50" onClick={() => setSelectedBook(book)}>
+                        <p className="text-sm font-semibold">{book.title}</p>
+                        <p className="text-xs text-gray-500">{book.author || 'Autor em falta'} | ID {book.id}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </Card>
+
+        <Card className="overflow-hidden">
+          <div className="p-4 border-b border-gray-100 bg-amber-50">
+            <h2 className="text-sm font-bold text-amber-700 uppercase tracking-wider">Titulo parecido e mesmo autor</h2>
+          </div>
+          <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
+            {duplicateInfo.probableGroups.length === 0 ? (
+              <p className="p-6 text-sm text-gray-400">Nenhum duplicado provavel por titulo/autor.</p>
+            ) : (
+              duplicateInfo.probableGroups.slice(0, 12).map((group, index) => (
+                <div key={`probable-${index}`} className="p-4">
+                  <p className="text-xs font-bold text-amber-700">{group[0]?.author || 'Autor em falta'}</p>
+                  <div className="mt-3 space-y-2">
+                    {group.map((book) => (
+                      <button key={book.id} className="w-full rounded-xl border border-gray-100 px-3 py-2 text-left hover:bg-gray-50" onClick={() => setSelectedBook(book)}>
+                        <p className="text-sm font-semibold">{book.title}</p>
+                        <p className="text-xs text-gray-500">{book.catalogCode || 'Sem catalogo'} | ID {book.id}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </Card>
+      </div>
 
       <Card className="overflow-hidden">
         <table className="w-full text-left border-collapse">
