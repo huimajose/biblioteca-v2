@@ -72,9 +72,17 @@ export const UserHistoryPage = ({ user }: UserHistoryPageProps) => {
                   <td className="p-4">
                     <span className={cn(
                       'px-2 py-1 rounded-full text-[10px] font-bold uppercase',
-                      h.status === 'borrowed' ? 'bg-orange-100 text-orange-700' : 'bg-green-100 text-green-700'
+                      h.status === 'borrowed'
+                        ? 'bg-orange-100 text-orange-700'
+                        : h.status === 'returned'
+                          ? 'bg-green-100 text-green-700'
+                          : 'bg-red-100 text-red-700'
                     )}>
-                      {h.status === 'borrowed' ? 'emprestado' : 'devolvido'}
+                      {h.status === 'borrowed'
+                        ? 'emprestado'
+                        : h.status === 'returned'
+                          ? 'devolvido'
+                          : 'rejeitado'}
                     </span>
                   </td>
                 </tr>

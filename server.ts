@@ -1472,7 +1472,9 @@ async function startServer() {
       .where(eq(schema.transactions.userId, userId))
       .orderBy(desc(schema.transactions.borrowedDate));
 
-    const filtered = transactions.filter((t) => t.status === 'BORROWED' || t.status === 'RETURNED');
+    const filtered = transactions.filter((t) =>
+      t.status === 'BORROWED' || t.status === 'RETURNED' || t.status === 'REJECTED'
+    );
     const enriched = await Promise.all(filtered.map(async (t) => {
       const pbook = await db.select().from(schema.physicalBooks).where(eq(schema.physicalBooks.pid, t.physicalBookId)).limit(1);
       const book = pbook[0] ? await db.select().from(schema.books).where(eq(schema.books.id, pbook[0].bookId)).limit(1) : [];
