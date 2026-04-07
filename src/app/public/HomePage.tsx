@@ -7,6 +7,7 @@ import { DEFAULT_BOOK_COVER } from '@/constants.ts';
 
 export const HomePage = () => {
   const [books, setBooks] = useState<any[]>([]);
+  const [courses, setCourses] = useState<any[]>([]);
   const [selectedBook, setSelectedBook] = useState<any | null>(null);
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [members, setMembers] = useState(0);
@@ -25,23 +26,27 @@ export const HomePage = () => {
     let active = true;
     const load = async () => {
       try {
-        const [booksRes, usersRes, recsRes] = await Promise.all([
+        const [booksRes, usersRes, recsRes, coursesRes] = await Promise.all([
           fetch('/api/books'),
           fetch('/api/user/count'),
           fetch('/api/books/recommendations'),
+          fetch('/api/genres'),
         ]);
         const booksData = await booksRes.json();
         const usersData = await usersRes.json();
         const recsData = await recsRes.json();
+        const coursesData = await coursesRes.json();
         if (!active) return;
         setBooks(Array.isArray(booksData) ? booksData : []);
         setMembers(usersData?.count ?? 0);
         setRecommendations(Array.isArray(recsData) ? recsData : []);
+        setCourses(Array.isArray(coursesData) ? coursesData : []);
       } catch {
         if (!active) return;
         setBooks([]);
         setMembers(0);
         setRecommendations([]);
+        setCourses([]);
       } finally {
         if (active) setLoading(false);
       }
@@ -60,17 +65,24 @@ export const HomePage = () => {
   const availableBooks = useMemo(() => books.length, [books]);
   const weeklyBooks = useMemo(() => books.slice(0, 6), [books]);
   const servedCourses = useMemo(
-    () =>
-      Array.from(
-        new Set(
-          books
-            .map((book) => String(book.genre || '').trim())
-            .filter(Boolean)
-        )
-      )
-        .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
-        .slice(0, 8),
-    [books]
+    () => {
+      const normalizedCourses = courses
+        .map((course) => ({
+          name: String(course?.name || '').trim(),
+          displayOrder: Number(course?.displayOrder ?? Number.MAX_SAFE_INTEGER),
+        }))
+        .filter((course) => course.name);
+
+      return normalizedCourses
+        .sort((a, b) => {
+          if (a.displayOrder !== b.displayOrder) {
+            return a.displayOrder - b.displayOrder;
+          }
+          return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+        })
+        .map((course) => course.name);
+    },
+    [courses]
   );
 
   const howItWorks = [
@@ -311,7 +323,7 @@ export const HomePage = () => {
             </p>
           </div>
           <span className="text-xs font-bold uppercase tracking-[0.25em] text-lime-600">
-            {loading ? 'A carregar...' : `${servedCourses.length} cursos em destaque`}
+            {loading ? 'A carregar...' : `${servedCourses.length} cursos registados`}
           </span>
         </div>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -323,7 +335,7 @@ export const HomePage = () => {
           ))}
           {!servedCourses.length && (
             <Card className="border-dashed border-lime-200 p-6 text-sm text-gray-500 sm:col-span-2 lg:col-span-4">
-              Os cursos serao apresentados aqui assim que o acervo publico estiver carregado.
+              Os cursos cadastrados aparecerao aqui assim que forem carregados.
             </Card>
           )}
         </div>
