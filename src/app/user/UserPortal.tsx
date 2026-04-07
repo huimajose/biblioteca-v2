@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, BookOpen, Loader2, Star } from 'lucide-react';
+import { Search, BookOpen, Loader2, Star, Clock3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Card } from '@/components/ui/Card.tsx';
 import { User } from '@/hooks/useAuth.ts';
@@ -48,6 +48,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
   const [readingListBook, setReadingListBook] = useState<any | null>(null);
   const [readingListsBusy, setReadingListsBusy] = useState(false);
   const [readingProgressMap, setReadingProgressMap] = useState<Record<number, any>>({});
+  const [continueReading, setContinueReading] = useState<any[]>([]);
   const [borrowLoading, setBorrowLoading] = useState<Record<number, boolean>>({});
   const [reserveLoading, setReserveLoading] = useState<Record<number, boolean>>({});
   const [shelfLoading, setShelfLoading] = useState<Record<number, boolean>>({});
@@ -87,6 +88,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
         .then(res => res.json())
         .then(data => {
           const items = Array.isArray(data) ? data : [];
+          setContinueReading(items.slice(0, 4));
           setReadingProgressMap(
             items.reduce((acc: Record<number, any>, entry: any) => {
               if (entry?.bookId) acc[entry.bookId] = entry;
@@ -94,7 +96,10 @@ export const UserPortal = ({ user }: UserPortalProps) => {
             }, {})
           );
         })
-        .catch(() => setReadingProgressMap({})),
+        .catch(() => {
+          setContinueReading([]);
+          setReadingProgressMap({});
+        }),
       fetch('/api/user/borrow-status', { headers: { 'x-user-id': user.id } })
         .then(res => res.json())
         .then(data => {
@@ -496,6 +501,64 @@ export const UserPortal = ({ user }: UserPortalProps) => {
         </Card>
       )}
 
+      {continueReading.length > 0 && (
+        <Card className="p-5">
+          <div className="mb-4 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold">Retomar leitura</h2>
+              <p className="text-xs text-gray-400">Livros em curso ordenados pela sua leitura mais recente.</p>
+            </div>
+            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest text-lime-700">
+              <Clock3 className="h-3 w-3" />
+              Em curso
+            </span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+            {continueReading.map((entry) => (
+              <div
+                key={entry.id}
+                className="cursor-pointer rounded-2xl border border-gray-100 p-4 transition-all hover:border-lime-200 hover:bg-lime-50/40"
+                onClick={() => navigate(`/reader/${entry.book.id}`)}
+              >
+                <div className="flex gap-3">
+                  <img
+                    src={entry.book?.cover || DEFAULT_BOOK_COVER}
+                    alt={entry.book?.title}
+                    className="h-20 w-14 rounded-xl object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="line-clamp-2 text-sm font-bold text-gray-900">{entry.book?.title}</p>
+                    <p className="mt-1 line-clamp-1 text-xs text-gray-500">{entry.book?.author}</p>
+                    <p className="mt-2 text-[11px] font-semibold text-lime-700">
+                      Pagina {entry.currentPage || 1}
+                      {entry.totalPages ? ` de ${entry.totalPages}` : ''}
+                    </p>
+                    <p className="text-[11px] text-gray-500">{entry.progressPercent || 0}% concluido</p>
+                  </div>
+                </div>
+                <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-gray-100">
+                  <div
+                    className="h-full rounded-full bg-lime-600"
+                    style={{ width: `${Math.max(6, entry.progressPercent || 0)}%` }}
+                  />
+                </div>
+                <button
+                  className="mt-3 inline-flex items-center gap-2 text-xs font-bold uppercase text-lime-700"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/reader/${entry.book.id}`);
+                  }}
+                >
+                  <BookOpen className="h-3 w-3" />
+                  Continuar leitura
+                </button>
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
       <Card className="p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
@@ -601,7 +664,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
                 {readingProgressMap[book.id] && (
                   <p className="mb-3 text-[11px] font-semibold text-lime-700">
                     Continuar da pagina {readingProgressMap[book.id]?.currentPage || 1}
-                    {readingProgressMap[book.id]?.progressPercent ? ` · ${readingProgressMap[book.id].progressPercent}%` : ''}
+                    {readingProgressMap[book.id]?.progressPercent ? ` | ${readingProgressMap[book.id].progressPercent}%` : ''}
                   </p>
                 )}
                 <div className="mt-auto pt-3 border-t border-gray-50 flex items-center justify-between">
@@ -790,3 +853,4 @@ export const UserPortal = ({ user }: UserPortalProps) => {
     </div>
   );
 };
+
