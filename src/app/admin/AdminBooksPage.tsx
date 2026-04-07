@@ -10,6 +10,13 @@ import * as XLSX from 'xlsx';
 import { LOGO_WATERMARK } from '@/constants.ts';
 import { addCenteredWatermarkToAllPages, loadWatermarkImage } from '@/utils/pdfWatermark.ts';
 
+const getBookLocationLabel = (book: any) => {
+  const armario = String(book.armario ?? book.cdu ?? '').trim() || 'S/ARM';
+  const prateleira = String(book.prateleira ?? '').trim() || 'S/PRAT';
+  const code = String(book.catalogCode ?? '').trim() || `ID ${book.id}`;
+  return `ARM ${armario} | PRAT ${prateleira} | ${code}`;
+};
+
 export const AdminBooksPage = () => {
   const [books, setBooks] = useState<any[]>([]);
   const [search, setSearch] = useState('');
@@ -21,6 +28,16 @@ export const AdminBooksPage = () => {
   const [genres, setGenres] = useState<any[]>([]);
   const [genreFilter, setGenreFilter] = useState<string>('all');
   const [selectedBook, setSelectedBook] = useState<any | null>(null);
+
+  const getGenreOrder = (genreName: string) => {
+    const match = genres.find((genre) => String(genre.name || '').toLowerCase() === String(genreName || '').toLowerCase());
+    return Number(match?.displayOrder ?? Number.MAX_SAFE_INTEGER);
+  };
+
+  const getGenreCode = (genreName: string) => {
+    const match = genres.find((genre) => String(genre.name || '').toLowerCase() === String(genreName || '').toLowerCase());
+    return String(match?.code || 'CUR').trim().toUpperCase();
+  };
 
   useEffect(() => {
     fetch('/api/books')
@@ -65,6 +82,20 @@ export const AdminBooksPage = () => {
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
+  const orderedInventoryBooks = useMemo(() => {
+    return [...filtered].sort((a, b) => {
+      const genreOrderDiff = getGenreOrder(a.genre) - getGenreOrder(b.genre);
+      if (genreOrderDiff !== 0) return genreOrderDiff;
+
+      const genreNameDiff = String(a.genre || '').localeCompare(String(b.genre || ''));
+      if (genreNameDiff !== 0) return genreNameDiff;
+
+      const sequenceDiff = Number(a.courseSequence ?? Number.MAX_SAFE_INTEGER) - Number(b.courseSequence ?? Number.MAX_SAFE_INTEGER);
+      if (sequenceDiff !== 0) return sequenceDiff;
+
+      return String(a.title || '').localeCompare(String(b.title || ''));
+    });
+  }, [filtered, genres]);
 
   const exportInventoryPdf = async (byGenre: boolean) => {
     const doc = new jsPDF('p', 'pt');
@@ -75,7 +106,7 @@ export const AdminBooksPage = () => {
 
     if (byGenre) {
       const grouped: Record<string, any[]> = {};
-      filtered.forEach((b) => {
+      orderedInventoryBooks.forEach((b) => {
         const key = b.genre || 'Sem curso';
         grouped[key] = grouped[key] || [];
         grouped[key].push(b);
@@ -84,12 +115,14 @@ export const AdminBooksPage = () => {
       let y = 80;
       Object.entries(grouped).forEach(([genre, list]) => {
         doc.setFontSize(12);
-        doc.text(genre, 40, y);
+        doc.text(`${getGenreCode(genre)} | ${genre}`, 40, y);
         y += 8;
         autoTable(doc, {
           startY: y + 8,
-          head: [['Titulo', 'Autor', 'ISBN', 'Disponivel']],
+          head: [['Seq', 'Codigo', 'Titulo', 'Autor', 'ISBN', 'Disponivel']],
           body: list.map((b) => [
+            b.courseSequence ?? '-',
+            b.catalogCode || `${getGenreCode(genre)}-${String(b.courseSequence ?? '').padStart(3, '0')}`,
             b.title,
             b.author,
             b.isbn,
@@ -103,8 +136,11 @@ export const AdminBooksPage = () => {
     } else {
       autoTable(doc, {
         startY: 80,
-        head: [['Titulo', 'Autor', 'ISBN', 'Disponivel']],
-        body: filtered.map((b) => [
+        head: [['Curso', 'Seq', 'Codigo', 'Titulo', 'Autor', 'ISBN', 'Disponivel']],
+        body: orderedInventoryBooks.map((b) => [
+          getGenreCode(b.genre),
+          b.courseSequence ?? '-',
+          b.catalogCode || '-',
           b.title,
           b.author,
           b.isbn,
@@ -128,12 +164,12 @@ export const AdminBooksPage = () => {
 
   const exportInventoryExcel = (byGenre: boolean) => {
     const rows = byGenre
-      ? filtered.flatMap((b) => [[b.genre || 'Sem curso', b.title, b.author, b.isbn, b.isDigital ? '-' : `${b.availableCopies}`]])
-      : filtered.map((b) => [b.title, b.author, b.isbn, b.isDigital ? '-' : `${b.availableCopies}`]);
+      ? orderedInventoryBooks.flatMap((b) => [[b.genre || 'Sem curso', b.courseSequence ?? '-', b.catalogCode || '-', b.title, b.author, b.isbn, b.isDigital ? '-' : `${b.availableCopies}`]])
+      : orderedInventoryBooks.map((b) => [getGenreCode(b.genre), b.courseSequence ?? '-', b.catalogCode || '-', b.title, b.author, b.isbn, b.isDigital ? '-' : `${b.availableCopies}`]);
 
     const header = byGenre
-      ? [['curso', 'Titulo', 'Autor', 'ISBN', 'Disponivel']]
-      : [['Titulo', 'Autor', 'ISBN', 'Disponivel']];
+      ? [['curso', 'Seq', 'Codigo', 'Titulo', 'Autor', 'ISBN', 'Disponivel']]
+      : [['Curso', 'Seq', 'Codigo', 'Titulo', 'Autor', 'ISBN', 'Disponivel']];
 
     const worksheet = XLSX.utils.aoa_to_sheet([...header, ...rows]);
     const workbook = XLSX.utils.book_new();
@@ -157,6 +193,7 @@ export const AdminBooksPage = () => {
   const drawLabel = (doc: jsPDF, x: number, y: number, book: any, watermark?: HTMLImageElement) => {
     const labelW = 180;
     const labelH = 120;
+    const locationLabel = getBookLocationLabel(book);
 
     doc.setDrawColor(20);
     doc.setLineWidth(0.6);
@@ -184,14 +221,18 @@ export const AdminBooksPage = () => {
     doc.text('Biblioteca Digital', x + 8, y + 12);
 
     doc.setTextColor(0);
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('helvetica', 'bold');
     doc.setFontSize(6);
+    
+    doc.setFontSize(8);
+    doc.text(locationLabel, x + 8, y + 38, { maxWidth: labelW - 16 });
 
-
+    doc.setFont('helvetica', 'normal');
     const leftX = x + 8;
     const rightX = x + 110;
     doc.setDrawColor(230);
-    doc.line(x + 104, y + 38, x + 104, y + 84);
+    doc.line(x + 8, y + 44, x + labelW - 8, y + 44);
+    doc.line(x + 104, y + 50, x + 104, y + 84);
 
     const rawTitle = String(book.title || 'N/D');
     const rawAuthor = String(book.author || 'N/D');
@@ -212,7 +253,7 @@ export const AdminBooksPage = () => {
 
     const titleFit = fitText(rawTitle, 88, 2, 9, 7);
     doc.setFontSize(titleFit.size);
-    const titleStartY = y + 56;
+    const titleStartY = y + 62;
     doc.text(titleFit.lines, leftX, titleStartY);
 
     const titleLineCount = titleFit.lines.length;
@@ -227,14 +268,14 @@ export const AdminBooksPage = () => {
     doc.setFontSize(7);
    
     doc.setFontSize(8);
-    doc.text(String(book.genre || 'N/D'), rightX, y + 56, { maxWidth: 60 });
+    doc.text(String(book.genre || 'N/D'), rightX, y + 62, { maxWidth: 60 });
 
     doc.setFontSize(7);
    
     doc.setFontSize(8);
-    doc.text(String(book.isbn || 'N/D'), rightX, y + 78, { maxWidth: 60 });
+    doc.text(`${String(book.isbn || 'N/D')}`, rightX, y + 84, { maxWidth: 60 });
 
-    drawBarcode(doc, x + 8, y + 86, 160, 16, String(book.isbn || book.id));
+    drawBarcode(doc, x + 8, y + 92, 160, 10, `${locationLabel}${book.isbn || ''}`);
     doc.setFontSize(7);
    
   };
