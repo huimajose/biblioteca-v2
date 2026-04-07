@@ -12,6 +12,7 @@ import { StudentVerificationsPage } from './app/admin/StudentVerificationsPage.t
 import CoursesPage from './app/admin/CoursesPage.tsx';
 import CatalogReviewPage from './app/admin/CatalogReviewPage.tsx';
 import AdminAuditPage from './app/admin/AdminAuditPage.tsx';
+import { UserPortal } from './app/user/UserPortal.tsx';
 import { StudentVerificationForm } from './app/user/StudentVerificationForm.tsx';
 import { UserShelfPage } from './app/user/UserShelfPage.tsx';
 import { UserHistoryPage } from './app/user/UserHistoryPage.tsx';
