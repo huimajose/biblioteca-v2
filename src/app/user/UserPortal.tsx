@@ -47,6 +47,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
   const [readingLists, setReadingLists] = useState<any[]>([]);
   const [readingListBook, setReadingListBook] = useState<any | null>(null);
   const [readingListsBusy, setReadingListsBusy] = useState(false);
+  const [readingProgressMap, setReadingProgressMap] = useState<Record<number, any>>({});
   const [borrowLoading, setBorrowLoading] = useState<Record<number, boolean>>({});
   const [reserveLoading, setReserveLoading] = useState<Record<number, boolean>>({});
   const [shelfLoading, setShelfLoading] = useState<Record<number, boolean>>({});
@@ -82,6 +83,18 @@ export const UserPortal = ({ user }: UserPortalProps) => {
         .then(res => res.json())
         .then(data => setReadingLists(Array.isArray(data) ? data : []))
         .catch(() => setReadingLists([])),
+      fetch('/api/user/continue-reading', { headers: { 'x-user-id': user.id } })
+        .then(res => res.json())
+        .then(data => {
+          const items = Array.isArray(data) ? data : [];
+          setReadingProgressMap(
+            items.reduce((acc: Record<number, any>, entry: any) => {
+              if (entry?.bookId) acc[entry.bookId] = entry;
+              return acc;
+            }, {})
+          );
+        })
+        .catch(() => setReadingProgressMap({})),
       fetch('/api/user/borrow-status', { headers: { 'x-user-id': user.id } })
         .then(res => res.json())
         .then(data => {
@@ -585,6 +598,12 @@ export const UserPortal = ({ user }: UserPortalProps) => {
               <div className="p-4 flex-grow flex flex-col">
                 <h3 className="font-bold text-gray-900 line-clamp-1 mb-1">{book.title}</h3>
                 <p className="text-sm text-gray-500 mb-3">{book.author}</p>
+                {readingProgressMap[book.id] && (
+                  <p className="mb-3 text-[11px] font-semibold text-lime-700">
+                    Continuar da pagina {readingProgressMap[book.id]?.currentPage || 1}
+                    {readingProgressMap[book.id]?.progressPercent ? ` · ${readingProgressMap[book.id].progressPercent}%` : ''}
+                  </p>
+                )}
                 <div className="mt-auto pt-3 border-t border-gray-50 flex items-center justify-between">
                   <span className="text-xs font-medium text-gray-400">{book.genre}</span>
                   {book.isDigital || book.fileUrl ? (
@@ -605,7 +624,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
                           className="text-[10px] bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700 transition-colors font-bold uppercase flex items-center gap-1"
                         >
                           <BookOpen className="w-3 h-3" />
-                          Ler PDF
+                          {readingProgressMap[book.id] ? 'Continuar' : 'Ler PDF'}
                         </button>
                       )}
                       <button
@@ -739,6 +758,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
             onAddToShelf={handleAddToShelf}
             onToggleFavorite={handleToggleFavorite}
             onOpenReadingLists={setReadingListBook}
+            readingProgress={readingProgressMap[selectedBook?.id]}
             favoriteActive={favoriteIds.has(selectedBook?.id)}
             favoriteLoading={isTogglingFavorite(selectedBook?.id)}
             resolveFileUrl={(fileUrl) => resolveFileUrl(fileUrl, selectedBook?.id)}

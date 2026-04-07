@@ -13,6 +13,12 @@ interface BookDetailsModalProps {
   onOpenReadingLists?: (book: any) => void;
   resolveFileUrl: (fileUrl?: string | null) => string | null;
   onReadPdf: (book: any) => void;
+  readingProgress?: {
+    currentPage?: number | null;
+    totalPages?: number | null;
+    progressPercent?: number | null;
+    lastReadAt?: string | null;
+  } | null;
   borrowLoading?: boolean;
   reserveLoading?: boolean;
   shelfLoading?: boolean;
@@ -33,6 +39,7 @@ export const BookDetailsModal = ({
   onOpenReadingLists,
   resolveFileUrl,
   onReadPdf,
+  readingProgress = null,
   borrowLoading = false,
   reserveLoading = false,
   shelfLoading = false,
@@ -47,6 +54,7 @@ export const BookDetailsModal = ({
   const hasPhysical = (book.availableCopies ?? 0) > 0;
   const hasDigital = Boolean(pdfUrl);
   const isOutOfStock = !hasPhysical && !hasDigital && (book.availableCopies ?? 0) <= 0;
+  const hasReadingProgress = Boolean((readingProgress?.currentPage ?? 0) > 1);
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
@@ -95,6 +103,19 @@ export const BookDetailsModal = ({
               </div>
             </div>
 
+            {hasDigital && hasReadingProgress && (
+              <div className="rounded-2xl border border-lime-100 bg-lime-50 px-4 py-3">
+                <p className="text-xs font-bold uppercase tracking-wider text-lime-700">Continuar leitura</p>
+                <p className="mt-1 text-sm text-lime-900">
+                  Parou na pagina {readingProgress?.currentPage}
+                  {readingProgress?.totalPages ? ` de ${readingProgress.totalPages}` : ''}.
+                </p>
+                <p className="text-xs text-lime-700">
+                  Progresso: {readingProgress?.progressPercent ?? 0}%
+                </p>
+              </div>
+            )}
+
             <div className="flex flex-wrap gap-2 pt-2">
               {hasDigital && (
                 <>
@@ -104,6 +125,14 @@ export const BookDetailsModal = ({
                   >
                     <BookOpen className="w-4 h-4" /> Ler PDF
                   </Button>
+                  {hasReadingProgress && (
+                    <Button
+                      className="text-xs uppercase bg-lime-600 hover:bg-lime-700"
+                      onClick={() => onReadPdf(book)}
+                    >
+                      <BookOpen className="w-4 h-4" /> Continuar da pagina {readingProgress?.currentPage}
+                    </Button>
+                  )}
                   <Button
                     className="text-xs uppercase"
                     onClick={() => onAddToShelf(book.id)}

@@ -20,6 +20,7 @@ export const UserShelfPage = ({ user }: UserShelfPageProps) => {
   const [selected, setSelected] = useState<any | null>(null);
   const [filter, setFilter] = useState<'all' | 'favorites'>('all');
   const [favoriteLoading, setFavoriteLoading] = useState<Record<number, boolean>>({});
+  const [readingProgressMap, setReadingProgressMap] = useState<Record<number, any>>({});
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -38,6 +39,20 @@ export const UserShelfPage = ({ user }: UserShelfPageProps) => {
           const items = Array.isArray(data?.items) ? data.items : [];
           setFavorites(items.map((entry: any) => ({ ...entry, favorite: true })));
         }),
+      fetch('/api/user/continue-reading', {
+        headers: { 'x-user-id': user.id },
+      })
+        .then(res => res.json())
+        .then(data => {
+          const items = Array.isArray(data) ? data : [];
+          setReadingProgressMap(
+            items.reduce((acc: Record<number, any>, entry: any) => {
+              if (entry?.bookId) acc[entry.bookId] = entry;
+              return acc;
+            }, {})
+          );
+        })
+        .catch(() => setReadingProgressMap({})),
     ]).finally(() => setLoading(false));
   }, [user.id]);
 
@@ -158,6 +173,12 @@ export const UserShelfPage = ({ user }: UserShelfPageProps) => {
                   </button>
                 </div>
                 <p className="text-sm text-gray-500">{entry.book.author}</p>
+                {readingProgressMap[entry.book.id] && (
+                  <p className="mt-1 text-[11px] font-semibold text-lime-700">
+                    Parou na pagina {readingProgressMap[entry.book.id]?.currentPage || 1}
+                    {readingProgressMap[entry.book.id]?.progressPercent ? ` · ${readingProgressMap[entry.book.id].progressPercent}%` : ''}
+                  </p>
+                )}
                 {entry.favorite && (
                   <p className="mt-1 text-[10px] font-bold uppercase tracking-widest text-amber-600">Favorito</p>
                 )}
@@ -167,7 +188,7 @@ export const UserShelfPage = ({ user }: UserShelfPageProps) => {
                     onClick={(e) => { e.stopPropagation(); openReader(entry.book); }}
                   >
                     <BookOpen className="w-3 h-3" />
-                    Ler PDF
+                    {readingProgressMap[entry.book.id] ? 'Continuar leitura' : 'Ler PDF'}
                   </button>
                 )}
               </div>
@@ -197,6 +218,7 @@ export const UserShelfPage = ({ user }: UserShelfPageProps) => {
           onReserve={() => {}}
           onAddToShelf={() => {}}
           onToggleFavorite={toggleFavorite}
+          readingProgress={readingProgressMap[selected?.id]}
           favoriteActive={Boolean(favorites.find((entry) => entry?.book?.id === selected?.id))}
           favoriteLoading={Boolean(favoriteLoading[selected?.id])}
           resolveFileUrl={(fileUrl) => resolveFileUrl(fileUrl, selected?.id)}
