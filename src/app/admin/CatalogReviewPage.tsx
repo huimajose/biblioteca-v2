@@ -68,12 +68,14 @@ const getBaseBookIssues = (book: any): ReviewIssue[] => {
 };
 
 export const CatalogReviewPage = () => {
+  const PAGE_SIZE = 5;
   const [books, setBooks] = useState<any[]>([]);
   const [selectedBook, setSelectedBook] = useState<any | null>(null);
   const [search, setSearch] = useState('');
   const [issueFilter, setIssueFilter] = useState<'all' | ReviewIssue>('all');
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(15);
+  const [isbnPage, setIsbnPage] = useState(1);
+  const [probablePage, setProbablePage] = useState(1);
 
   useEffect(() => {
     fetch('/api/books')
@@ -84,7 +86,9 @@ export const CatalogReviewPage = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [search, issueFilter, pageSize]);
+    setIsbnPage(1);
+    setProbablePage(1);
+  }, [search, issueFilter]);
 
   const duplicateInfo = useMemo(() => {
     const isbnGroups = new Map<string, any[]>();
@@ -189,8 +193,14 @@ export const CatalogReviewPage = () => {
     return counts;
   }, [reviewBooks]);
 
-  const totalPages = Math.max(1, Math.ceil(reviewBooks.length / pageSize));
-  const paged = reviewBooks.slice((page - 1) * pageSize, page * pageSize);
+  const totalPages = Math.max(1, Math.ceil(reviewBooks.length / PAGE_SIZE));
+  const paged = reviewBooks.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
+
+  const totalIsbnPages = Math.max(1, Math.ceil(duplicateInfo.duplicateIsbnGroups.length / PAGE_SIZE));
+  const pagedIsbnGroups = duplicateInfo.duplicateIsbnGroups.slice((isbnPage - 1) * PAGE_SIZE, isbnPage * PAGE_SIZE);
+
+  const totalProbablePages = Math.max(1, Math.ceil(duplicateInfo.probableGroups.length / PAGE_SIZE));
+  const pagedProbableGroups = duplicateInfo.probableGroups.slice((probablePage - 1) * PAGE_SIZE, probablePage * PAGE_SIZE);
 
   return (
     <div className="space-y-6">
@@ -241,7 +251,7 @@ export const CatalogReviewPage = () => {
       </div>
 
       <Card className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr_160px] gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-3">
           <input
             className="px-4 py-2 border rounded-lg"
             placeholder="Pesquisar por titulo, autor, curso, ISBN ou catalogo"
@@ -252,11 +262,6 @@ export const CatalogReviewPage = () => {
             <option value="all">Todos os problemas</option>
             {Object.entries(ISSUE_LABELS).map(([issue, label]) => (
               <option key={issue} value={issue}>{label}</option>
-            ))}
-          </select>
-          <select className="px-4 py-2 border rounded-lg" value={pageSize} onChange={(e) => setPageSize(Number(e.target.value))}>
-            {[15, 30, 50].map((size) => (
-              <option key={size} value={size}>{size} por pagina</option>
             ))}
           </select>
         </div>
@@ -290,7 +295,7 @@ export const CatalogReviewPage = () => {
             {duplicateInfo.duplicateIsbnGroups.length === 0 ? (
               <p className="p-6 text-sm text-gray-400">Nenhum duplicado por ISBN encontrado.</p>
             ) : (
-              duplicateInfo.duplicateIsbnGroups.slice(0, 12).map((group, index) => (
+              pagedIsbnGroups.map((group, index) => (
                 <div key={`isbn-${index}`} className="p-4">
                   <p className="text-xs font-bold text-rose-700">ISBN {group[0]?.isbn || 'N/D'}</p>
                   <div className="mt-3 space-y-2">
@@ -305,6 +310,15 @@ export const CatalogReviewPage = () => {
               ))
             )}
           </div>
+          {duplicateInfo.duplicateIsbnGroups.length > PAGE_SIZE && (
+            <div className="flex items-center justify-between border-t border-gray-100 p-4 text-sm text-gray-500">
+              <span>Pagina {isbnPage} de {totalIsbnPages}</span>
+              <div className="flex items-center gap-2">
+                <Button variant="secondary" onClick={() => setIsbnPage((current) => Math.max(1, current - 1))} disabled={isbnPage <= 1}>Anterior</Button>
+                <Button variant="secondary" onClick={() => setIsbnPage((current) => Math.min(totalIsbnPages, current + 1))} disabled={isbnPage >= totalIsbnPages}>Seguinte</Button>
+              </div>
+            </div>
+          )}
         </Card>
 
         <Card className="overflow-hidden">
@@ -315,7 +329,7 @@ export const CatalogReviewPage = () => {
             {duplicateInfo.probableGroups.length === 0 ? (
               <p className="p-6 text-sm text-gray-400">Nenhum duplicado provavel por titulo/autor.</p>
             ) : (
-              duplicateInfo.probableGroups.slice(0, 12).map((group, index) => (
+              pagedProbableGroups.map((group, index) => (
                 <div key={`probable-${index}`} className="p-4">
                   <p className="text-xs font-bold text-amber-700">{group[0]?.author || 'Autor em falta'}</p>
                   <div className="mt-3 space-y-2">
@@ -330,6 +344,15 @@ export const CatalogReviewPage = () => {
               ))
             )}
           </div>
+          {duplicateInfo.probableGroups.length > PAGE_SIZE && (
+            <div className="flex items-center justify-between border-t border-gray-100 p-4 text-sm text-gray-500">
+              <span>Pagina {probablePage} de {totalProbablePages}</span>
+              <div className="flex items-center gap-2">
+                <Button variant="secondary" onClick={() => setProbablePage((current) => Math.max(1, current - 1))} disabled={probablePage <= 1}>Anterior</Button>
+                <Button variant="secondary" onClick={() => setProbablePage((current) => Math.min(totalProbablePages, current + 1))} disabled={probablePage >= totalProbablePages}>Seguinte</Button>
+              </div>
+            </div>
+          )}
         </Card>
       </div>
 
