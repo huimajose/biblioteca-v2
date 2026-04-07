@@ -48,12 +48,12 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
     }
 
     Promise.all([
-      fetch('/api/user/shelf', { headers: { 'x-user-id': user.id } }).then(r => r.json()),
-      fetch('/api/user/history', { headers: { 'x-user-id': user.id } }).then(r => r.json()),
-      fetch('/api/user/score', { headers: { 'x-user-id': user.id } }).then(r => r.json()),
-      fetch(`/api/books/recommendations?${recParams.toString()}`).then(r => r.json()),
-      fetch('/api/user/student-info', { headers: { 'x-user-id': user.id } }).then(r => r.json()),
-      fetch(`/api/notifications/${user.id}`).then(r => r.json()),
+      fetch('/api/user/shelf', { headers: { 'x-user-id': user.id } }).then(r => r.json()).catch(() => []),
+      fetch('/api/user/history', { headers: { 'x-user-id': user.id } }).then(r => r.json()).catch(() => []),
+      fetch('/api/user/score', { headers: { 'x-user-id': user.id } }).then(r => r.json()).catch(() => ({ points: 0 })),
+      fetch(`/api/books/recommendations?${recParams.toString()}`).then(r => r.json()).catch(() => []),
+      fetch('/api/user/student-info', { headers: { 'x-user-id': user.id } }).then(r => r.json()).catch(() => ({})),
+      fetch(`/api/notifications/${user.id}`).then(r => r.json()).catch(() => []),
       fetch('/api/user/borrow-status', { headers: { 'x-user-id': user.id } }).then(r => r.json()).catch(() => ({})),
       fetch('/api/user/continue-reading', { headers: { 'x-user-id': user.id } })
         .then(r => r.json())
