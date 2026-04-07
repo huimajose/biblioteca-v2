@@ -1,13 +1,25 @@
 import React, { useEffect } from 'react';
-import { X } from 'lucide-react';
+import { X, ListChecks, Star, Loader2 } from 'lucide-react';
 import { DEFAULT_BOOK_COVER } from '@/constants.ts';
+import { Button } from '@/components/ui/Button.tsx';
 
 interface BookInfoModalProps {
   book: any;
   onClose: () => void;
+  onToggleFavorite?: (bookId: number) => void;
+  onOpenReadingLists?: (book: any) => void;
+  favoriteActive?: boolean;
+  favoriteLoading?: boolean;
 }
 
-export const BookInfoModal = ({ book, onClose }: BookInfoModalProps) => {
+export const BookInfoModal = ({
+  book,
+  onClose,
+  onToggleFavorite,
+  onOpenReadingLists,
+  favoriteActive = false,
+  favoriteLoading = false,
+}: BookInfoModalProps) => {
   useEffect(() => {
     if (!book?.id || typeof window === 'undefined') return;
     try {
@@ -118,6 +130,36 @@ export const BookInfoModal = ({ book, onClose }: BookInfoModalProps) => {
                 </div>
               )}
             </div>
+
+            {(onToggleFavorite || onOpenReadingLists) && (
+              <div className="flex flex-wrap gap-2 pt-2">
+                {onToggleFavorite && (
+                  <Button
+                    className={`text-xs uppercase ${favoriteActive ? 'bg-amber-500 hover:bg-amber-600 text-white' : ''}`}
+                    variant={favoriteActive ? 'primary' : 'secondary'}
+                    onClick={() => onToggleFavorite(book.id)}
+                    disabled={favoriteLoading}
+                  >
+                    {favoriteLoading ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : (
+                      <Star className={`w-4 h-4 ${favoriteActive ? 'fill-current' : ''}`} />
+                    )}
+                    {favoriteActive ? 'Favorito' : 'Ler depois'}
+                  </Button>
+                )}
+                {onOpenReadingLists && (
+                  <Button
+                    className="text-xs uppercase"
+                    variant="secondary"
+                    onClick={() => onOpenReadingLists(book)}
+                  >
+                    <ListChecks className="w-4 h-4" />
+                    Guardar em lista
+                  </Button>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </div>

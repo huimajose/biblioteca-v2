@@ -6,6 +6,7 @@ import { DEFAULT_BOOK_COVER } from '@/constants.ts';
 import { BookInfoModal } from '@/components/BookInfoModal.tsx';
 import { User } from '@/hooks/useAuth.ts';
 import { Button } from '@/components/ui/Button.tsx';
+import { ReadingListPickerModal } from '@/components/ReadingListPickerModal.tsx';
 import {
   LineChart,
   Line,
@@ -31,6 +32,11 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
   });
   const [recommendations, setRecommendations] = useState<any[]>([]);
   const [continueReading, setContinueReading] = useState<any[]>([]);
+  const [favoriteIds, setFavoriteIds] = useState<Set<number>>(new Set());
+  const [readingLists, setReadingLists] = useState<any[]>([]);
+  const [readingListBook, setReadingListBook] = useState<any | null>(null);
+  const [readingListsBusy, setReadingListsBusy] = useState(false);
+  const [favoriteLoading, setFavoriteLoading] = useState<Record<number, boolean>>({});
   const [readingGoal, setReadingGoal] = useState<any | null>(null);
   const [goalForm, setGoalForm] = useState({
     id: 0,
@@ -69,12 +75,14 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
       fetch('/api/user/history', { headers: { 'x-user-id': user.id } }).then(r => r.json()).catch(() => []),
       fetch('/api/user/score', { headers: { 'x-user-id': user.id } }).then(r => r.json()).catch(() => ({ points: 0 })),
       fetch(`/api/books/recommendations?${recParams.toString()}`).then(r => r.json()).catch(() => []),
+      fetch('/api/user/favorites', { headers: { 'x-user-id': user.id } }).then(r => r.json()).catch(() => ({ bookIds: [] })),
+      fetch('/api/user/reading-lists', { headers: { 'x-user-id': user.id } }).then(r => r.json()).catch(() => []),
       fetch('/api/user/student-info', { headers: { 'x-user-id': user.id } }).then(r => r.json()).catch(() => ({})),
       fetch(`/api/notifications/${user.id}`).then(r => r.json()).catch(() => []),
       fetch('/api/user/borrow-status', { headers: { 'x-user-id': user.id } }).then(r => r.json()).catch(() => ({})),
       fetch('/api/user/continue-reading', { headers: { 'x-user-id': user.id } }).then(r => r.json()).catch(() => []),
       fetch('/api/user/reading-goals', { headers: { 'x-user-id': user.id } }).then(r => r.json()).catch(() => ({ activeGoal: null })),
-    ]).then(([shelf, history, score, recs, _studentInfo, _notes, borrowStatus, continueData, goalData]) => {
+    ]).then(([shelf, history, score, recs, favoritesData, readingListsData, _studentInfo, _notes, borrowStatus, continueData, goalData]) => {
       const shelfCount = Array.isArray(shelf) ? shelf.length : 0;
       const historyList = Array.isArray(history) ? history : [];
       const borrowed = historyList.filter((h) => h.status === 'borrowed').length;
@@ -85,6 +93,9 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
       });
       setHistoryItems(historyList);
       setRecommendations(Array.isArray(recs) ? recs : []);
+      const favoriteBookIds = Array.isArray(favoritesData?.bookIds) ? favoritesData.bookIds : [];
+      setFavoriteIds(new Set(favoriteBookIds.filter(Boolean)));
+      setReadingLists(Array.isArray(readingListsData) ? readingListsData : []);
       setContinueReading(Array.isArray(continueData) ? continueData.slice(0, 3) : []);
       const activeGoal = goalData?.activeGoal ?? null;
       setReadingGoal(activeGoal);
@@ -129,6 +140,95 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
       }));
     } finally {
       setGoalSaving(false);
+    }
+  };
+
+  const handleToggleFavorite = async (bookId: number) => {
+    if (favoriteLoading[bookId]) return;
+    const nextFavorite = !favoriteIds.has(bookId);
+    setFavoriteLoading((prev) => ({ ...prev, [bookId]: true }));
+    try {
+      const res = await fetch(`/api/books/${bookId}/favorite`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user.id,
+        },
+        body: JSON.stringify({ favorite: nextFavorite }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return;
+      setFavoriteIds((prev) => {
+        const next = new Set(prev);
+        if (Boolean(data?.favorite)) next.add(bookId);
+        else next.delete(bookId);
+        return next;
+      });
+    } finally {
+      setFavoriteLoading((prev) => ({ ...prev, [bookId]: false }));
+    }
+  };
+
+  const handleCreateReadingList = async (name: string, description: string) => {
+    if (!name.trim() || readingListsBusy || !readingListBook) return;
+    setReadingListsBusy(true);
+    try {
+      const res = await fetch('/api/user/reading-lists', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user.id,
+        },
+        body: JSON.stringify({ name, description }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return;
+      const nextLists = Array.isArray(data?.lists) ? data.lists : [];
+      setReadingLists(nextLists);
+      const created = nextLists[0];
+      if (created?.id) {
+        await handleAddBookToReadingList(created.id, readingListBook.id, nextLists, true);
+      }
+    } finally {
+      setReadingListsBusy(false);
+    }
+  };
+
+  const handleAddBookToReadingList = async (
+    listId: number,
+    bookId: number,
+    listsOverride?: any[],
+    closeAfter = true
+  ) => {
+    setReadingListsBusy(true);
+    try {
+      const res = await fetch(`/api/user/reading-lists/${listId}/items`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user.id,
+        },
+        body: JSON.stringify({ bookId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return;
+      const sourceLists = Array.isArray(listsOverride) ? listsOverride : readingLists;
+      const book = recommendations.find((entry) => entry.id === bookId) || readingListBook || selectedBook;
+      setReadingLists(
+        sourceLists.map((list) =>
+          list.id === listId
+            ? {
+                ...list,
+                items: (list.items || []).some((item: any) => item.book?.id === bookId)
+                  ? list.items
+                  : [...(list.items || []), { id: `temp-${listId}-${bookId}`, book, createdAt: new Date().toISOString() }],
+              }
+            : list
+        )
+      );
+      if (closeAfter) setReadingListBook(null);
+    } finally {
+      setReadingListsBusy(false);
     }
   };
 
@@ -457,7 +557,25 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
       </Card>
 
       {selectedBook && (
-        <BookInfoModal book={selectedBook} onClose={() => setSelectedBook(null)} />
+        <BookInfoModal
+          book={selectedBook}
+          onClose={() => setSelectedBook(null)}
+          onToggleFavorite={handleToggleFavorite}
+          onOpenReadingLists={setReadingListBook}
+          favoriteActive={favoriteIds.has(selectedBook?.id)}
+          favoriteLoading={Boolean(favoriteLoading[selectedBook?.id])}
+        />
+      )}
+
+      {readingListBook && (
+        <ReadingListPickerModal
+          book={readingListBook}
+          lists={readingLists}
+          busy={readingListsBusy}
+          onClose={() => setReadingListBook(null)}
+          onCreateList={handleCreateReadingList}
+          onAddToList={(listId, bookId) => handleAddBookToReadingList(listId, bookId)}
+        />
       )}
     </div>
   );
