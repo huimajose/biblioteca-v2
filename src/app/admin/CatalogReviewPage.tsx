@@ -210,7 +210,7 @@ export const CatalogReviewPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Revisao do acervo</h1>
           <p className="text-sm text-gray-500">Encontre livros em Geral, sem curso ou com metadados incompletos.</p>
@@ -225,7 +225,7 @@ export const CatalogReviewPage = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <Card className="p-5">
           <p className="text-xs uppercase text-gray-400">Livros a rever</p>
           <p className="mt-2 text-3xl font-black">{reviewUniverse.length}</p>
@@ -257,7 +257,7 @@ export const CatalogReviewPage = () => {
       </div>
 
       <Card className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-[1.4fr_1fr] gap-3">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.4fr_1fr]">
           <input
             className="px-4 py-2 border rounded-lg"
             placeholder="Pesquisar por titulo, autor, curso, ISBN ou catalogo"
@@ -292,7 +292,7 @@ export const CatalogReviewPage = () => {
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <Card className="overflow-hidden">
           <div className="p-4 border-b border-gray-100 bg-rose-50">
             <h2 className="text-sm font-bold text-rose-700 uppercase tracking-wider">Grupos com ISBN duplicado</h2>
@@ -363,7 +363,8 @@ export const CatalogReviewPage = () => {
       </div>
 
       <Card className="overflow-hidden">
-        <table className="w-full text-left border-collapse">
+        <div className="overflow-x-auto">
+        <table className="min-w-[860px] w-full text-left border-collapse">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
               <th className="p-4 text-xs uppercase text-gray-400">Livro</th>
@@ -416,11 +417,12 @@ export const CatalogReviewPage = () => {
             )}
           </tbody>
         </table>
+        </div>
       </Card>
 
-      <div className="flex items-center justify-between text-sm text-gray-500">
+      <div className="flex flex-col gap-3 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between">
         <span>Pagina {page} de {totalPages}</span>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="secondary" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page <= 1}>Anterior</Button>
           <Button variant="secondary" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page >= totalPages}>Seguinte</Button>
         </div>

@@ -34,7 +34,8 @@ export const StudentVerificationsPage = () => {
       </div>
 
       <Card className="overflow-hidden">
-        <table className="w-full text-left border-collapse">
+        <div className="overflow-x-auto">
+        <table className="min-w-[760px] w-full text-left border-collapse">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
               <th className="p-4 text-xs uppercase text-gray-400">Aluno</th>
@@ -81,6 +82,7 @@ export const StudentVerificationsPage = () => {
             )}
           </tbody>
         </table>
+        </div>
       </Card>
     </div>
   );

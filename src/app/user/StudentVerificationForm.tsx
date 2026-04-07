@@ -67,8 +67,8 @@ export const StudentVerificationForm = ({ user }: StudentVerificationFormProps) 
 
   if (loadingCurrent) {
     return (
-      <div className="max-w-xl mx-auto">
-        <Card className="p-8 space-y-4">
+      <div className="mx-auto max-w-xl">
+        <Card className="space-y-4 p-6 sm:p-8">
           <h1 className="text-2xl font-bold">A verificar dados</h1>
           <p className="text-sm text-gray-500">
             Estamos a confirmar o seu estado. Por favor, aguarde alguns segundos.
@@ -80,8 +80,8 @@ export const StudentVerificationForm = ({ user }: StudentVerificationFormProps) 
 
   if (current.status === 'pending') {
     return (
-      <div className="max-w-xl mx-auto">
-        <Card className="p-8 space-y-4">
+      <div className="mx-auto max-w-xl">
+        <Card className="space-y-4 p-6 sm:p-8">
           <h1 className="text-2xl font-bold">Verificacao em andamento</h1>
           <p className="text-sm text-gray-500">
             O seu pedido esta em analise. Aguarde a confirmacao.
@@ -93,8 +93,8 @@ export const StudentVerificationForm = ({ user }: StudentVerificationFormProps) 
 
   if (current.status === 'rejected') {
     return (
-      <div className="max-w-xl mx-auto">
-        <Card className="p-8 space-y-4">
+      <div className="mx-auto max-w-xl">
+        <Card className="space-y-4 p-6 sm:p-8">
           <h1 className="text-2xl font-bold">Verificacao rejeitada</h1>
           <p className="text-sm text-gray-500">
             O seu pedido foi rejeitado. Caso haja engano, contacte a secretaria.
@@ -110,7 +110,7 @@ export const StudentVerificationForm = ({ user }: StudentVerificationFormProps) 
 
 if (current.status === 'approved') {
   return (
-    <div className="max-w-xl mx-auto">
+    <div className="mx-auto max-w-xl">
     
 
        {(current.status === 'approved') && (
@@ -127,7 +127,7 @@ if (current.status === 'approved') {
 }
 
   return (
-      <Card className="p-8 space-y-6">
+      <Card className="space-y-6 p-6 sm:p-8">
         <div>
           <h1 className="text-2xl font-bold">Verificacao de estudante</h1>
           <p className="text-sm text-gray-500">

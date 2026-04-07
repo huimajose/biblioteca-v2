@@ -414,7 +414,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
 
   return (
     <div className="space-y-8">
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+      <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
         <div className="flex-1">
           <h1 className="text-3xl font-bold">Bem-vindo, leitor</h1>
           <p className="text-gray-500">
@@ -425,7 +425,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
         <div className="flex flex-col md:flex-row gap-4 w-full md:w-auto">
         
         </div>
-        <div className="relative w-full md:w-96">
+        <div className="relative w-full xl:w-96">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input 
             type="text" 
@@ -437,7 +437,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 items-center">
+      <div className="flex flex-wrap items-center gap-2">
         <button
           className={`px-3 py-1 rounded-full text-xs font-bold ${filterType === 'all' ? 'bg-lime-600 text-white' : 'bg-white border border-gray-200 text-gray-600'}`}
           onClick={() => setFilterType('all')}
@@ -502,8 +502,8 @@ export const UserPortal = ({ user }: UserPortalProps) => {
       )}
 
       {continueReading.length > 0 && (
-        <Card className="p-5">
-          <div className="mb-4 flex items-center justify-between">
+        <Card className="p-4 sm:p-5">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h2 className="text-lg font-bold">Retomar leitura</h2>
               <p className="text-xs text-gray-400">Livros em curso ordenados pela sua leitura mais recente.</p>
@@ -513,7 +513,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
               Em curso
             </span>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {continueReading.map((entry) => (
               <div
                 key={entry.id}
@@ -559,8 +559,8 @@ export const UserPortal = ({ user }: UserPortalProps) => {
         </Card>
       )}
 
-      <Card className="p-5">
-        <div className="flex items-center justify-between mb-4">
+      <Card className="p-4 sm:p-5">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-bold">Recomendados para si</h2>
             <p className="text-xs text-gray-400">
@@ -574,7 +574,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
         {recommendations.length === 0 ? (
           <p className="text-sm text-gray-400">Sem recomendacoes neste momento.</p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {recommendations.slice(0, 8).map((book) => (
               <div
                 key={book.id}
@@ -609,7 +609,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
             : 'Nenhum livro encontrado com os filtros atuais.'}
         </div>
       ) : (
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
         {pagedBooks.map(book => (
           <motion.div 
             key={book.id}
@@ -787,9 +787,9 @@ export const UserPortal = ({ user }: UserPortalProps) => {
         ))}
       </div>
       )}
-      <div className="flex items-center justify-between text-sm text-gray-500">
+      <div className="flex flex-col gap-3 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between">
         <span>Pagina {page} de {totalPages}</span>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <select className="px-3 py-1 border rounded-lg" value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}>
             {[12, 24, 36].map(size => (
               <option key={size} value={size}>{size} por pagina</option>

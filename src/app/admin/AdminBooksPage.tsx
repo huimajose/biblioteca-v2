@@ -362,12 +362,12 @@ export const AdminBooksPage = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold">Gestao de livros</h1>
           <p className="text-sm text-gray-500">Crie, edite e acompanhe o stock.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <div className="relative">
             <Button variant="secondary" className="flex items-center gap-2" onClick={() => setPdfOpen(!pdfOpen)}>
               <FileDown className="w-4 h-4" />
@@ -417,7 +417,7 @@ export const AdminBooksPage = () => {
       </div>
 
       <Card className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
           <input
             className="px-4 py-2 border rounded-lg"
             placeholder="Pesquisar por titulo, autor ou ISBN"
@@ -467,7 +467,8 @@ export const AdminBooksPage = () => {
       </Card>
 
       <Card className="overflow-hidden">
-        <table className="w-full text-left border-collapse">
+        <div className="overflow-x-auto">
+        <table className="min-w-[760px] w-full text-left border-collapse">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
               <th className="p-4 text-xs uppercase text-gray-400">Titulo</th>
@@ -527,15 +528,16 @@ export const AdminBooksPage = () => {
             )}
           </tbody>
         </table>
+        </div>
       </Card>
 
       {selectedBook && (
         <BookInfoModal book={selectedBook} onClose={() => setSelectedBook(null)} />
       )}
 
-      <div className="flex items-center justify-between text-sm text-gray-500">
+      <div className="flex flex-col gap-3 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between">
         <span>Pagina {page} de {totalPages}</span>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button variant="secondary" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>Anterior</Button>
           <Button variant="secondary" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>Seguinte</Button>
         </div>

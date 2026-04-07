@@ -50,20 +50,20 @@ export const BookInfoModal = ({
   const hasPhysical = (available ?? 0) > 0 || (total ?? 0) > 0;
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-white w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden">
-        <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm sm:p-4">
+      <div className="flex max-h-[92vh] w-full max-w-3xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4 sm:px-6">
           <h3 className="font-bold text-lg">Detalhes do livro</h3>
           <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-6 grid grid-cols-1 md:grid-cols-[220px_1fr] gap-6">
+        <div className="grid flex-1 grid-cols-1 gap-5 overflow-y-auto p-4 sm:p-6 md:grid-cols-[220px_1fr] md:gap-6">
           <img
             src={cover}
             alt={book?.title}
-            className="w-full h-[300px] object-cover rounded-xl shadow-md"
+            className="mx-auto h-[240px] w-full max-w-[220px] rounded-xl object-cover shadow-md sm:h-[280px] md:mx-0 md:h-[300px] md:max-w-none"
             referrerPolicy="no-referrer"
           />
           <div className="space-y-4">
@@ -73,7 +73,7 @@ export const BookInfoModal = ({
               {book?.isbn && <p className="text-xs text-gray-400 mt-1">ISBN: {book?.isbn}</p>}
             </div>
 
-            <div className="grid grid-cols-2 gap-3 text-sm text-gray-600">
+            <div className="grid grid-cols-1 gap-3 text-sm text-gray-600 sm:grid-cols-2">
               <div>
                 <p className="text-[10px] uppercase text-gray-400">Curso</p>
                 <p className="font-semibold">{book?.genre || 'N/D'}</p>
@@ -98,7 +98,7 @@ export const BookInfoModal = ({
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-3 text-xs text-gray-500">
+            <div className="grid grid-cols-1 gap-3 text-xs text-gray-500 sm:grid-cols-2">
               {book?.editora && (
                 <div>
                   <p className="uppercase text-gray-400">Editora</p>

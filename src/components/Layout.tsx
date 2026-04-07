@@ -368,7 +368,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="flex min-h-screen bg-gray-50">
       {isMobileMenuOpen && (
         <button
           className="fixed inset-0 z-40 bg-black/45 md:hidden"
@@ -383,7 +383,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
         isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
         isMobileMenuOpen ? 'w-[88vw] max-w-[320px]' : isSidebarOpen ? 'md:w-72' : 'md:w-24'
       )}>
-        <div className="p-6 flex items-center gap-3">
+        <div className="flex items-center gap-3 p-4 sm:p-6">
           <div className="bg-white p-1 rounded-lg border border-lime-100 shadow-sm">
             <img src="/logo.png" alt="ISPI" className="w-8 h-8 object-contain" />
           </div>
@@ -438,7 +438,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
 
       {/* Main Content */}
       <main className="flex-grow flex flex-col">
-        <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8">
+        <header className="flex min-h-16 items-center justify-between border-b border-gray-200 bg-white px-4 py-2 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2">
             <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="hidden rounded-lg p-2 hover:bg-gray-100 md:block">
               <ChevronRight className={cn("w-5 h-5 transition-transform", isSidebarOpen && "rotate-180")} />
@@ -447,7 +447,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
               <Menu className="h-5 w-5" />
             </button>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-2 sm:gap-4">
             {!user.isStaff && (
               <button
                 className="hidden items-center gap-2 rounded-full border border-lime-200 bg-lime-50 px-3 py-1.5 text-xs font-bold text-lime-700 hover:bg-lime-100 sm:inline-flex"
@@ -480,7 +480,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
                 )}
               </button>
               {notifOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-100 shadow-lg rounded-xl overflow-hidden z-30">
+                <div className="absolute right-0 z-30 mt-2 w-[min(20rem,calc(100vw-1rem))] overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg sm:w-80">
                   <div className="p-3 border-b border-gray-100 flex items-center justify-between">
                     <p className="text-sm font-bold">Notificacoes</p>
                     <button
@@ -513,8 +513,8 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
                 </div>
               )}
             </div>
-            <div className="text-right" data-user-tour={!user.isStaff ? 'profile-summary' : undefined}>
-              <p className="text-sm font-bold">{displayName}</p>
+            <div className="hidden text-right sm:block" data-user-tour={!user.isStaff ? 'profile-summary' : undefined}>
+              <p className="max-w-[10rem] truncate text-sm font-bold lg:max-w-none">{displayName}</p>
               <div className="flex items-center justify-end gap-2">
                 <p className="text-[10px] text-gray-500 uppercase tracking-widest">{roleLabel}</p>
                 {user.role === 'student' && !user.isStaff && (
@@ -530,20 +530,20 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
           </div>
         </header>
 
-        <div className="p-8 overflow-y-auto">
+        <div className="overflow-y-auto p-4 sm:p-6 lg:p-8">
           {children}
         </div>
       </main>
 
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50">
+        <div className="fixed bottom-4 right-4 z-50 sm:bottom-6 sm:right-6">
           <Toast title={toast.title} message={toast.message} onClose={() => setToast(null)} />
         </div>
       )}
 
       {fullNameRequired && (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl overflow-hidden">
+          <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="p-6 border-b border-gray-100">
               <h3 className="text-lg font-bold">Nome completo obrigatorio</h3>
               <p className="text-xs text-gray-500 mt-1">Precisamos do seu nome completo para assinar registos e notificacoes.</p>
@@ -559,7 +559,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
                 />
               </div>
             </div>
-            <div className="p-6 bg-gray-50 flex gap-3">
+            <div className="flex gap-3 bg-gray-50 p-6">
               <Button
                 className="flex-1"
                 disabled={savingFullName || !fullNameDraft.trim()}
@@ -602,7 +602,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
               }}
             />
           )}
-          <div className="absolute inset-x-4 bottom-4 md:inset-x-auto md:right-6 md:bottom-6 md:w-[380px]">
+          <div className="absolute inset-x-3 bottom-3 md:inset-x-auto md:right-6 md:bottom-6 md:w-[380px]">
             <div className="rounded-2xl bg-white p-5 shadow-2xl">
               <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-lime-700">
                 Tutorial do leitor

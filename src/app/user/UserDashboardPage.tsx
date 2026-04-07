@@ -282,7 +282,7 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
         <p className="text-sm text-gray-500">Resumo rapido da sua atividade.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
         <Card className="p-4 flex items-center gap-3">
           <div className="p-3 bg-lime-100 text-lime-700 rounded-xl">
             <Library className="w-5 h-5" />
@@ -312,8 +312,8 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
         </Card>
       </div>
 
-      <Card className="p-6">
-        <div className="mb-4 flex items-center justify-between">
+      <Card className="p-4 sm:p-6">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-bold">Meta de leitura</h2>
             <p className="text-xs text-gray-400">Defina um alvo de livros concluidos e paginas lidas para o seu periodo atual.</p>
@@ -360,7 +360,7 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
           <p className="mb-5 text-sm text-gray-400">Ainda nao criou nenhuma meta de leitura.</p>
         )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
           <div>
             <label className="text-xs uppercase text-gray-400">Titulo da meta</label>
             <input
@@ -390,7 +390,7 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
               onChange={(e) => setGoalForm((prev) => ({ ...prev, targetPages: Number(e.target.value || 0) }))}
             />
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="text-xs uppercase text-gray-400">Inicio</label>
               <input
@@ -412,7 +412,7 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
           </div>
         </div>
 
-        <div className="mt-4 flex items-center gap-3">
+        <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
           <Button onClick={handleSaveGoal} disabled={goalSaving || (!goalForm.targetBooks && !goalForm.targetPages)}>
             {goalSaving ? 'A guardar...' : readingGoal ? 'Atualizar meta' : 'Criar meta'}
           </Button>
@@ -429,8 +429,8 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
         </Card>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-6">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <Card className="p-4 sm:p-6">
           <h2 className="text-lg font-bold mb-4">Tendencia de requisicoes</h2>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
@@ -445,7 +445,7 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
           </div>
         </Card>
 
-        <Card className="p-6">
+        <Card className="p-4 sm:p-6">
           <h2 className="text-lg font-bold mb-4">Estado das requisicoes</h2>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
@@ -461,8 +461,8 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
         </Card>
       </div>
 
-      <Card className="p-6">
-        <div className="mb-4 flex items-center justify-between">
+      <Card className="p-4 sm:p-6">
+        <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <h2 className="text-lg font-bold">Continuar a ler</h2>
             <p className="text-xs text-gray-400">Retome ate 3 livros exatamente do ponto onde parou.</p>
@@ -475,7 +475,7 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
         {continueReading.length === 0 ? (
           <p className="text-sm text-gray-400">Sem leituras em curso neste momento.</p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
             {continueReading.map((entry) => (
               <div
                 key={entry.id}
@@ -530,32 +530,32 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
         </p>
       </Card>
 
-      <Card className="p-6">
+      <Card className="p-4 sm:p-6">
         <h2 className="text-lg font-bold mb-4">Sugestoes para voce</h2>
         <p className="text-xs text-gray-400 mb-4">
           {studentInfo.course
             ? `Baseado no teu curso ${studentInfo.course}, nos teus cliques e no teu historico de leitura.`
             : 'Baseado nos teus cliques, emprestimos e livros na estante.'}
         </p>
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {recommendations.length === 0 ? (
             <p className="text-sm text-gray-400">Sem sugestoes neste momento.</p>
           ) : (
             recommendations.map((book) => (
               <div
                 key={book.id}
-                className="flex gap-4 items-center cursor-pointer"
+                className="flex cursor-pointer items-center gap-3 rounded-2xl border border-gray-100 p-3 transition-all hover:border-lime-200 hover:bg-lime-50/40 sm:gap-4"
                 onClick={() => setSelectedBook(book)}
               >
                 <img
                   src="/cover_2.jpeg"
                   alt={book.title}
-                  className="w-12 h-16 rounded-lg object-cover"
+                  className="h-16 w-12 shrink-0 rounded-lg object-cover"
                   referrerPolicy="no-referrer"
                 />
-                <div>
-                  <p className="font-semibold">{book.title}</p>
-                  <p className="text-xs text-gray-500">{book.author}</p>
+                <div className="min-w-0">
+                  <p className="line-clamp-2 font-semibold">{book.title}</p>
+                  <p className="line-clamp-1 text-xs text-gray-500">{book.author}</p>
                 </div>
               </div>
             ))

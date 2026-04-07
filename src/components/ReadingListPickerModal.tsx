@@ -23,9 +23,9 @@ export const ReadingListPickerModal = ({
   const [description, setDescription] = useState('');
 
   return (
-    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
-      <div className="bg-white w-full max-w-xl rounded-2xl shadow-2xl overflow-hidden">
-        <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-3 backdrop-blur-sm sm:p-4">
+      <div className="flex max-h-[92vh] w-full max-w-xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between border-b border-gray-100 px-4 py-4 sm:px-6">
           <div>
             <h3 className="font-bold text-lg">Guardar em lista</h3>
             <p className="text-sm text-gray-500 mt-1">{book?.title}</p>
@@ -35,7 +35,7 @@ export const ReadingListPickerModal = ({
           </button>
         </div>
 
-        <div className="p-6 space-y-5">
+        <div className="flex-1 space-y-5 overflow-y-auto p-4 sm:p-6">
           <div className="space-y-3">
             <div className="flex items-center gap-2">
               <ListChecks className="w-4 h-4 text-lime-700" />
@@ -44,7 +44,7 @@ export const ReadingListPickerModal = ({
             {lists.length === 0 ? (
               <p className="text-sm text-gray-400">Ainda nao tem listas. Crie a primeira abaixo.</p>
             ) : (
-              <div className="space-y-2 max-h-56 overflow-y-auto">
+              <div className="max-h-56 space-y-2 overflow-y-auto">
                 {lists.map((list) => (
                   <button
                     key={list.id}
