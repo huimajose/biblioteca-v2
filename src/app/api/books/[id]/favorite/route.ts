@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
-import { notifyUser } from "@/app/api/_utils/notify";
 import { ensureUserShelfFavoriteColumn } from "@/app/api/_utils/userShelf";
 
 export const runtime = "nodejs";
@@ -15,24 +14,20 @@ export async function POST(req: Request, { params }: { params: Params }) {
     const userId = req.headers.get("x-user-id") || "";
     const { id } = await params;
     const bookId = Number(id);
+    const body = (await req.json().catch(() => ({}))) as { favorite?: boolean };
 
     if (!userId) {
-      return NextResponse.json(
-        { success: false, message: "Nao autorizado" },
-        { status: 401 }
-      );
+      return NextResponse.json({ success: false, message: "Nao autorizado" }, { status: 401 });
     }
 
     if (!bookId) {
-      return NextResponse.json(
-        { success: false, message: "Livro invalido" },
-        { status: 400 }
-      );
+      return NextResponse.json({ success: false, message: "Livro invalido" }, { status: 400 });
     }
 
     const db = getDb();
     await ensureUserShelfFavoriteColumn(db);
-    const existing = await db
+
+    const [existing] = await db
       .select()
       .from(schema.userDigitalBooks)
       .where(
@@ -43,39 +38,29 @@ export async function POST(req: Request, { params }: { params: Params }) {
       )
       .limit(1);
 
-    if (existing[0]) {
+    if (!existing) {
       return NextResponse.json(
-        { success: false, message: "Livro ja existe na sua estante." },
+        { success: false, message: "Adicione primeiro o livro a estante." },
         { status: 400 }
       );
     }
 
-    await db.insert(schema.userDigitalBooks).values({
-      userId,
-      bookId,
-      favorite: false,
-    });
+    const nextFavorite =
+      typeof body.favorite === "boolean" ? body.favorite : !Boolean(existing.favorite);
 
-    const book = await db
-      .select()
-      .from(schema.books)
-      .where(eq(schema.books.id, bookId))
-      .limit(1);
-
-    await notifyUser(
-      db,
-      userId,
-      "Livro adicionado a estante",
-      `O livro "${book[0]?.title || "selecionado"}" foi adicionado a sua estante digital.`
-    );
+    await db
+      .update(schema.userDigitalBooks)
+      .set({ favorite: nextFavorite })
+      .where(eq(schema.userDigitalBooks.id, existing.id));
 
     return NextResponse.json({
       success: true,
-      message: "Livro adicionado a estante.",
+      favorite: nextFavorite,
+      message: nextFavorite ? "Livro marcado como favorito." : "Livro removido dos favoritos.",
     });
   } catch {
     return NextResponse.json(
-      { success: false, message: "Nao foi possivel adicionar." },
+      { success: false, message: "Nao foi possivel atualizar favorito." },
       { status: 500 }
     );
   }

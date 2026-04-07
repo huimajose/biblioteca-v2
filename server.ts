@@ -117,6 +117,13 @@ const createPhysicalCopies = async (bookId: number, copies: number) => {
   await db.insert(schema.physicalBooks).values(rows);
 };
 
+const ensureUserShelfFavoriteColumn = async () => {
+  await db.execute(sql`
+    ALTER TABLE user_digital_books
+    ADD COLUMN IF NOT EXISTS favorite boolean NOT NULL DEFAULT false
+  `);
+};
+
 const toValidDate = (value: unknown) => {
   if (!value) return null;
   const parsed = value instanceof Date ? value : new Date(String(value));
@@ -793,14 +800,44 @@ async function startServer() {
     if (Number.isNaN(bookId)) return res.status(400).json({ success: false, message: 'Livro invalido' });
 
     try {
+      await ensureUserShelfFavoriteColumn();
       await db.insert(schema.userDigitalBooks).values({
         userId,
         bookId,
+        favorite: false,
       });
       res.json({ success: true, message: 'Livro adicionado a estante.' });
     } catch {
       res.status(400).json({ success: false, message: 'Livro ja existe na sua estante.' });
     }
+  });
+
+  app.post('/api/books/:id/favorite', async (req, res) => {
+    const bookId = Number(req.params.id);
+    const userId = (req as any).user?.id;
+    if (!userId) return res.status(401).json({ success: false, message: 'Nao autorizado' });
+    if (Number.isNaN(bookId)) return res.status(400).json({ success: false, message: 'Livro invalido' });
+
+    await ensureUserShelfFavoriteColumn();
+    const existing = await db.select().from(schema.userDigitalBooks).where(and(
+      eq(schema.userDigitalBooks.userId, userId),
+      eq(schema.userDigitalBooks.bookId, bookId)
+    )).limit(1);
+
+    if (!existing[0]) {
+      return res.status(400).json({ success: false, message: 'Adicione primeiro o livro a estante.' });
+    }
+
+    const requestedFavorite = typeof req.body?.favorite === 'boolean' ? req.body.favorite : !Boolean(existing[0].favorite);
+    await db.update(schema.userDigitalBooks)
+      .set({ favorite: requestedFavorite })
+      .where(eq(schema.userDigitalBooks.id, existing[0].id));
+
+    res.json({
+      success: true,
+      favorite: requestedFavorite,
+      message: requestedFavorite ? 'Livro marcado como favorito.' : 'Livro removido dos favoritos.',
+    });
   });
 
   app.post('/api/transactions/borrow', async (req, res) => {
@@ -1361,6 +1398,7 @@ async function startServer() {
     const userId = (req as any).user?.id;
     if (!userId) return res.status(401).json({ error: 'Nao autorizado' });
 
+    await ensureUserShelfFavoriteColumn();
     const shelf = await db.select().from(schema.userDigitalBooks)
       .where(eq(schema.userDigitalBooks.userId, userId));
 
@@ -1368,12 +1406,21 @@ async function startServer() {
       const book = await db.select().from(schema.books).where(eq(schema.books.id, row.bookId)).limit(1);
       return {
         id: row.id,
+        favorite: Boolean(row.favorite),
         addedAt: row.addedAt,
         book: book[0] ? mapBookRow(book[0]) : null,
       };
     }));
 
-    res.json(enriched.filter((b) => b.book));
+    res.json(
+      enriched
+        .filter((b) => b.book)
+        .sort((a, b) => {
+          const favoriteOrder = Number(Boolean(b.favorite)) - Number(Boolean(a.favorite));
+          if (favoriteOrder !== 0) return favoriteOrder;
+          return new Date(b.addedAt || 0).getTime() - new Date(a.addedAt || 0).getTime();
+        })
+    );
   });
 
   app.get('/api/user/history', async (req, res) => {

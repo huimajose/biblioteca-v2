@@ -81,6 +81,7 @@ export const userDigitalBooks = pgTable('user_digital_books', {
   id: serial('id').primaryKey(),
   bookId: integer('book_id').notNull(),
   userId: varchar('user_id', { length: 255 }).notNull(),
+  favorite: boolean('favorite').notNull().default(false),
   addedAt: timestamp('added_at').notNull().defaultNow(),
 });
 
