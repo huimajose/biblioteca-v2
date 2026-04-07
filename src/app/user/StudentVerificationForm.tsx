@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
 import { User } from '@/hooks/useAuth.ts';
-import { Navigate } from 'react-router-dom';
 import { StudentSticker } from '@/components/StudentSticker.tsx';
 
 interface StudentVerificationFormProps {
@@ -60,10 +59,6 @@ export const StudentVerificationForm = ({ user }: StudentVerificationFormProps) 
       setMessage('Nao foi possivel enviar agora. Tente novamente.');
     }
   };
-
-  if (current.role === 'student') {
-    return <Navigate to="/dashboard" replace />;
-  }
 
   if (loadingCurrent) {
     return (
