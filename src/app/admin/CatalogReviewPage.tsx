@@ -12,6 +12,7 @@ type ReviewIssue =
   | 'missing-armario'
   | 'missing-prateleira'
   | 'missing-isbn'
+  | 'missing-cover'
   | 'missing-editora'
   | 'missing-cdu'
   | 'duplicate-isbn'
@@ -24,6 +25,7 @@ const ISSUE_LABELS: Record<ReviewIssue, string> = {
   'missing-armario': 'Sem armario',
   'missing-prateleira': 'Sem prateleira',
   'missing-isbn': 'Sem ISBN',
+  'missing-cover': 'Sem capa',
   'missing-editora': 'Sem editora',
   'missing-cdu': 'Sem CDU',
   'duplicate-isbn': 'ISBN duplicado',
@@ -59,6 +61,7 @@ const getBaseBookIssues = (book: any): ReviewIssue[] => {
   if (!String(book.armario || '').trim()) issues.push('missing-armario');
   if (book.prateleira === null || book.prateleira === undefined || String(book.prateleira).trim() === '') issues.push('missing-prateleira');
   if (!String(book.isbn || '').trim()) issues.push('missing-isbn');
+  if (!String(book.cover || '').trim()) issues.push('missing-cover');
   if (!String(book.editora || '').trim()) issues.push('missing-editora');
   if (!String(book.cdu || '').trim()) issues.push('missing-cdu');
   return issues;
@@ -222,6 +225,10 @@ export const CatalogReviewPage = () => {
         <Card className="p-5">
           <p className="text-xs uppercase text-gray-400">Sem catalogo</p>
           <p className="mt-2 text-3xl font-black">{summary['missing-catalog'] || 0}</p>
+        </Card>
+        <Card className="p-5">
+          <p className="text-xs uppercase text-gray-400">Sem capa</p>
+          <p className="mt-2 text-3xl font-black">{summary['missing-cover'] || 0}</p>
         </Card>
         <Card className="p-5">
           <p className="text-xs uppercase text-gray-400">ISBN duplicado</p>
