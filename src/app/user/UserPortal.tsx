@@ -21,6 +21,7 @@ interface UserPortalProps {
 
 export const UserPortal = ({ user }: UserPortalProps) => {
   const [books, setBooks] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [ticket, setTicket] = useState<any>(null);
   const [selectedLabel, setSelectedLabel] = useState<any>(null);
@@ -53,55 +54,57 @@ export const UserPortal = ({ user }: UserPortalProps) => {
   const [toast, setToast] = useState<{ title: string; message: string } | null>(null);
 
   useEffect(() => {
-    fetch('/api/books').then(res => res.json()).then(setBooks);
-    fetch('/api/user/score', { headers: { 'x-user-id': user.id } })
-      .then(res => res.json())
-      .then(data => setPoints(data?.points ?? 100));
-    fetch('/api/user/student-info', { headers: { 'x-user-id': user.id } })
-      .then(res => res.json())
-      .then(data => setStudentInfo({ fullName: data?.fullName, studentNumber: data?.studentNumber, role: data?.role, status: data?.status }));
-    fetch('/api/user/shelf', { headers: { 'x-user-id': user.id } })
-      .then(res => res.json())
-      .then(data => {
-        const list = Array.isArray(data) ? data : data?.data ?? [];
-        const ids = new Set<number>(list.map((entry: any) => entry?.book?.id).filter(Boolean));
-        setShelfIds(ids);
-      })
-      .catch(() => setShelfIds(new Set()));
-    fetch('/api/user/favorites', { headers: { 'x-user-id': user.id } })
-      .then(res => res.json())
-      .then(data => {
-        const ids = Array.isArray(data?.bookIds) ? data.bookIds : [];
-        setFavoriteIds(new Set(ids.filter(Boolean)));
-      })
-      .catch(() => setFavoriteIds(new Set()));
-    fetch('/api/user/reading-lists', { headers: { 'x-user-id': user.id } })
-      .then(res => res.json())
-      .then(data => setReadingLists(Array.isArray(data) ? data : []))
-      .catch(() => setReadingLists([]));
-    fetch('/api/user/borrow-status', { headers: { 'x-user-id': user.id } })
-      .then(res => res.json())
-      .then(data => {
-        setActiveBorrowMap(data?.byBookId ?? {});
-        setBorrowBlock({
-          blocked: Boolean(data?.blocked),
-          reason: data?.blockReason || null,
-          blockedItems: Array.isArray(data?.blockedItems) ? data.blockedItems : [],
-        });
-      })
-      .catch(() => {
-        setActiveBorrowMap({});
-        setBorrowBlock({ blocked: false, reason: null, blockedItems: [] });
-      });
-    fetch('/api/genres')
-      .then(res => res.json())
-      .then(data => setGenres(Array.isArray(data) ? data : []))
-      .catch(() => setGenres([]));
-
-    fetch(`/api/books/recommendations?userId=${user.id}`)
-      .then(res => res.json())
-      .then(data => setRecommendations(Array.isArray(data) ? data : []))
-      .catch(() => setRecommendations([]));
+    setLoading(true);
+    Promise.all([
+      fetch('/api/books').then(res => res.json()).then(setBooks),
+      fetch('/api/user/score', { headers: { 'x-user-id': user.id } })
+        .then(res => res.json())
+        .then(data => setPoints(data?.points ?? 100)),
+      fetch('/api/user/student-info', { headers: { 'x-user-id': user.id } })
+        .then(res => res.json())
+        .then(data => setStudentInfo({ fullName: data?.fullName, studentNumber: data?.studentNumber, role: data?.role, status: data?.status })),
+      fetch('/api/user/shelf', { headers: { 'x-user-id': user.id } })
+        .then(res => res.json())
+        .then(data => {
+          const list = Array.isArray(data) ? data : data?.data ?? [];
+          const ids = new Set<number>(list.map((entry: any) => entry?.book?.id).filter(Boolean));
+          setShelfIds(ids);
+        })
+        .catch(() => setShelfIds(new Set())),
+      fetch('/api/user/favorites', { headers: { 'x-user-id': user.id } })
+        .then(res => res.json())
+        .then(data => {
+          const ids = Array.isArray(data?.bookIds) ? data.bookIds : [];
+          setFavoriteIds(new Set(ids.filter(Boolean)));
+        })
+        .catch(() => setFavoriteIds(new Set())),
+      fetch('/api/user/reading-lists', { headers: { 'x-user-id': user.id } })
+        .then(res => res.json())
+        .then(data => setReadingLists(Array.isArray(data) ? data : []))
+        .catch(() => setReadingLists([])),
+      fetch('/api/user/borrow-status', { headers: { 'x-user-id': user.id } })
+        .then(res => res.json())
+        .then(data => {
+          setActiveBorrowMap(data?.byBookId ?? {});
+          setBorrowBlock({
+            blocked: Boolean(data?.blocked),
+            reason: data?.blockReason || null,
+            blockedItems: Array.isArray(data?.blockedItems) ? data.blockedItems : [],
+          });
+        })
+        .catch(() => {
+          setActiveBorrowMap({});
+          setBorrowBlock({ blocked: false, reason: null, blockedItems: [] });
+        }),
+      fetch('/api/genres')
+        .then(res => res.json())
+        .then(data => setGenres(Array.isArray(data) ? data : []))
+        .catch(() => setGenres([])),
+      fetch(`/api/books/recommendations?userId=${user.id}`)
+        .then(res => res.json())
+        .then(data => setRecommendations(Array.isArray(data) ? data : []))
+        .catch(() => setRecommendations([])),
+    ]).finally(() => setLoading(false));
   }, []);
 
   useEffect(() => {
@@ -515,7 +518,11 @@ export const UserPortal = ({ user }: UserPortalProps) => {
         )}
       </Card>
 
-      {pagedBooks.length === 0 ? (
+      {loading ? (
+        <div className="p-6 text-center text-sm text-gray-500 bg-gray-50 border border-gray-100 rounded-2xl">
+          A carregar livros...
+        </div>
+      ) : pagedBooks.length === 0 ? (
         <div className="p-6 text-center text-sm text-gray-500 bg-gray-50 border border-gray-100 rounded-2xl">
           {filterAvailability === 'available'
             ? 'Sem livros disponiveis no momento. Tente limpar os filtros ou volte mais tarde.'

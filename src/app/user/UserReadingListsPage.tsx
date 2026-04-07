@@ -13,6 +13,7 @@ interface UserReadingListsPageProps {
 
 export const UserReadingListsPage = ({ user }: UserReadingListsPageProps) => {
   const [lists, setLists] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [creating, setCreating] = useState(false);
@@ -20,11 +21,13 @@ export const UserReadingListsPage = ({ user }: UserReadingListsPageProps) => {
   const navigate = useNavigate();
 
   const loadLists = async () => {
+    setLoading(true);
     const res = await fetch('/api/user/reading-lists', {
       headers: { 'x-user-id': user.id },
     });
     const data = await res.json().catch(() => []);
     setLists(Array.isArray(data) ? data : data?.lists ?? []);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -124,7 +127,9 @@ export const UserReadingListsPage = ({ user }: UserReadingListsPageProps) => {
         </div>
       </Card>
 
-      {lists.length === 0 ? (
+      {loading ? (
+        <Card className="p-10 text-center text-gray-400">A carregar listas de leitura...</Card>
+      ) : lists.length === 0 ? (
         <Card className="p-10 text-center text-gray-400">Ainda nao criou listas de leitura.</Card>
       ) : (
         <div className="space-y-4">

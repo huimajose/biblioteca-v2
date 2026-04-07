@@ -22,6 +22,7 @@ interface UserDashboardPageProps {
 }
 
 export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
+  const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({ shelf: 0, borrowed: 0, points: 0 });
   const [borrowBlock, setBorrowBlock] = useState<{ blocked: boolean; reason: string | null }>({
     blocked: false,
@@ -73,7 +74,7 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
         .filter((h) => h.status === 'borrowed' && h.expectedReturnDate)
         .sort((a, b) => new Date(a.expectedReturnDate).getTime() - new Date(b.expectedReturnDate).getTime())[0];
       setNextReturn(next?.expectedReturnDate ?? null);
-    });
+    }).finally(() => setLoading(false));
   }, [user.id]);
 
   const borrowTrend = useMemo(() => {
@@ -113,6 +114,9 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
 
   return (
     <div className="space-y-6">
+      {loading && (
+        <Card className="p-10 text-center text-gray-400">A carregar dashboard...</Card>
+      )}
       <div>
         <h1 className="text-2xl font-bold">Dashboard do leitor</h1>
         <p className="text-sm text-gray-500">Resumo rapido da sua atividade.</p>

@@ -14,6 +14,7 @@ interface UserShelfPageProps {
 export const UserShelfPage = ({ user }: UserShelfPageProps) => {
   const [shelf, setShelf] = useState<any[]>([]);
   const [favorites, setFavorites] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(6);
   const [selected, setSelected] = useState<any | null>(null);
@@ -22,20 +23,22 @@ export const UserShelfPage = ({ user }: UserShelfPageProps) => {
   const navigate = useNavigate();
 
   useEffect(() => {
-    fetch('/api/user/shelf', {
-      headers: { 'x-user-id': user.id },
-    })
-      .then(res => res.json())
-      .then(data => setShelf(Array.isArray(data) ? data : data?.data ?? []));
-
-    fetch('/api/user/favorites', {
-      headers: { 'x-user-id': user.id },
-    })
-      .then(res => res.json())
-      .then(data => {
-        const items = Array.isArray(data?.items) ? data.items : [];
-        setFavorites(items.map((entry: any) => ({ ...entry, favorite: true })));
-      });
+    setLoading(true);
+    Promise.all([
+      fetch('/api/user/shelf', {
+        headers: { 'x-user-id': user.id },
+      })
+        .then(res => res.json())
+        .then(data => setShelf(Array.isArray(data) ? data : data?.data ?? [])),
+      fetch('/api/user/favorites', {
+        headers: { 'x-user-id': user.id },
+      })
+        .then(res => res.json())
+        .then(data => {
+          const items = Array.isArray(data?.items) ? data.items : [];
+          setFavorites(items.map((entry: any) => ({ ...entry, favorite: true })));
+        }),
+    ]).finally(() => setLoading(false));
   }, [user.id]);
 
   useEffect(() => {
@@ -124,7 +127,9 @@ export const UserShelfPage = ({ user }: UserShelfPageProps) => {
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {paged.length === 0 ? (
+        {loading ? (
+          <Card className="p-10 text-center text-gray-400">A carregar estante...</Card>
+        ) : paged.length === 0 ? (
           <Card className="p-10 text-center text-gray-400">
             {filter === 'favorites' ? 'Sem livros favoritos.' : 'Sem livros na estante.'}
           </Card>

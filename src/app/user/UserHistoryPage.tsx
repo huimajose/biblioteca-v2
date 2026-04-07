@@ -12,17 +12,20 @@ interface UserHistoryPageProps {
 
 export const UserHistoryPage = ({ user }: UserHistoryPageProps) => {
   const [history, setHistory] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [selected, setSelected] = useState<any | null>(null);
   const navigate = useNavigate();
 
   useEffect(() => {
+    setLoading(true);
     fetch('/api/user/history', {
       headers: { 'x-user-id': user.id },
     })
       .then(res => res.json())
-      .then(data => setHistory(Array.isArray(data) ? data : data?.data ?? []));
+      .then(data => setHistory(Array.isArray(data) ? data : data?.data ?? []))
+      .finally(() => setLoading(false));
   }, [user.id]);
 
   const totalPages = Math.max(1, Math.ceil(history.length / pageSize));
@@ -53,7 +56,13 @@ export const UserHistoryPage = ({ user }: UserHistoryPageProps) => {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
-            {paged.length === 0 ? (
+            {loading ? (
+              <tr>
+                <td colSpan={3} className="p-10 text-center text-sm text-gray-400">
+                  A carregar historico...
+                </td>
+              </tr>
+            ) : paged.length === 0 ? (
               <tr>
                 <td colSpan={3} className="p-10 text-center text-sm text-gray-400">
                   Sem historico disponivel.
