@@ -18,6 +18,7 @@ import { UserShelfPage } from './app/user/UserShelfPage.tsx';
 import { UserHistoryPage } from './app/user/UserHistoryPage.tsx';
 import { UserDashboardPage } from './app/user/UserDashboardPage.tsx';
 import { UserProfilePage } from './app/user/UserProfilePage.tsx';
+import { UserReadingListsPage } from './app/user/UserReadingListsPage.tsx';
 import { PublicLayout } from './components/PublicLayout.tsx';
 import { HomePage } from './app/public/HomePage.tsx';
 import { ContactsPage } from './app/public/ContactsPage.tsx';
@@ -123,6 +124,7 @@ export default function App() {
                   <Route path="/" element={<UserPortal user={auth} />} />
                   <Route path="/dashboard" element={<UserDashboardPage user={auth} />} />
                   <Route path="/shelf" element={<UserShelfPage user={auth} />} />
+                  <Route path="/lists" element={<UserReadingListsPage user={auth} />} />
                   <Route path="/history" element={<UserHistoryPage user={auth} />} />
                   <Route path="/student-verification" element={<StudentVerificationForm user={auth} />} />
                   <Route path="/profile/*" element={<UserProfilePage user={auth} />} />

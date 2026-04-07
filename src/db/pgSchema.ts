@@ -94,6 +94,23 @@ export const userBookFavorites = pgTable('user_book_favorites', {
   userBookFavoriteUnique: unique('user_book_favorites_user_book_unique').on(table.userId, table.bookId),
 }));
 
+export const userReadingLists = pgTable('user_reading_lists', {
+  id: serial('id').primaryKey(),
+  userId: varchar('user_id', { length: 255 }).notNull(),
+  name: varchar('name', { length: 120 }).notNull(),
+  description: varchar('description', { length: 500 }),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+});
+
+export const userReadingListItems = pgTable('user_reading_list_items', {
+  id: serial('id').primaryKey(),
+  listId: integer('list_id').notNull(),
+  bookId: integer('book_id').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
+}, (table) => ({
+  listBookUnique: unique('user_reading_list_items_list_book_unique').on(table.listId, table.bookId),
+}));
+
 export const userReadingProgress = pgTable('user_reading_progress', {
   id: serial('id').primaryKey(),
   userId: varchar('user_id', { length: 255 }).notNull(),

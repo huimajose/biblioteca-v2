@@ -13,6 +13,7 @@ import { useNavigate } from 'react-router-dom';
 import { resolveBookFileUrl } from '@/utils/file.ts';
 import { getRoleLabel } from '@/utils/roles.ts';
 import { Toast } from '@/components/Toast.tsx';
+import { ReadingListPickerModal } from '@/components/ReadingListPickerModal.tsx';
 
 interface UserPortalProps {
   user: User;
@@ -42,6 +43,9 @@ export const UserPortal = ({ user }: UserPortalProps) => {
     blockedItems: Array<{ title: string; overdueDays: number }>;
   }>({ blocked: false, reason: null, blockedItems: [] });
   const [recommendations, setRecommendations] = useState<any[]>([]);
+  const [readingLists, setReadingLists] = useState<any[]>([]);
+  const [readingListBook, setReadingListBook] = useState<any | null>(null);
+  const [readingListsBusy, setReadingListsBusy] = useState(false);
   const [borrowLoading, setBorrowLoading] = useState<Record<number, boolean>>({});
   const [reserveLoading, setReserveLoading] = useState<Record<number, boolean>>({});
   const [shelfLoading, setShelfLoading] = useState<Record<number, boolean>>({});
@@ -71,6 +75,10 @@ export const UserPortal = ({ user }: UserPortalProps) => {
         setFavoriteIds(new Set(ids.filter(Boolean)));
       })
       .catch(() => setFavoriteIds(new Set()));
+    fetch('/api/user/reading-lists', { headers: { 'x-user-id': user.id } })
+      .then(res => res.json())
+      .then(data => setReadingLists(Array.isArray(data) ? data : []))
+      .catch(() => setReadingLists([]));
     fetch('/api/user/borrow-status', { headers: { 'x-user-id': user.id } })
       .then(res => res.json())
       .then(data => {
@@ -266,6 +274,76 @@ export const UserPortal = ({ user }: UserPortalProps) => {
       notify(nextFavorite ? 'Adicionado a ler depois' : 'Removido dos favoritos', data?.message || '');
     } finally {
       setFavoriteLoading((prev) => ({ ...prev, [bookId]: false }));
+    }
+  };
+
+  const handleCreateReadingList = async (name: string, description: string) => {
+    if (!name.trim() || readingListsBusy || !readingListBook) return;
+    setReadingListsBusy(true);
+    try {
+      const res = await fetch('/api/user/reading-lists', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user.id,
+        },
+        body: JSON.stringify({ name, description }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        notify('Erro ao criar lista', data?.error || 'Nao foi possivel criar a lista.');
+        return;
+      }
+      const nextLists = Array.isArray(data?.lists) ? data.lists : [];
+      setReadingLists(nextLists);
+      const created = nextLists[0];
+      if (created?.id) {
+        await handleAddBookToReadingList(created.id, readingListBook.id, nextLists, true);
+      }
+    } finally {
+      setReadingListsBusy(false);
+    }
+  };
+
+  const handleAddBookToReadingList = async (
+    listId: number,
+    bookId: number,
+    listsOverride?: any[],
+    closeAfter = true
+  ) => {
+    setReadingListsBusy(true);
+    try {
+      const res = await fetch(`/api/user/reading-lists/${listId}/items`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user.id,
+        },
+        body: JSON.stringify({ bookId }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        notify('Erro ao guardar em lista', data?.error || 'Nao foi possivel guardar o livro.');
+        return;
+      }
+      const sourceLists = Array.isArray(listsOverride) ? listsOverride : readingLists;
+      const book = books.find((entry) => entry.id === bookId) || readingListBook;
+      setReadingLists(
+        sourceLists.map((list) =>
+          list.id === listId
+            ? {
+                ...list,
+                items: (list.items || []).some((item: any) => item.book?.id === bookId)
+                  ? list.items
+                  : [...(list.items || []), { id: `temp-${listId}-${bookId}`, book, createdAt: new Date().toISOString() }],
+              }
+            : list
+        )
+      );
+      notify('Guardado na lista', 'Livro adicionado a lista de leitura.');
+      if (closeAfter) setReadingListBook(null);
+    } finally {
+      setReadingListsBusy(false);
     }
   };
 
@@ -629,6 +707,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
             onReserve={handleReserve}
             onAddToShelf={handleAddToShelf}
             onToggleFavorite={handleToggleFavorite}
+            onOpenReadingLists={setReadingListBook}
             favoriteActive={favoriteIds.has(selectedBook?.id)}
             favoriteLoading={isTogglingFavorite(selectedBook?.id)}
             resolveFileUrl={(fileUrl) => resolveFileUrl(fileUrl, selectedBook?.id)}
@@ -639,6 +718,16 @@ export const UserPortal = ({ user }: UserPortalProps) => {
                           shelfDisabled={shelfIds.has(selectedBook?.id)}
             borrowDisabled={borrowBlock.blocked || hasActiveBorrowRequest(selectedBook?.id)}
             borrowDisabledLabel={getBorrowDisabledLabel(selectedBook?.id)}
+          />
+        )}
+        {readingListBook && (
+          <ReadingListPickerModal
+            book={readingListBook}
+            lists={readingLists}
+            busy={readingListsBusy}
+            onClose={() => setReadingListBook(null)}
+            onCreateList={handleCreateReadingList}
+            onAddToList={(listId, bookId) => handleAddBookToReadingList(listId, bookId)}
           />
         )}
       </AnimatePresence>

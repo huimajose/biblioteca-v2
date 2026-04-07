@@ -12,6 +12,7 @@ import {
   Printer,
   ChevronRight,
   BookMarked,
+  ListChecks,
   Bell,
   UserCircle,
   ShieldCheck
@@ -153,6 +154,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
     { icon: Library, label: 'Biblioteca', path: '/' },
     { icon: BookMarked, label: 'A Minha Estante', path: '/shelf' },
+    { icon: ListChecks, label: 'Listas de leitura', path: '/lists' },
     { icon: History, label: 'O Meu Historico', path: '/history' },
     { icon: UserCircle, label: 'Perfil', path: '/profile' },
     ...((user.role === 'student' || verificationStatus === 'pending')

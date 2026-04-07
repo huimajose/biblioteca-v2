@@ -10,6 +10,7 @@ interface BookDetailsModalProps {
   onReserve: (bookId: number) => void;
   onAddToShelf: (bookId: number) => void;
   onToggleFavorite?: (bookId: number) => void;
+  onOpenReadingLists?: (book: any) => void;
   resolveFileUrl: (fileUrl?: string | null) => string | null;
   onReadPdf: (book: any) => void;
   borrowLoading?: boolean;
@@ -29,6 +30,7 @@ export const BookDetailsModal = ({
   onReserve,
   onAddToShelf,
   onToggleFavorite,
+  onOpenReadingLists,
   resolveFileUrl,
   onReadPdf,
   borrowLoading = false,
@@ -129,6 +131,15 @@ export const BookDetailsModal = ({
                     <Star className={`w-4 h-4 ${favoriteActive ? 'fill-current' : ''}`} />
                   )}
                   {favoriteActive ? 'Favorito' : 'Ler depois'}
+                </Button>
+              )}
+              {onOpenReadingLists && (
+                <Button
+                  className="text-xs uppercase"
+                  variant="secondary"
+                  onClick={() => onOpenReadingLists(book)}
+                >
+                  Guardar em lista
                 </Button>
               )}
               {hasPhysical && (
