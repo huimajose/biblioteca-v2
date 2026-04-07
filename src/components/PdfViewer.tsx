@@ -111,6 +111,24 @@ export const PdfViewer = ({
   const toggleDarkMode = () => setDarkMode((prev) => !prev);
   const readingProgress = numPages > 0 ? Math.round((pageNumber / numPages) * 100) : 0;
 
+  const pdfOptions = useMemo(() => ({ cMapUrl: 'cmaps/', cMapPacked: true }), []);
+  const pageRenderWidth = useMemo(() => {
+    if (!viewerWidth) return undefined;
+    const safeViewportWidth = Math.max(220, viewerWidth - 24);
+    return Math.max(220, Math.round(safeViewportWidth * scale));
+  }, [scale, viewerWidth]);
+  const watermarkFontSize = useMemo(() => {
+    if (!viewerWidth) return 42;
+    if (viewerWidth <= 280) return 18;
+    if (viewerWidth <= 360) return 22;
+    if (viewerWidth <= 480) return 28;
+    if (viewerWidth <= 640) return 34;
+    return 42;
+  }, [viewerWidth]);
+  const pageTurnTransition = prefersReducedMotion
+    ? { duration: 0 }
+    : { duration: 0.35, ease: [0.22, 0.61, 0.36, 1] as const };
+
   const watermark = watermarkText && !loadError ? (
     <div
       className="pointer-events-none select-none"
@@ -122,7 +140,7 @@ export const PdfViewer = ({
         justifyContent: 'center',
         transform: 'rotate(-30deg)',
         opacity: 0.12,
-        fontSize: 42,
+        fontSize: watermarkFontSize,
         fontWeight: 800,
         color: darkMode ? '#fff' : '#000',
         whiteSpace: 'nowrap',
@@ -133,16 +151,6 @@ export const PdfViewer = ({
       {watermarkText}
     </div>
   ) : null;
-
-  const pdfOptions = useMemo(() => ({ cMapUrl: 'cmaps/', cMapPacked: true }), []);
-  const pageRenderWidth = useMemo(() => {
-    if (!viewerWidth) return undefined;
-    const safeViewportWidth = Math.max(220, viewerWidth - 24);
-    return Math.max(220, Math.round(safeViewportWidth * scale));
-  }, [scale, viewerWidth]);
-  const pageTurnTransition = prefersReducedMotion
-    ? { duration: 0 }
-    : { duration: 0.35, ease: [0.22, 0.61, 0.36, 1] as const };
 
   const pageTurnVariants = {
     enter: (direction: 1 | -1) => ({
