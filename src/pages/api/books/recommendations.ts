@@ -3,6 +3,7 @@ import { drizzle } from "drizzle-orm/neon-http";
 import { desc, eq, inArray, sql } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { DEFAULT_BOOK_COVER } from "@/constants.ts";
+import { ensureStudentVerificationCourseColumn } from "@/app/api/_utils/studentVerification";
 
 type ErrorResponse = { error: string };
 
@@ -16,7 +17,10 @@ const mapBookRow = (row: any) => ({
   cover: row.cover || DEFAULT_BOOK_COVER,
   editora: row.editora ?? "",
   cdu: row.cdu ?? "",
+  armario: row.armario ?? "",
   prateleira: row.prateleira ?? null,
+  courseSequence: row.courseSequence ?? row.course_sequence ?? null,
+  catalogCode: row.catalogCode ?? row.catalog_code ?? null,
   anoEdicao: row.anoEdicao ?? null,
   edicao: row.edicao ?? null,
   isbn: row.isbn,
@@ -60,10 +64,26 @@ export default async function handler(
 
   try {
     const db = getDb();
+    await ensureStudentVerificationCourseColumn(db);
 
     const userBookIds: number[] = [];
+    let studentCourse: string | null = null;
 
     if (userId) {
+      const verification = await db
+        .select({
+          course: schema.studentVerifications.course,
+          status: schema.studentVerifications.status,
+        })
+        .from(schema.studentVerifications)
+        .where(eq(schema.studentVerifications.clerkId, userId))
+        .orderBy(desc(schema.studentVerifications.createdAt))
+        .limit(1);
+
+      if (String(verification[0]?.status || "").toLowerCase() === "approved" && verification[0]?.course) {
+        studentCourse = String(verification[0].course).trim();
+      }
+
       const transactions = await db
         .select({ physicalBookId: schema.transactions.physicalBookId })
         .from(schema.transactions)
@@ -97,6 +117,17 @@ export default async function handler(
 
     let recommended: any[] = [];
 
+    if (studentCourse) {
+      const courseCandidates = await db
+        .select()
+        .from(schema.books)
+        .where(eq(schema.books.genre, studentCourse))
+        .orderBy(desc(schema.books.availableCopies), desc(schema.books.created_at))
+        .limit(limit * 3);
+
+      recommended = courseCandidates.filter((b) => !userBookSet.has(b.id)).slice(0, limit);
+    }
+
     if (userBookSet.size > 0) {
       const userBooks = await db
         .select()
@@ -119,7 +150,10 @@ export default async function handler(
           .where(inArray(schema.books.genre, topGenres))
           .orderBy(desc(schema.books.availableCopies))
           .limit(limit * 3);
-        recommended = genreCandidates.filter((b) => !userBookSet.has(b.id)).slice(0, limit);
+        const extra = genreCandidates.filter(
+          (b) => !userBookSet.has(b.id) && !recommended.some((entry) => entry.id === b.id)
+        );
+        recommended = [...recommended, ...extra].slice(0, limit);
       }
     }
 
@@ -150,7 +184,9 @@ export default async function handler(
         const ordered = [...popularBooks].sort(
           (a, b) => (countMap.get(b.id) || 0) - (countMap.get(a.id) || 0)
         );
-        const extra = ordered.filter((b) => !userBookSet.has(b.id));
+        const extra = ordered.filter(
+          (b) => !userBookSet.has(b.id) && !recommended.some((entry) => entry.id === b.id)
+        );
         recommended = [...recommended, ...extra].slice(0, limit);
       }
     }
@@ -161,7 +197,9 @@ export default async function handler(
         .from(schema.books)
         .orderBy(desc(schema.books.availableCopies))
         .limit(limit * 2);
-      const extra = fallback.filter((b) => !userBookSet.has(b.id));
+      const extra = fallback.filter(
+        (b) => !userBookSet.has(b.id) && !recommended.some((entry) => entry.id === b.id)
+      );
       recommended = [...recommended, ...extra].slice(0, limit);
     }
 

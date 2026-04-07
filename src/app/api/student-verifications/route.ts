@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
 import { notifyAdmins, notifyUser } from "@/app/api/_utils/notify";
+import { ensureStudentVerificationCourseColumn } from "@/app/api/_utils/studentVerification";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -18,14 +19,17 @@ export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as {
     studentNumber?: string;
     fullName?: string;
+    course?: string;
   };
   const studentNumber = String(body?.studentNumber || "").trim();
   const fullName = String(body?.fullName || "").trim();
-  if (!studentNumber || !fullName) {
+  const course = String(body?.course || "").trim();
+  if (!studentNumber || !fullName || !course) {
     return NextResponse.json({ error: "Dados em falta" }, { status: 400 });
   }
 
   const db = getDb();
+  await ensureStudentVerificationCourseColumn(db);
   const existing = await db
     .select()
     .from(schema.studentVerifications)
@@ -44,6 +48,7 @@ export async function POST(req: NextRequest) {
     clerkId: userId,
     fullName,
     studentNumber,
+    course,
     status: "pending",
     createdAt: now,
   });
@@ -51,6 +56,7 @@ export async function POST(req: NextRequest) {
     clerkId: userId,
     fullName,
     studentNumber,
+    course,
     status: "pending",
     createdAt: now,
   });
@@ -64,7 +70,7 @@ export async function POST(req: NextRequest) {
   await notifyAdmins(
     db,
     "Nova verificacao de estudante",
-    `Pedido de verificacao: ${fullName} (${studentNumber})`
+    `Pedido de verificacao: ${fullName} (${studentNumber}) - Curso: ${course}`
   );
 
   return NextResponse.json({ success: true });

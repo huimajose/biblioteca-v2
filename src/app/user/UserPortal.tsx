@@ -26,7 +26,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
   const [ticket, setTicket] = useState<any>(null);
   const [selectedLabel, setSelectedLabel] = useState<any>(null);
   const [points, setPoints] = useState<number | null>(null);
-  const [studentInfo, setStudentInfo] = useState<{ fullName?: string | null; studentNumber?: string | null; role?: string | null; status?: string | null }>({});
+  const [studentInfo, setStudentInfo] = useState<{ fullName?: string | null; studentNumber?: string | null; course?: string | null; role?: string | null; status?: string | null }>({});
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(12);
   const [selectedBook, setSelectedBook] = useState<any>(null);
@@ -64,7 +64,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
         .then(data => setPoints(data?.points ?? 100)),
       fetch('/api/user/student-info', { headers: { 'x-user-id': user.id } })
         .then(res => res.json())
-        .then(data => setStudentInfo({ fullName: data?.fullName, studentNumber: data?.studentNumber, role: data?.role, status: data?.status })),
+        .then(data => setStudentInfo({ fullName: data?.fullName, studentNumber: data?.studentNumber, course: data?.course, role: data?.role, status: data?.status })),
       fetch('/api/user/shelf', { headers: { 'x-user-id': user.id } })
         .then(res => res.json())
         .then(data => {
@@ -563,7 +563,11 @@ export const UserPortal = ({ user }: UserPortalProps) => {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-lg font-bold">Recomendados para si</h2>
-            <p className="text-xs text-gray-400">Com base nos seus cliques e pedidos.</p>
+            <p className="text-xs text-gray-400">
+              {studentInfo.course
+                ? `Sugestoes priorizadas para o curso ${studentInfo.course}, combinadas com os seus cliques e pedidos.`
+                : 'Com base nos seus cliques e pedidos.'}
+            </p>
           </div>
           <span className="text-[10px] uppercase text-lime-600 font-bold tracking-widest">Sugestoes</span>
         </div>

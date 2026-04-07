@@ -2,11 +2,13 @@ import type { NextApiRequest, NextApiResponse } from "next";
 import { drizzle } from "drizzle-orm/neon-http";
 import { desc, eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
+import { ensureStudentVerificationCourseColumn } from "@/app/api/_utils/studentVerification";
 
 type ErrorResponse = { error: string };
 type StudentInfoResponse = {
   fullName: string | null;
   studentNumber: string | null;
+  course: string | null;
   status: string | null;
   verifiedAt: string | null;
   role: string | null;
@@ -39,6 +41,7 @@ export default async function handler(
   if (!userId) return res.status(401).json({ error: "Nao autorizado" });
 
   const db = getDb();
+  await ensureStudentVerificationCourseColumn(db);
   const record = await db
     .select()
     .from(schema.studentVerifications)
@@ -62,6 +65,7 @@ export default async function handler(
   return res.status(200).json({
     fullName: record[0]?.fullName ?? recordAlt[0]?.fullName ?? null,
     studentNumber: record[0]?.studentNumber ?? recordAlt[0]?.studentNumber ?? null,
+    course: record[0]?.course ?? recordAlt[0]?.course ?? null,
     status: record[0]?.status ?? recordAlt[0]?.status ?? null,
     verifiedAt: record[0]?.verifiedAt ?? recordAlt[0]?.verifiedAt ?? null,
     role: user[0]?.role ?? "external",

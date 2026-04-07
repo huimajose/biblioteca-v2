@@ -39,6 +39,7 @@ export const StudentVerificationsPage = () => {
             <tr>
               <th className="p-4 text-xs uppercase text-gray-400">Aluno</th>
               <th className="p-4 text-xs uppercase text-gray-400">Numero</th>
+              <th className="p-4 text-xs uppercase text-gray-400">Curso</th>
               <th className="p-4 text-xs uppercase text-gray-400">Estado</th>
               <th className="p-4 text-xs uppercase text-gray-400">Data</th>
               <th className="p-4 text-xs uppercase text-gray-400 text-right">Acoes</th>
@@ -56,6 +57,7 @@ export const StudentVerificationsPage = () => {
                 <tr key={r.id} className="hover:bg-gray-50">
                   <td className="p-4 text-sm font-semibold">{r.fullName || r.clerkId}</td>
                   <td className="p-4 text-sm">{r.studentNumber}</td>
+                  <td className="p-4 text-sm">{r.course || 'Sem curso'}</td>
                   <td className="p-4 text-xs uppercase text-gray-500">{r.status}</td>
                   <td className="p-4 text-xs text-gray-500">
                     {r.verifiedAt ? new Date(r.verifiedAt).toLocaleDateString() : new Date(r.createdAt).toLocaleDateString()}

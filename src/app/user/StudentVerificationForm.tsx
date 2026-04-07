@@ -12,18 +12,25 @@ interface StudentVerificationFormProps {
 export const StudentVerificationForm = ({ user }: StudentVerificationFormProps) => {
   const [fullName, setFullName] = useState('');
   const [studentNumber, setStudentNumber] = useState('');
+  const [course, setCourse] = useState('');
+  const [courses, setCourses] = useState<any[]>([]);
   const [status, setStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [message, setMessage] = useState('');
   const [current, setCurrent] = useState<{ status?: string | null; role?: string | null; verifiedAt?: string | null }>({});
-  const [studentInfo, setStudentInfo] = useState<{ fullName?: string | null; studentNumber?: string | null; role?: string | null; status?: string | null }>({});
+  const [studentInfo, setStudentInfo] = useState<{ fullName?: string | null; studentNumber?: string | null; course?: string | null; role?: string | null; status?: string | null }>({});
   const [loadingCurrent, setLoadingCurrent] = useState(true);
   React.useEffect(() => {
     setLoadingCurrent(true);
+    fetch('/api/genres')
+      .then(res => res.json())
+      .then(data => setCourses(Array.isArray(data) ? data : []))
+      .catch(() => setCourses([]));
     fetch('/api/user/student-info', { headers: { 'x-user-id': user.id } })
       .then(res => res.json())
       .then(data => {
         setCurrent({ status: data?.status, role: data?.role, verifiedAt: data?.verifiedAt });
-        setStudentInfo({ fullName: data?.fullName, studentNumber: data?.studentNumber, role: data?.role, status: data?.status });
+        setStudentInfo({ fullName: data?.fullName, studentNumber: data?.studentNumber, course: data?.course, role: data?.role, status: data?.status });
+        setCourse(String(data?.course || ''));
         setLoadingCurrent(false);
       })
       .catch(() => {
@@ -39,13 +46,14 @@ export const StudentVerificationForm = ({ user }: StudentVerificationFormProps) 
       const res = await fetch('/api/student-verifications', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-user-id': user.id },
-        body: JSON.stringify({ fullName, studentNumber }),
+        body: JSON.stringify({ fullName, studentNumber, course }),
       });
       if (!res.ok) throw new Error('failed');
       setStatus('success');
       setMessage('Pedido enviado. Aguarde a validacao do administrador.');
       setFullName('');
       setStudentNumber('');
+      setCourse('');
       setCurrent({ status: 'pending', role: current.role });
     } catch {
       setStatus('error');
@@ -123,7 +131,7 @@ if (current.status === 'approved') {
         <div>
           <h1 className="text-2xl font-bold">Verificacao de estudante</h1>
           <p className="text-sm text-gray-500">
-            Envie o seu numero de estudante e o nome completo para validacao.
+            Envie o seu numero de estudante, o nome completo e o curso para validacao.
           </p>
         </div>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -144,6 +152,20 @@ if (current.status === 'approved') {
               onChange={(e) => setStudentNumber(e.target.value)}
               required
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium mb-1">Curso</label>
+            <select
+              className="w-full px-4 py-2 border rounded-lg"
+              value={course}
+              onChange={(e) => setCourse(e.target.value)}
+              required
+            >
+              <option value="">Selecione o curso</option>
+              {courses.map((item) => (
+                <option key={item.id} value={item.name}>{item.name}</option>
+              ))}
+            </select>
           </div>
           <Button className="w-full" disabled={status === 'sending'}>
             {status === 'sending' ? 'A enviar...' : 'Enviar pedido'}

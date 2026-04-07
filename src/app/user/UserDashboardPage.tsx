@@ -50,6 +50,7 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
   const [nextReturn, setNextReturn] = useState<string | null>(null);
   const [historyItems, setHistoryItems] = useState<any[]>([]);
   const [selectedBook, setSelectedBook] = useState<any | null>(null);
+  const [studentInfo, setStudentInfo] = useState<{ course?: string | null; status?: string | null }>({});
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -82,7 +83,7 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
       fetch('/api/user/borrow-status', { headers: { 'x-user-id': user.id } }).then(r => r.json()).catch(() => ({})),
       fetch('/api/user/continue-reading', { headers: { 'x-user-id': user.id } }).then(r => r.json()).catch(() => []),
       fetch('/api/user/reading-goals', { headers: { 'x-user-id': user.id } }).then(r => r.json()).catch(() => ({ activeGoal: null })),
-    ]).then(([shelf, history, score, recs, favoritesData, readingListsData, _studentInfo, _notes, borrowStatus, continueData, goalData]) => {
+    ]).then(([shelf, history, score, recs, favoritesData, readingListsData, fetchedStudentInfo, _notes, borrowStatus, continueData, goalData]) => {
       const shelfCount = Array.isArray(shelf) ? shelf.length : 0;
       const historyList = Array.isArray(history) ? history : [];
       const borrowed = historyList.filter((h) => h.status === 'borrowed').length;
@@ -96,6 +97,10 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
       const favoriteBookIds = Array.isArray(favoritesData?.bookIds) ? favoritesData.bookIds : [];
       setFavoriteIds(new Set(favoriteBookIds.filter(Boolean)));
       setReadingLists(Array.isArray(readingListsData) ? readingListsData : []);
+      setStudentInfo({
+        course: fetchedStudentInfo?.course || null,
+        status: fetchedStudentInfo?.status || null,
+      });
       setContinueReading(Array.isArray(continueData) ? continueData.slice(0, 3) : []);
       const activeGoal = goalData?.activeGoal ?? null;
       setReadingGoal(activeGoal);
@@ -528,7 +533,9 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
       <Card className="p-6">
         <h2 className="text-lg font-bold mb-4">Sugestoes para voce</h2>
         <p className="text-xs text-gray-400 mb-4">
-          Baseado nos teus cliques, emprestimos e livros na estante.
+          {studentInfo.course
+            ? `Baseado no teu curso ${studentInfo.course}, nos teus cliques e no teu historico de leitura.`
+            : 'Baseado nos teus cliques, emprestimos e livros na estante.'}
         </p>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {recommendations.length === 0 ? (
