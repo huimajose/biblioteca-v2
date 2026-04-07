@@ -5,7 +5,6 @@ import { Layout } from './components/Layout.tsx';
 import AdminDashboard  from './app/admin/AdminDashboard.tsx';
 import { BookForm } from './app/admin/BookForm.tsx';
 import { ReportsPage } from './app/admin/ReportsPage.tsx';
-import { UserPortal } from './app/user/UserPortal.tsx';
 import { AdminBooksPage } from './app/admin/AdminBooksPage.tsx';
 import { UsersPage } from './app/admin/UsersPage.tsx';
 import { TransactionsPage } from './app/admin/TransactionsPage.tsx';
@@ -114,7 +113,6 @@ export default function App() {
                   <Route path="/admin/transactions" element={staffRoute('transactions', <TransactionsPage />)} />
                   <Route path="/admin/reports" element={staffRoute('reports', <ReportsPage />)} />
                   <Route path="/admin/audit" element={staffRoute('audit', <AdminAuditPage />)} />
-                  <Route path="/admin/as-user" element={staffRoute('reader-mode', <UserPortal user={auth} />)} />
                   <Route path="/profile/*" element={<UserProfilePage user={auth} />} />
                   <Route path="/reader/:bookId" element={<PdfReaderPage user={auth} />} />
                   <Route path="*" element={<Navigate to={staffHome} />} />

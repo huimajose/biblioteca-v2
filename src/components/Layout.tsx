@@ -169,7 +169,6 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
     canAccessAdminSection(user.role, 'transactions') ? { icon: History, label: 'Transacoes', path: '/admin/transactions', badge: pendingTransactionsCount } : null,
     canAccessAdminSection(user.role, 'reports') ? { icon: Printer, label: 'Relatorios', path: '/admin/reports' } : null,
     canAccessAdminSection(user.role, 'audit') ? { icon: ShieldCheck, label: 'Auditoria', path: '/admin/audit' } : null,
-    canAccessAdminSection(user.role, 'reader-mode') ? { icon: BookMarked, label: 'Modo leitor', path: '/admin/as-user' } : null,
     { icon: UserCircle, label: 'Perfil', path: '/profile' },
   ].filter(Boolean) as Array<{ icon: any; label: string; path: string; badge?: number }>;
 
@@ -206,7 +205,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
           id: 'admin-account',
           label: 'Conta',
           items: adminMenuItems.filter((item) =>
-            ['/admin/as-user', '/profile'].includes(item.path)
+            ['/profile'].includes(item.path)
           ),
         },
       ].filter((section) => section.items.length > 0);

@@ -9,8 +9,7 @@ export type AdminSection =
   | 'student-verifications'
   | 'transactions'
   | 'reports'
-  | 'audit'
-  | 'reader-mode';
+  | 'audit';
 
 const ADMIN_SECTION_ACCESS: Record<StaffRole, AdminSection[]> = {
   admin: [
@@ -23,10 +22,9 @@ const ADMIN_SECTION_ACCESS: Record<StaffRole, AdminSection[]> = {
     'transactions',
     'reports',
     'audit',
-    'reader-mode',
   ],
-  operator: ['dashboard', 'transactions', 'reports', 'reader-mode'],
-  catalogador: ['dashboard', 'books', 'catalog-review', 'courses', 'reports', 'reader-mode'],
+  operator: ['dashboard', 'transactions', 'reports'],
+  catalogador: ['dashboard', 'books', 'catalog-review', 'courses', 'reports'],
 };
 
 export const normalizeUserRole = (value: string | null | undefined): UserRole => {
