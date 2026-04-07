@@ -11,9 +11,20 @@ interface BookLabelProps {
     author: string;
     isbn: string;
     genre: string;
+    cdu?: string | null;
+    catalogCode?: string | null;
+    prateleira?: number | string | null;
+    armario?: number | string | null;
   };
   onClose: () => void;
 }
+
+const getBookLocationLabel = (book: BookLabelProps['book']) => {
+  const armario = String(book.armario ?? book.cdu ?? '').trim() || 'S/ARM';
+  const prateleira = String(book.prateleira ?? '').trim() || 'S/PRAT';
+  const code = String(book.catalogCode ?? '').trim() || `ID ${book.id}`;
+  return `ARM ${armario} | PRAT ${prateleira} | ${code}`;
+};
 
 export const BookLabelContent = ({ book }: { book: BookLabelProps['book'] }) => (
   <div className="relative w-64 p-6 border-2 border-black rounded-lg space-y-3 bg-white overflow-hidden">
@@ -25,6 +36,11 @@ export const BookLabelContent = ({ book }: { book: BookLabelProps['book'] }) => 
     <div className="border-b border-black pb-2">
       <h2 className="text-lg font-black tracking-tighter uppercase">Biblioteca Virtual</h2>
       <p className="text-[7px] font-bold uppercase tracking-widest">Propriedade da biblioteca</p>
+    </div>
+
+    <div className="rounded-md border border-black/10 bg-gray-50 px-3 py-2">
+      <p className="text-[7px] font-bold uppercase tracking-[0.25em] text-gray-500">Localizacao</p>
+      <p className="mt-1 font-mono text-[10px] font-bold leading-tight">{getBookLocationLabel(book)}</p>
     </div>
 
     <div className="space-y-1">
@@ -51,7 +67,8 @@ export const BookLabelContent = ({ book }: { book: BookLabelProps['book'] }) => 
           ))}
         </div>
       </div>
-      <p className="font-mono text-[9px] font-bold tracking-widest">ISBN: {book.isbn}</p>
+      <p className="font-mono text-[8px] font-bold tracking-wide text-center">{getBookLocationLabel(book)}</p>
+      <p className="font-mono text-[9px] font-bold tracking-widest">ISBN: {book.isbn || 'N/D'}</p>
       <p className="font-mono text-[7px] text-gray-400">BOOK_ID: {book.id}</p>
     </div>
   </div>

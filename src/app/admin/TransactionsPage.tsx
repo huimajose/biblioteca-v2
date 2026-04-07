@@ -17,7 +17,7 @@ export const TransactionsPage = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState(15);
+  const [pageSize, setPageSize] = useState(5);
   const [selectedBook, setSelectedBook] = useState<any | null>(null);
   const [quickReturnCode, setQuickReturnCode] = useState('');
   const [quickReturnMessage, setQuickReturnMessage] = useState<string | null>(null);
@@ -182,7 +182,7 @@ export const TransactionsPage = () => {
       </div>
 
       <Card className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-3 items-end">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5 items-end">
           <div>
             <label className="text-xs uppercase text-gray-400">Data inicio</label>
             <input className="w-full px-4 py-2 border rounded-lg" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
@@ -212,7 +212,7 @@ export const TransactionsPage = () => {
       </Card>
 
       <Card className="p-4">
-        <form className="grid grid-cols-1 md:grid-cols-[1fr_auto] gap-3 items-end" onSubmit={handleQuickReturn}>
+        <form className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto] items-end" onSubmit={handleQuickReturn}>
           <div>
             <label className="text-xs uppercase text-gray-400">Leitor de codigo para devolucao</label>
             <input
@@ -223,7 +223,7 @@ export const TransactionsPage = () => {
             />
             {quickReturnMessage && <p className="mt-2 text-xs text-gray-500">{quickReturnMessage}</p>}
           </div>
-          <Button className="h-[50px]" disabled={loading || !quickReturnCode.trim()}>
+          <Button className="h-[50px] w-full md:w-auto" disabled={loading || !quickReturnCode.trim()}>
             {loading ? 'A processar...' : 'Devolver rapido'}
           </Button>
         </form>
@@ -234,7 +234,8 @@ export const TransactionsPage = () => {
           <h2 className="text-sm font-bold text-amber-700 uppercase tracking-wider">Pedidos pendentes</h2>
           <p className="text-xs text-amber-600">Aprovar ou rejeitar requisicoes antes de entrar no historico.</p>
         </div>
-        <table className="w-full text-left border-collapse">
+        <div className="overflow-x-auto">
+        <table className="min-w-[720px] w-full text-left border-collapse">
           <thead className="bg-amber-50 border-b border-amber-100">
             <tr>
               <th className="p-4 text-xs uppercase text-amber-700">Data</th>
@@ -314,6 +315,7 @@ export const TransactionsPage = () => {
             )}
           </tbody>
         </table>
+        </div>
       </Card>
 
       <Card className="overflow-hidden">
@@ -321,7 +323,8 @@ export const TransactionsPage = () => {
           <h2 className="text-sm font-bold text-gray-600 uppercase tracking-wider">Historico de transacoes</h2>
           <p className="text-xs text-gray-500">Emprestimos aprovados, devolvidos e rejeitados.</p>
         </div>
-        <table className="w-full text-left border-collapse">
+        <div className="overflow-x-auto">
+        <table className="min-w-[780px] w-full text-left border-collapse">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
               <th className="p-4 text-xs uppercase text-gray-400">Data</th>
@@ -407,13 +410,14 @@ export const TransactionsPage = () => {
             )}
           </tbody>
         </table>
+        </div>
       </Card>
 
-      <div className="flex items-center justify-between text-sm text-gray-500">
+      <div className="flex flex-col gap-3 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between">
         <span>Pagina {page} de {totalPages}</span>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <select className="px-3 py-1 border rounded-lg" value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}>
-            {[15, 30, 50].map(size => (
+            {[5, 10, 15].map(size => (
               <option key={size} value={size}>{size} por pagina</option>
             ))}
           </select>
