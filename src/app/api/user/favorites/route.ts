@@ -20,8 +20,26 @@ export async function GET(req: NextRequest) {
     .from(schema.userBookFavorites)
     .where(eq(schema.userBookFavorites.userId, userId));
 
+  const items = await Promise.all(
+    favorites.map(async (entry) => {
+      const [book] = await db
+        .select()
+        .from(schema.books)
+        .where(eq(schema.books.id, entry.bookId))
+        .limit(1);
+
+      return book
+        ? {
+            id: entry.id,
+            createdAt: entry.createdAt,
+            book,
+          }
+        : null;
+    })
+  );
+
   return NextResponse.json({
     bookIds: favorites.map((entry) => entry.bookId),
-    items: favorites,
+    items: items.filter(Boolean),
   });
 }

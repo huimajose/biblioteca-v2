@@ -13,6 +13,7 @@ interface UserShelfPageProps {
 
 export const UserShelfPage = ({ user }: UserShelfPageProps) => {
   const [shelf, setShelf] = useState<any[]>([]);
+  const [favorites, setFavorites] = useState<any[]>([]);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(6);
   const [selected, setSelected] = useState<any | null>(null);
@@ -26,15 +27,24 @@ export const UserShelfPage = ({ user }: UserShelfPageProps) => {
     })
       .then(res => res.json())
       .then(data => setShelf(Array.isArray(data) ? data : data?.data ?? []));
+
+    fetch('/api/user/favorites', {
+      headers: { 'x-user-id': user.id },
+    })
+      .then(res => res.json())
+      .then(data => {
+        const items = Array.isArray(data?.items) ? data.items : [];
+        setFavorites(items.map((entry: any) => ({ ...entry, favorite: true })));
+      });
   }, [user.id]);
 
   useEffect(() => {
     setPage(1);
   }, [filter]);
 
-  const filteredShelf = shelf.filter((entry) => filter === 'favorites' ? Boolean(entry.favorite) : true);
-  const totalPages = Math.max(1, Math.ceil(filteredShelf.length / pageSize));
-  const paged = filteredShelf.slice((page - 1) * pageSize, page * pageSize);
+  const visibleEntries = filter === 'favorites' ? favorites : shelf;
+  const totalPages = Math.max(1, Math.ceil(visibleEntries.length / pageSize));
+  const paged = visibleEntries.slice((page - 1) * pageSize, page * pageSize);
 
   const resolveFileUrl = (fileUrl?: string | null, bookId?: number) =>
     resolveBookFileUrl(fileUrl, bookId);
@@ -46,7 +56,9 @@ export const UserShelfPage = ({ user }: UserShelfPageProps) => {
 
   const toggleFavorite = async (bookId: number) => {
     if (favoriteLoading[bookId]) return;
-    const current = shelf.find((entry) => entry?.book?.id === bookId);
+    const current =
+      favorites.find((entry) => entry?.book?.id === bookId) ||
+      shelf.find((entry) => entry?.book?.id === bookId);
     if (!current) return;
 
     setFavoriteLoading((prev) => ({ ...prev, [bookId]: true }));
@@ -75,6 +87,13 @@ export const UserShelfPage = ({ user }: UserShelfPageProps) => {
             return new Date(b.addedAt || 0).getTime() - new Date(a.addedAt || 0).getTime();
           })
       );
+      setFavorites((prev) => {
+        if (Boolean(data?.favorite)) {
+          if (prev.some((entry) => entry?.book?.id === bookId)) return prev;
+          return [{ ...current, favorite: true }, ...prev];
+        }
+        return prev.filter((entry) => entry?.book?.id !== bookId);
+      });
     } finally {
       setFavoriteLoading((prev) => ({ ...prev, [bookId]: false }));
     }
@@ -85,6 +104,7 @@ export const UserShelfPage = ({ user }: UserShelfPageProps) => {
       <div>
         <h1 className="text-2xl font-bold">A Minha Estante</h1>
         <p className="text-sm text-gray-500">Livros digitais adicionados para leitura.</p>
+        <p className="text-xs text-gray-400 mt-1">Para adicionar um livro a uma lista de leitura, abra o detalhe do livro e use o botao "Guardar em lista".</p>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -106,7 +126,7 @@ export const UserShelfPage = ({ user }: UserShelfPageProps) => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
         {paged.length === 0 ? (
           <Card className="p-10 text-center text-gray-400">
-            {filter === 'favorites' ? 'Sem favoritos na estante.' : 'Sem livros na estante.'}
+            {filter === 'favorites' ? 'Sem livros favoritos.' : 'Sem livros na estante.'}
           </Card>
         ) : (
           paged.map((entry) => (
@@ -172,7 +192,7 @@ export const UserShelfPage = ({ user }: UserShelfPageProps) => {
           onReserve={() => {}}
           onAddToShelf={() => {}}
           onToggleFavorite={toggleFavorite}
-          favoriteActive={Boolean(shelf.find((entry) => entry?.book?.id === selected?.id)?.favorite)}
+          favoriteActive={Boolean(favorites.find((entry) => entry?.book?.id === selected?.id))}
           favoriteLoading={Boolean(favoriteLoading[selected?.id])}
           resolveFileUrl={(fileUrl) => resolveFileUrl(fileUrl, selected?.id)}
           onReadPdf={openReader}
