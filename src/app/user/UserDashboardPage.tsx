@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/Card.tsx';
-import { BookOpen, Sparkles, Library } from 'lucide-react';
+import { BookOpen, Sparkles, Library, Clock3 } from 'lucide-react';
 import { DEFAULT_BOOK_COVER } from '@/constants.ts';
 import { BookInfoModal } from '@/components/BookInfoModal.tsx';
 import { User } from '@/hooks/useAuth.ts';
@@ -194,36 +194,59 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
       </div>
 
       <Card className="p-6">
-        <h2 className="text-lg font-bold mb-3">Continuar a ler</h2>
+        <div className="mb-4 flex items-center justify-between">
+          <div>
+            <h2 className="text-lg font-bold">Continuar a ler</h2>
+            <p className="text-xs text-gray-400">Retome ate 3 livros exatamente do ponto onde parou.</p>
+          </div>
+          <span className="inline-flex items-center gap-1 rounded-full bg-lime-50 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-lime-700">
+            <Clock3 className="h-3 w-3" />
+            Em curso
+          </span>
+        </div>
         {continueReading.length === 0 ? (
           <p className="text-sm text-gray-400">Sem leituras em curso neste momento.</p>
         ) : (
-          <div className="space-y-3">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {continueReading.map((entry) => (
               <div
                 key={entry.id}
-                className="flex items-center gap-3 cursor-pointer rounded-2xl border border-gray-100 p-3 hover:border-lime-200 hover:bg-lime-50/40 transition-all"
+                className="cursor-pointer rounded-2xl border border-gray-100 p-4 hover:border-lime-200 hover:bg-lime-50/40 transition-all"
                 onClick={() => navigate(`/reader/${entry.book.id}`)}
               >
-                <img
-                  src={entry.book?.cover || DEFAULT_BOOK_COVER}
-                  alt={entry.book?.title}
-                  className="w-10 h-14 rounded-lg object-cover"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="flex-1">
-                  <p className="text-sm font-semibold">{entry.book?.title}</p>
-                  <p className="text-xs text-gray-500">{entry.book?.author}</p>
-                  <p className="text-[11px] text-lime-700 mt-1">
-                    Pagina {entry.currentPage} de {entry.totalPages || '?'} | {entry.progressPercent || 0}%
-                  </p>
-                  <div className="mt-2 h-1.5 rounded-full bg-gray-100 overflow-hidden">
-                    <div
-                      className="h-full rounded-full bg-lime-600"
-                      style={{ width: `${Math.max(6, entry.progressPercent || 0)}%` }}
-                    />
+                <div className="flex gap-3">
+                  <img
+                    src={entry.book?.cover || DEFAULT_BOOK_COVER}
+                    alt={entry.book?.title}
+                    className="h-24 w-16 rounded-xl object-cover"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="line-clamp-2 text-sm font-semibold text-gray-900">{entry.book?.title}</p>
+                    <p className="mt-1 line-clamp-1 text-xs text-gray-500">{entry.book?.author}</p>
+                    <p className="mt-3 text-[11px] font-semibold text-lime-700">
+                      Pagina {entry.currentPage || 1}
+                      {entry.totalPages ? ` de ${entry.totalPages}` : ''}
+                    </p>
+                    <p className="text-[11px] text-gray-500">{entry.progressPercent || 0}% concluido</p>
                   </div>
                 </div>
+                <div className="mt-3 h-1.5 rounded-full bg-gray-100 overflow-hidden">
+                  <div
+                    className="h-full rounded-full bg-lime-600"
+                    style={{ width: `${Math.max(6, entry.progressPercent || 0)}%` }}
+                  />
+                </div>
+                <button
+                  className="mt-3 inline-flex items-center gap-2 text-xs font-bold uppercase text-lime-700"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    navigate(`/reader/${entry.book.id}`);
+                  }}
+                >
+                  <BookOpen className="h-3 w-3" />
+                  Continuar leitura
+                </button>
               </div>
             ))}
           </div>
