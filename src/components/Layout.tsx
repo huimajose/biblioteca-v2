@@ -22,6 +22,7 @@ import { User } from '@/hooks/useAuth.ts';
 import { cn } from '@/utils/cn.ts';
 import { initPushNotifications } from '@/utils/push.ts';
 import { Toast } from '@/components/Toast.tsx';
+import { TourGuideAvatar } from '@/components/TourGuideAvatar.tsx';
 import { Button } from './ui/Button';
 import { canAccessAdminSection, getRoleLabel } from '@/utils/roles.ts';
 
@@ -455,8 +456,9 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
               <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-lime-700">
                 Tutorial do leitor
               </p>
-              <h3 className="mt-2 text-lg font-bold text-gray-900">{currentTourStep.title}</h3>
-              <p className="mt-2 text-sm text-gray-600">{currentTourStep.description}</p>
+              <div className="mt-3">
+                <TourGuideAvatar title={currentTourStep.title} message={currentTourStep.description} />
+              </div>
               <p className="mt-3 text-xs text-gray-400">
                 Passo {tourStepIndex + 1} de {userTourSteps.length}
               </p>
