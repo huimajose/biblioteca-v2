@@ -312,7 +312,7 @@ export const BookForm = () => {
                 </select>
                 {selectedGenreMeta && (
                   <p className="mt-1 text-xs text-gray-500">
-                    Codigo {selectedGenreMeta.code || 'CUR'} | Ordem {selectedGenreMeta.displayOrder || 'N/D'} | Armario padrao {selectedGenreMeta.defaultArmario || 'N/D'}
+                    Codigo {selectedGenreMeta.code || 'CUR'} | Ordem {selectedGenreMeta.displayOrder || 'N/D'} | Armario padrao {selectedGenreMeta.defaultArmario || 'N/D'} | Prateleiras {selectedGenreMeta.shelfStart ?? 'N/D'}-{selectedGenreMeta.shelfEnd ?? 'N/D'}
                   </p>
                 )}
               </div>

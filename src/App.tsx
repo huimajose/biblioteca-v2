@@ -10,10 +10,12 @@ import { AdminBooksPage } from './app/admin/AdminBooksPage.tsx';
 import { UsersPage } from './app/admin/UsersPage.tsx';
 import { TransactionsPage } from './app/admin/TransactionsPage.tsx';
 import { StudentVerificationsPage } from './app/admin/StudentVerificationsPage.tsx';
+import CoursesPage from './app/admin/CoursesPage.tsx';
 import { StudentVerificationForm } from './app/user/StudentVerificationForm.tsx';
 import { UserShelfPage } from './app/user/UserShelfPage.tsx';
 import { UserHistoryPage } from './app/user/UserHistoryPage.tsx';
 import { UserDashboardPage } from './app/user/UserDashboardPage.tsx';
+import { UserProfilePage } from './app/user/UserProfilePage.tsx';
 import { PublicLayout } from './components/PublicLayout.tsx';
 import { HomePage } from './app/public/HomePage.tsx';
 import { ContactsPage } from './app/public/ContactsPage.tsx';
@@ -95,6 +97,7 @@ export default function App() {
                 <>
                   <Route path="/admin" element={<AdminDashboard />} />
                   <Route path="/admin/books" element={<AdminBooksPage />} />
+                  <Route path="/admin/courses" element={<CoursesPage />} />
                   <Route path="/admin/books/new" element={<BookForm />} />
                   <Route path="/admin/books/edit" element={<BookForm />} />
                   <Route path="/admin/users" element={<UsersPage />} />
@@ -102,6 +105,7 @@ export default function App() {
                   <Route path="/admin/transactions" element={<TransactionsPage />} />
                   <Route path="/admin/reports" element={<ReportsPage />} />
                   <Route path="/admin/as-user" element={<UserPortal user={auth} />} />
+                  <Route path="/profile/*" element={<UserProfilePage user={auth} />} />
                   <Route path="/reader/:bookId" element={<PdfReaderPage user={auth} />} />
                   <Route path="*" element={<Navigate to="/admin" />} />
                 </>
@@ -112,6 +116,7 @@ export default function App() {
                   <Route path="/shelf" element={<UserShelfPage user={auth} />} />
                   <Route path="/history" element={<UserHistoryPage user={auth} />} />
                   <Route path="/student-verification" element={<StudentVerificationForm user={auth} />} />
+                  <Route path="/profile/*" element={<UserProfilePage user={auth} />} />
                   <Route path="/reader/:bookId" element={<PdfReaderPage user={auth} />} />
                   <Route path="*" element={<Navigate to="/" />} />
                 </>

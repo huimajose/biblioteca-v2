@@ -34,7 +34,10 @@ export const books = pgTable('books', {
   cover: varchar('cover', { length: 255 }).notNull(),
   editora: varchar('editora', { length: 255 }),
   cdu: varchar('cdu', { length: 100 }),
+  armario: varchar('armario', { length: 50 }),
   prateleira: integer('prateleira'),
+  courseSequence: integer('course_sequence'),
+  catalogCode: varchar('catalog_code', { length: 50 }),
   anoEdicao: integer('ano_edicao'),
   edicao: integer('edicao'),
   fileUrl: varchar('fileUrl', { length: 255 }),
@@ -46,6 +49,11 @@ export const books = pgTable('books', {
 export const genres = pgTable('genres', {
   id: serial('id').primaryKey(),
   name: varchar('name', { length: 100 }).notNull(),
+  code: varchar('code', { length: 20 }),
+  displayOrder: integer('display_order'),
+  defaultArmario: varchar('default_armario', { length: 50 }),
+  shelfStart: integer('shelf_start'),
+  shelfEnd: integer('shelf_end'),
 });
 
 export const transactions = pgTable('transactions', {

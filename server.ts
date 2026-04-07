@@ -61,7 +61,7 @@ let imagekitAuthExpiry = 0;
 
 const sseClients = new Map<string, Set<any>>();
 
-  const mapBookRow = (row: any) => ({
+const mapBookRow = (row: any) => ({
   id: row.id,
   title: row.title,
   author: row.author,
@@ -71,7 +71,10 @@ const sseClients = new Map<string, Set<any>>();
   cover: row.cover || DEFAULT_BOOK_COVER_URL,
   editora: row.editora ?? '',
   cdu: row.cdu ?? '',
+  armario: row.armario ?? '',
   prateleira: row.prateleira ?? null,
+  courseSequence: row.courseSequence ?? row.course_sequence ?? null,
+  catalogCode: row.catalogCode ?? row.catalog_code ?? null,
   anoEdicao: row.anoEdicao ?? null,
   edicao: row.edicao ?? null,
   isbn: row.isbn,
@@ -110,6 +113,148 @@ const createPhysicalCopies = async (bookId: number, copies: number) => {
     currTransactionId: 0,
   }));
   await db.insert(schema.physicalBooks).values(rows);
+};
+
+const normalizeCourseCode = (value: string | null | undefined) =>
+  String(value || '')
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, '')
+    .slice(0, 20);
+
+const renumberBooksForGenre = async (genreName?: string | null) => {
+  if (genreName && String(genreName).trim()) {
+    await db.execute(sql`
+      WITH ranked AS (
+        SELECT
+          b.id,
+          ROW_NUMBER() OVER (
+            PARTITION BY b.genre
+            ORDER BY
+              CASE WHEN b.prateleira IS NULL THEN 1 ELSE 0 END,
+              b.prateleira ASC,
+              b.title ASC,
+              b.id ASC
+          )::int AS next_sequence,
+          CONCAT(
+            COALESCE(NULLIF(TRIM(g.code), ''), 'CUR'),
+            '-',
+            LPAD(
+              ROW_NUMBER() OVER (
+                PARTITION BY b.genre
+                ORDER BY
+                  CASE WHEN b.prateleira IS NULL THEN 1 ELSE 0 END,
+                  b.prateleira ASC,
+                  b.title ASC,
+                  b.id ASC
+              )::text,
+              3,
+              '0'
+            )
+          ) AS next_catalog_code
+        FROM books b
+        LEFT JOIN genres g ON g.name = b.genre
+        WHERE b.genre = ${genreName}
+      )
+      UPDATE books AS b
+      SET
+        course_sequence = ranked.next_sequence,
+        catalog_code = ranked.next_catalog_code
+      FROM ranked
+      WHERE ranked.id = b.id
+    `);
+    return;
+  }
+
+  await db.execute(sql`
+    WITH ranked AS (
+      SELECT
+        b.id,
+        ROW_NUMBER() OVER (
+          PARTITION BY b.genre
+          ORDER BY
+            CASE WHEN b.prateleira IS NULL THEN 1 ELSE 0 END,
+            b.prateleira ASC,
+            b.title ASC,
+            b.id ASC
+        )::int AS next_sequence,
+        CONCAT(
+          COALESCE(NULLIF(TRIM(g.code), ''), 'CUR'),
+          '-',
+          LPAD(
+            ROW_NUMBER() OVER (
+              PARTITION BY b.genre
+              ORDER BY
+                CASE WHEN b.prateleira IS NULL THEN 1 ELSE 0 END,
+                b.prateleira ASC,
+                b.title ASC,
+                b.id ASC
+            )::text,
+            3,
+            '0'
+          )
+        ) AS next_catalog_code
+      FROM books b
+      LEFT JOIN genres g ON g.name = b.genre
+    )
+    UPDATE books AS b
+    SET
+      course_sequence = ranked.next_sequence,
+      catalog_code = ranked.next_catalog_code
+    FROM ranked
+    WHERE ranked.id = b.id
+  `);
+};
+
+const formatCatalogCode = (code: string, sequence: number) =>
+  `${code}-${String(sequence).padStart(3, '0')}`;
+
+const resolveBookCatalogData = async (input: {
+  genre: string;
+  armario?: string | null;
+  currentBookId?: number;
+  preserveSequence?: number | null;
+  preserveCatalogCode?: string | null;
+}) => {
+  const genreName = String(input.genre || '').trim();
+  const genreRow = genreName
+    ? (
+      await db
+        .select()
+        .from(schema.genres)
+        .where(eq(schema.genres.name, genreName))
+        .limit(1)
+    )[0]
+    : null;
+
+  const courseCode = String(genreRow?.code || 'CUR').trim().toUpperCase();
+  const armario = String(input.armario ?? genreRow?.defaultArmario ?? '').trim();
+
+  if (input.preserveSequence && input.preserveCatalogCode) {
+    return {
+      armario,
+      courseSequence: input.preserveSequence,
+      catalogCode: input.preserveCatalogCode,
+    };
+  }
+
+  const sameGenreBooks = await db
+    .select({
+      id: schema.books.id,
+      courseSequence: schema.books.courseSequence,
+    })
+    .from(schema.books)
+    .where(eq(schema.books.genre, genreName));
+
+  const filtered = sameGenreBooks.filter((book) => book.id !== input.currentBookId);
+  const nextSequence =
+    filtered.reduce((max, book) => Math.max(max, Number(book.courseSequence ?? 0)), 0) + 1;
+
+  return {
+    armario,
+    courseSequence: nextSequence,
+    catalogCode: formatCatalogCode(courseCode, nextSequence),
+  };
 };
 
 const addNotification = async (userId: string, title: string, message: string) => {
@@ -205,10 +350,79 @@ async function startServer() {
 
   app.get('/api/genres', async (_req, res) => {
     try {
-      const genres = await db.select().from(schema.genres).orderBy(asc(schema.genres.name));
+      const genres = await db
+        .select()
+        .from(schema.genres)
+        .orderBy(asc(schema.genres.displayOrder), asc(schema.genres.name));
       res.json(genres);
     } catch (error: any) {
       res.status(500).json({ error: error?.message || 'Erro ao carregar cursos' });
+    }
+  });
+
+  app.post('/api/genres', async (req, res) => {
+    try {
+      const body = req.body || {};
+      const name = String(body.name || '').trim();
+      if (!name) return res.status(400).json({ error: 'Nome do curso obrigatorio' });
+
+      const created = await db.insert(schema.genres).values({
+        name,
+        code: normalizeCourseCode(body.code) || null,
+        displayOrder: body.displayOrder ? Number(body.displayOrder) : null,
+        defaultArmario: String(body.defaultArmario || '').trim() || null,
+        shelfStart: body.shelfStart === null || body.shelfStart === '' || body.shelfStart === undefined ? null : Number(body.shelfStart),
+        shelfEnd: body.shelfEnd === null || body.shelfEnd === '' || body.shelfEnd === undefined ? null : Number(body.shelfEnd),
+      }).returning();
+
+      res.json(created[0]);
+    } catch (error: any) {
+      res.status(500).json({ error: error?.message || 'Erro ao criar curso' });
+    }
+  });
+
+  app.put('/api/genres/:id', async (req, res) => {
+    try {
+      const id = Number(req.params.id);
+      if (Number.isNaN(id)) return res.status(400).json({ error: 'Curso invalido' });
+
+      const body = req.body || {};
+      const name = String(body.name || '').trim();
+      if (!name) return res.status(400).json({ error: 'Nome do curso obrigatorio' });
+      const existing = await db.select().from(schema.genres).where(eq(schema.genres.id, id)).limit(1);
+      if (!existing[0]) return res.status(404).json({ error: 'Curso nao encontrado' });
+
+      const updated = await db.update(schema.genres).set({
+        name,
+        code: normalizeCourseCode(body.code) || null,
+        displayOrder: body.displayOrder ? Number(body.displayOrder) : null,
+        defaultArmario: String(body.defaultArmario || '').trim() || null,
+        shelfStart: body.shelfStart === null || body.shelfStart === '' || body.shelfStart === undefined ? null : Number(body.shelfStart),
+        shelfEnd: body.shelfEnd === null || body.shelfEnd === '' || body.shelfEnd === undefined ? null : Number(body.shelfEnd),
+      }).where(eq(schema.genres.id, id)).returning();
+
+      await db.update(schema.books)
+        .set({ genre: updated[0].name })
+        .where(eq(schema.books.genre, existing[0].name));
+
+      await db.update(schema.books)
+        .set({ armario: String(updated[0].defaultArmario || '').trim() || null })
+        .where(and(eq(schema.books.genre, updated[0].name), sql`(armario IS NULL OR trim(armario) = '')`));
+
+      await renumberBooksForGenre(updated[0].name);
+      res.json(updated[0]);
+    } catch (error: any) {
+      res.status(500).json({ error: error?.message || 'Erro ao atualizar curso' });
+    }
+  });
+
+  app.post('/api/genres/renumber', async (req, res) => {
+    try {
+      const genreName = String(req.body?.genreName || '').trim();
+      await renumberBooksForGenre(genreName || undefined);
+      res.json({ success: true, scope: genreName || 'all' });
+    } catch (error: any) {
+      res.status(500).json({ error: error?.message || 'Erro ao renumerar curso' });
     }
   });
 
@@ -343,6 +557,10 @@ async function startServer() {
       const isPhysical = (body.documentType ?? 1) !== 2;
       const totalCopies = isPhysical ? Number(body.totalCopies ?? 1) : 0;
       const availableCopies = isPhysical ? totalCopies : 0;
+      const catalogData = await resolveBookCatalogData({
+        genre: body.genre ?? '',
+        armario: body.armario ?? null,
+      });
 
       const inserted = await db.insert(schema.books).values({
         title: body.title,
@@ -353,7 +571,10 @@ async function startServer() {
         cover: body.cover || DEFAULT_BOOK_COVER_URL,
         editora: body.editora ?? null,
         cdu: body.cdu ?? null,
+        armario: catalogData.armario || null,
         prateleira: body.prateleira ?? null,
+        courseSequence: catalogData.courseSequence,
+        catalogCode: catalogData.catalogCode,
         anoEdicao: body.anoEdicao ?? null,
         edicao: body.edicao ?? null,
         isbn: body.isbn,
@@ -385,6 +606,15 @@ async function startServer() {
       const nextDocumentType = body.documentType ?? existing[0].document_type ?? 1;
       const isPhysical = nextDocumentType !== 2;
       const hasDigital = Boolean(body.fileUrl ?? existing[0].fileUrl) || body.hasDigital === true || body.isDigital === true || nextDocumentType === 2;
+      const nextGenre = body.genre ?? existing[0].genre ?? '';
+      const genreChanged = nextGenre !== existing[0].genre;
+      const catalogData = await resolveBookCatalogData({
+        genre: nextGenre,
+        armario: body.armario ?? existing[0].armario ?? null,
+        currentBookId: bookId,
+        preserveSequence: genreChanged ? null : (existing[0].courseSequence ?? existing[0].course_sequence ?? null),
+        preserveCatalogCode: genreChanged ? null : (existing[0].catalogCode ?? existing[0].catalog_code ?? null),
+      });
 
       const baseTotal = Number(body.totalCopies ?? existing[0].totalCopies ?? 0);
       const totalCopies = isPhysical ? baseTotal + Math.max(addCopies, 0) : 0;
@@ -393,13 +623,16 @@ async function startServer() {
       const updated = await db.update(schema.books).set({
         title: body.title ?? existing[0].title,
         author: body.author ?? existing[0].author,
-        genre: body.genre ?? existing[0].genre,
+        genre: nextGenre,
         totalCopies,
         availableCopies,
         cover: body.cover ?? existing[0].cover ?? DEFAULT_BOOK_COVER_URL,
         editora: body.editora ?? existing[0].editora ?? null,
         cdu: body.cdu ?? existing[0].cdu ?? null,
+        armario: catalogData.armario || null,
         prateleira: body.prateleira ?? existing[0].prateleira ?? null,
+        courseSequence: catalogData.courseSequence,
+        catalogCode: catalogData.catalogCode,
         anoEdicao: body.anoEdicao ?? existing[0].anoEdicao ?? null,
         edicao: body.edicao ?? existing[0].edicao ?? null,
         isbn: body.isbn ?? existing[0].isbn,

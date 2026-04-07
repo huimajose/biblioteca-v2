@@ -7,6 +7,7 @@ import {
   History, 
   LogOut, 
   Library,
+  FolderTree,
   Printer,
   ChevronRight,
   BookMarked,
@@ -134,6 +135,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
   const menuItems = user.isAdmin ? [
     { icon: LayoutDashboard, label: 'Painel', path: '/admin' },
     { icon: BookOpen, label: 'Livros', path: '/admin/books' },
+    { icon: FolderTree, label: 'Cursos', path: '/admin/courses' },
     { icon: UsersIcon, label: 'Utilizadores', path: '/admin/users', badge: pendingUsersCount },
     { icon: UsersIcon, label: 'Verificacao estudantes', path: '/admin/student-verifications' },
     { icon: History, label: 'Transacoes', path: '/admin/transactions', badge: pendingTransactionsCount },
