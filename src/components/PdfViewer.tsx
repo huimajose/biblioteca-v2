@@ -114,15 +114,17 @@ export const PdfViewer = ({
   const pdfOptions = useMemo(() => ({ cMapUrl: 'cmaps/', cMapPacked: true }), []);
   const pageRenderWidth = useMemo(() => {
     if (!viewerWidth) return undefined;
-    const safeViewportWidth = Math.max(220, viewerWidth - 24);
-    return Math.max(220, Math.round(safeViewportWidth * scale));
+    const horizontalReserve = viewerWidth <= 360 ? 84 : viewerWidth <= 480 ? 72 : viewerWidth <= 768 ? 56 : 40;
+    const safeViewportWidth = Math.max(150, viewerWidth - horizontalReserve);
+    return Math.max(150, Math.round(safeViewportWidth * scale));
   }, [scale, viewerWidth]);
   const watermarkFontSize = useMemo(() => {
     if (!viewerWidth) return 42;
-    if (viewerWidth <= 280) return 18;
-    if (viewerWidth <= 360) return 22;
-    if (viewerWidth <= 480) return 28;
-    if (viewerWidth <= 640) return 34;
+    if (viewerWidth <= 280) return 12;
+    if (viewerWidth <= 360) return 14;
+    if (viewerWidth <= 480) return 18;
+    if (viewerWidth <= 640) return 24;
+    if (viewerWidth <= 820) return 34;
     return 42;
   }, [viewerWidth]);
   const pageTurnTransition = prefersReducedMotion
@@ -143,7 +145,11 @@ export const PdfViewer = ({
         fontSize: watermarkFontSize,
         fontWeight: 800,
         color: darkMode ? '#fff' : '#000',
-        whiteSpace: 'nowrap',
+        whiteSpace: viewerWidth <= 480 ? 'normal' : 'nowrap',
+        textAlign: 'center',
+        maxWidth: viewerWidth <= 480 ? '78%' : '92%',
+        lineHeight: 1.2,
+        wordBreak: 'break-word',
         zIndex: 10,
       }}
       aria-hidden="true"
