@@ -50,6 +50,9 @@ export const getAuditSearchText = (log: {
   entityType?: string | null;
   entityId?: string | number | null;
   details?: string | null;
+  detailDisplay?: string | null;
+  subjectUserName?: string | null;
+  subjectUserEmail?: string | null;
 }) =>
   [
     log.actorName,
@@ -62,6 +65,9 @@ export const getAuditSearchText = (log: {
     getAuditEntityLabel(log.entityType),
     log.entityId,
     log.details,
+    log.detailDisplay,
+    log.subjectUserName,
+    log.subjectUserEmail,
   ]
     .map((value) => String(value || '').toLowerCase())
     .join(' ');

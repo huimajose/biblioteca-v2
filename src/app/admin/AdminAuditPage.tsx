@@ -62,7 +62,7 @@ export const AdminAuditPage = () => {
             `${log.actorName || log.actorUserId || 'N/D'} (${getAuditRoleLabel(log.actorRole)})`,
             getAuditActionLabel(log.action),
             `${getAuditEntityLabel(log.entityType)}${log.entityId ? ` #${log.entityId}` : ''}`,
-            log.details || 'Sem detalhe',
+            log.detailDisplay || log.details || 'Sem detalhe',
           ])
         : [['-', '-', '-', '-', '-']],
       styles: { fontSize: 8, cellWidth: 'wrap' },
@@ -148,7 +148,7 @@ export const AdminAuditPage = () => {
                     {getAuditEntityLabel(log.entityType)}
                     {log.entityId ? ` #${log.entityId}` : ''}
                   </td>
-                  <td className="p-4 text-sm text-gray-600">{log.details}</td>
+                  <td className="p-4 text-sm text-gray-600">{log.detailDisplay || log.details || 'Sem detalhe'}</td>
                 </tr>
               ))
             )}
