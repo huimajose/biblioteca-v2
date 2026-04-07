@@ -20,6 +20,9 @@ const getBookLocationLabel = (book: any) => {
 export const AdminBooksPage = () => {
   const [books, setBooks] = useState<any[]>([]);
   const [search, setSearch] = useState('');
+  const [catalogCodeFilter, setCatalogCodeFilter] = useState('');
+  const [armarioFilter, setArmarioFilter] = useState('all');
+  const [prateleiraFilter, setPrateleiraFilter] = useState('all');
   const [sortBy, setSortBy] = useState<'title' | 'author' | 'available' | 'created'>('title');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [page, setPage] = useState(1);
@@ -51,15 +54,45 @@ export const AdminBooksPage = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [search, sortBy, sortOrder, genreFilter]);
+  }, [search, catalogCodeFilter, armarioFilter, prateleiraFilter, sortBy, sortOrder, genreFilter]);
+
+  const armarioOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          books
+            .map((book) => String(book.armario || '').trim())
+            .filter(Boolean)
+        )
+      ).sort((a, b) => a.localeCompare(b, undefined, { numeric: true })),
+    [books]
+  );
+
+  const prateleiraOptions = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          books
+            .map((book) => String(book.prateleira ?? '').trim())
+            .filter(Boolean)
+        )
+      ).sort((a, b) => Number(a) - Number(b)),
+    [books]
+  );
 
   const filtered = useMemo(() => {
     const query = search.toLowerCase();
+    const catalogQuery = catalogCodeFilter.toLowerCase();
     const list = books.filter((b) => {
       const title = String(b.title || '').toLowerCase();
       const author = String(b.author || '').toLowerCase();
       const isbn = String(b.isbn || '').toLowerCase();
-      return title.includes(query) || author.includes(query) || isbn.includes(query);
+      const catalogCode = String(b.catalogCode || '').toLowerCase();
+      const matchesSearch = title.includes(query) || author.includes(query) || isbn.includes(query) || catalogCode.includes(query);
+      const matchesCatalogCode = !catalogQuery || catalogCode.includes(catalogQuery);
+      const matchesArmario = armarioFilter === 'all' || String(b.armario || '').trim() === armarioFilter;
+      const matchesPrateleira = prateleiraFilter === 'all' || String(b.prateleira ?? '').trim() === prateleiraFilter;
+      return matchesSearch && matchesCatalogCode && matchesArmario && matchesPrateleira;
     });
     const genreFiltered =
       genreFilter === 'all'
@@ -78,7 +111,7 @@ export const AdminBooksPage = () => {
       return av.localeCompare(bv) * dir;
     });
     return sorted;
-  }, [books, search, sortBy, sortOrder, genreFilter]);
+  }, [books, search, catalogCodeFilter, armarioFilter, prateleiraFilter, sortBy, sortOrder, genreFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
@@ -384,13 +417,31 @@ export const AdminBooksPage = () => {
       </div>
 
       <Card className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-7 gap-3">
           <input
             className="px-4 py-2 border rounded-lg"
             placeholder="Pesquisar por titulo, autor ou ISBN"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           />
+          <input
+            className="px-4 py-2 border rounded-lg font-mono"
+            placeholder="Filtrar por catalogo"
+            value={catalogCodeFilter}
+            onChange={(e) => { setCatalogCodeFilter(e.target.value); setPage(1); }}
+          />
+          <select className="px-4 py-2 border rounded-lg" value={armarioFilter} onChange={(e) => { setArmarioFilter(e.target.value); setPage(1); }}>
+            <option value="all">Todos armarios</option>
+            {armarioOptions.map((armario) => (
+              <option key={armario} value={armario}>Armario {armario}</option>
+            ))}
+          </select>
+          <select className="px-4 py-2 border rounded-lg" value={prateleiraFilter} onChange={(e) => { setPrateleiraFilter(e.target.value); setPage(1); }}>
+            <option value="all">Todas prateleiras</option>
+            {prateleiraOptions.map((prateleira) => (
+              <option key={prateleira} value={prateleira}>Prateleira {prateleira}</option>
+            ))}
+          </select>
           <select className="px-4 py-2 border rounded-lg" value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
             <option value="title">Ordenar por titulo</option>
             <option value="author">Ordenar por autor</option>
