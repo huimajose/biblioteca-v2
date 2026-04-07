@@ -167,13 +167,13 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
   ];
 
   const userTourDescriptions: Record<string, string> = {
-    '/dashboard': 'Veja o resumo da sua atividade, continue leituras em curso, acompanhe metas e consulte os indicadores mais importantes da sua conta.',
-    '/': 'Explore o catalogo completo, pesquise livros, abra detalhes, guarde favoritos e encontre rapidamente livros fisicos ou digitais.',
-    '/shelf': 'Aceda aos livros digitais que ja adicionou, retome leituras guardadas e organize os seus favoritos num unico lugar.',
-    '/lists': 'Crie listas pessoais de leitura para separar livros por tema, prioridade, curso ou qualquer plano de estudo que queira seguir.',
-    '/history': 'Consulte o seu historico de pedidos, devolucoes e requisicoes rejeitadas para acompanhar tudo o que ja passou pela sua conta.',
-    '/profile': 'Atualize os seus dados pessoais, reveja informacoes da conta e mantenha o seu perfil pronto para uso dentro do sistema.',
-    '/student-verification': 'Envie ou acompanhe a verificacao estudantil para desbloquear beneficios e garantir o acesso correto aos recursos da biblioteca.',
+    '/dashboard': 'Este e o seu painel principal. Aqui ve um resumo rapido da conta, continua livros que deixou a meio, acompanha metas de leitura e percebe logo o que esta pendente sem precisar procurar em varias paginas.',
+    '/': 'Esta e a Biblioteca, ou seja, a area para procurar livros. Pode pesquisar por titulo ou autor, abrir os detalhes de qualquer livro, marcar para ler depois, adicionar a estante e iniciar leitura digital quando o livro tiver PDF.',
+    '/shelf': 'A Minha Estante guarda os seus livros digitais desbloqueados. Entre aqui quando quiser voltar a um livro que ja abriu, organizar favoritos ou continuar uma leitura sem ter de procurar outra vez no catalogo.',
+    '/lists': 'As Listas de leitura servem para organizar o que pretende ler. Pode criar listas como "Provas", "Ler este mes" ou "Direito" para separar livros por objetivo e manter tudo mais arrumado.',
+    '/history': 'No Historico acompanha tudo o que ja aconteceu com a sua conta. Aqui aparecem pedidos aceites, livros devolvidos e tambem pedidos rejeitados, para nao ficar com duvidas sobre o estado das suas requisicoes.',
+    '/profile': 'No Perfil pode atualizar os seus dados, confirmar o nome usado no sistema e manter a conta correta. Isto ajuda nas notificacoes, nos registos e na identificacao dentro da biblioteca.',
+    '/student-verification': 'Esta area e importante para validar que e estudante. Depois da verificacao, o sistema consegue aplicar corretamente os acessos, beneficios e regras da sua conta academica.',
   };
 
   const userTourSteps = !user.isStaff
@@ -186,12 +186,12 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
         {
           key: 'notifications',
           title: 'Notificacoes',
-          description: 'Aqui acompanha avisos importantes, reservas, devolucoes e mensagens do sistema.',
+          description: 'Use este sino para ver avisos do sistema. Aqui podem aparecer lembretes de devolucao, mensagens sobre reservas, atualizacoes da conta e outras informacoes importantes que merecem atencao.',
         },
         {
           key: 'profile-summary',
           title: 'Resumo do perfil',
-          description: 'Nesta zona encontra o seu nome, o papel atual e os dados rapidos da sua sessao.',
+          description: 'Nesta zona ve rapidamente quem esta ligado no sistema. Confira aqui o seu nome, o tipo de utilizador e os dados principais da sessao para ter certeza de que entrou na conta certa.',
         },
       ]
     : [];
