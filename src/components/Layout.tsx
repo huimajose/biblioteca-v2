@@ -353,7 +353,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
             : 'text-gray-600 hover:bg-lime-50 hover:text-lime-700'
         )}
       >
-        <item.icon className="h-5 w-5 shrink-0" />
+        <item.icon className="h-5 w-5 shrink-0 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:scale-110" />
         {(isSidebarOpen || isMobileMenuOpen) && <span className="font-medium">{item.label}</span>}
         {!!item.badge && (
           <span className={cn(
