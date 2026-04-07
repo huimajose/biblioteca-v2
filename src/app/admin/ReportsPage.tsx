@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Printer, Ticket, X, ListFilter, History, Package, RotateCcw, AlertTriangle, Users, TrendingUp, MapPinned, BookX } from 'lucide-react';
+import { Printer, Ticket, X, ListFilter, History, Package, RotateCcw, AlertTriangle, Users, TrendingUp, MapPinned, BookX, BarChart3, ArchiveX } from 'lucide-react';
 import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
 import { cn } from '@/utils/cn.ts';
@@ -12,13 +12,17 @@ import { LOGO_WATERMARK } from '@/constants.ts';
 import { addCenteredWatermarkToAllPages, loadWatermarkImage } from '@/utils/pdfWatermark.ts';
 
 export const ReportsPage = () => {
-  const [reportType, setReportType] = useState<'activity' | 'genre' | 'inventory' | 'location-inventory' | 'users' | 'top-books' | 'never-borrowed'>('activity');
+  const [reportType, setReportType] = useState<'activity' | 'genre' | 'inventory' | 'location-inventory' | 'users' | 'top-books' | 'never-borrowed' | 'circulation-insights'>('activity');
   const [activities, setActivities] = useState<any[]>([]);
   const [activitySummary, setActivitySummary] = useState<any | null>(null);
   const [books, setBooks] = useState<any[]>([]);
   const [userReports, setUserReports] = useState<any[]>([]);
   const [topBooks, setTopBooks] = useState<any[]>([]);
   const [neverBorrowedBooks, setNeverBorrowedBooks] = useState<any[]>([]);
+  const [circulationSummary, setCirculationSummary] = useState<any | null>(null);
+  const [topConsultedBooks, setTopConsultedBooks] = useState<any[]>([]);
+  const [flowGapBooks, setFlowGapBooks] = useState<any[]>([]);
+  const [insightRange, setInsightRange] = useState<'30' | '90' | '180' | 'all'>('90');
   const [topRange, setTopRange] = useState({ start: '', end: '' });
   const [topLimit, setTopLimit] = useState(10);
   const [dates, setDates] = useState({ start: '', end: '' });
@@ -133,6 +137,11 @@ export const ReportsPage = () => {
       fetchNeverBorrowedBooks();
     }
   }, [reportType]);
+
+  useEffect(() => {
+    if (reportType !== 'circulation-insights') return;
+    fetchCirculationInsights();
+  }, [reportType, insightRange]);
 
   useEffect(() => {
     if (reportType !== 'activity') return;
@@ -577,6 +586,18 @@ export const ReportsPage = () => {
     };
   }, [neverBorrowedBooks]);
 
+  const circulationInsightStats = useMemo(() => {
+    const topGenre = circulationSummary?.topGenres?.[0] || null;
+    const topConsulted = topConsultedBooks[0] || null;
+    const criticalFlowGap = flowGapBooks.filter((book) => !book.isDigital).length;
+    return {
+      topGenre,
+      topConsulted,
+      flowGapCount: flowGapBooks.length,
+      criticalFlowGap,
+    };
+  }, [circulationSummary, topConsultedBooks, flowGapBooks]);
+
   const inventoryStats = {
     totalBooks: books.length,
     physicalBooks: books.filter(b => !b.isDigital).length,
@@ -590,6 +611,32 @@ export const ReportsPage = () => {
   const fetchNeverBorrowedBooks = async () => {
     const res = await fetch('/api/admin/reports/never-borrowed');
     setNeverBorrowedBooks(await res.json());
+  };
+
+  const buildRangeParams = (range: '30' | '90' | '180' | 'all') => {
+    if (range === 'all') return '';
+    const now = new Date();
+    const end = now.toISOString().slice(0, 10);
+    const startDate = new Date(now);
+    startDate.setDate(startDate.getDate() - (Number(range) - 1));
+    const start = startDate.toISOString().slice(0, 10);
+    return new URLSearchParams({ start, end }).toString();
+  };
+
+  const fetchCirculationInsights = async () => {
+    const summaryQuery = buildRangeParams(insightRange);
+    const clickQuery = insightRange === 'all' ? '' : `?days=${insightRange}`;
+    const flowQuery = insightRange === 'all' ? '?days=all' : `?days=${insightRange}`;
+
+    const [summaryRes, clickedRes, flowRes] = await Promise.all([
+      fetch(`/api/admin/reports/activity-summary${summaryQuery ? `?${summaryQuery}` : ''}`),
+      fetch(`/api/admin/reports/top-clicked${clickQuery}`),
+      fetch(`/api/admin/reports/flow-gaps${flowQuery}`),
+    ]);
+
+    setCirculationSummary(summaryRes.ok ? await summaryRes.json() : null);
+    setTopConsultedBooks(clickedRes.ok ? await clickedRes.json() : []);
+    setFlowGapBooks(flowRes.ok ? await flowRes.json() : []);
   };
 
   const exportGenrePdf = async () => {
@@ -795,6 +842,58 @@ export const ReportsPage = () => {
     doc.save('relatorio-livros-nunca-emprestados.pdf');
   };
 
+  const exportCirculationInsightsPdf = async () => {
+    const doc = new jsPDF('p', 'pt');
+    const rangeLabel = insightRange === 'all' ? 'Todo o historico' : `Ultimos ${insightRange} dias`;
+    doc.setFontSize(16);
+    doc.text('Relatorio de circulacao do acervo', 40, 40);
+    doc.setFontSize(10);
+    doc.text(`Periodo: ${rangeLabel}`, 40, 58);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 40, 72);
+
+    autoTable(doc, {
+      startY: 92,
+      head: [['Cursos mais usados', 'Requisicoes']],
+      body: circulationSummary?.topGenres?.length
+        ? circulationSummary.topGenres.map((row: any) => [row.label || 'Sem curso', String(row.value || 0)])
+        : [['Sem dados', '0']],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [59, 130, 246] },
+    });
+
+    autoTable(doc, {
+      startY: ((doc as any).lastAutoTable?.finalY || 92) + 20,
+      head: [['Livros mais consultados', 'Autor', 'Cliques']],
+      body: topConsultedBooks.length
+        ? topConsultedBooks.map((book: any) => [book.title || 'N/D', book.author || 'N/D', String(book.totalClicks || 0)])
+        : [['Sem dados', '-', '0']],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [168, 85, 247] },
+    });
+
+    autoTable(doc, {
+      startY: ((doc as any).lastAutoTable?.finalY || 92) + 20,
+      head: [['Livros desaparecidos do fluxo', 'Curso', 'Ultimo emprestimo', 'Ultimo clique']],
+      body: flowGapBooks.length
+        ? flowGapBooks.map((book: any) => [
+            book.title || 'N/D',
+            book.genre || 'Sem curso',
+            book.lastBorrowedAt ? new Date(book.lastBorrowedAt).toLocaleDateString() : 'Nunca',
+            book.lastClickAt ? new Date(book.lastClickAt).toLocaleDateString() : 'Nunca',
+          ])
+        : [['Sem dados', '-', '-', '-']],
+      styles: { fontSize: 9 },
+      headStyles: { fillColor: [245, 158, 11] },
+    });
+
+    try {
+      const logo = await loadWatermarkImage(LOGO_WATERMARK);
+      addCenteredWatermarkToAllPages(doc, logo, { width: 160 });
+    } catch {}
+
+    doc.save('relatorio-circulacao-acervo.pdf');
+  };
+
   const exportUsersPdf = async () => {
     const doc = new jsPDF('p', 'pt');
     doc.setFontSize(16);
@@ -949,6 +1048,15 @@ export const ReportsPage = () => {
           )}
         >
           <TrendingUp className="w-4 h-4" /> Mais requisitados
+        </button>
+        <button 
+          onClick={() => setReportType('circulation-insights')}
+          className={cn(
+            "px-6 py-2 rounded-xl font-bold text-sm transition-all flex items-center gap-2",
+            reportType === 'circulation-insights' ? "bg-lime-600 text-white shadow-lg" : "bg-white text-gray-500 hover:bg-gray-50"
+          )}
+        >
+          <BarChart3 className="w-4 h-4" /> Circulacao do acervo
         </button>
         <button 
           onClick={() => setReportType('never-borrowed')}
@@ -1732,6 +1840,166 @@ export const ReportsPage = () => {
               </tbody>
             </table>
           </Card>
+        </div>
+      )}
+
+      {reportType === 'circulation-insights' && (
+        <div className="space-y-6">
+          <Card className="p-6 print:hidden flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-bold">Cursos mais usados, consultas e fluxo</h2>
+              <p className="text-sm text-gray-500">Leitura combinada de requisicoes, consultas e livros que perderam circulacao.</p>
+            </div>
+            <div className="flex flex-wrap gap-2 items-center">
+              {(['30', '90', '180', 'all'] as const).map((range) => (
+                <Button
+                  key={range}
+                  variant={insightRange === range ? 'primary' : 'secondary'}
+                  onClick={() => setInsightRange(range)}
+                >
+                  {range === 'all' ? 'Todo historico' : `${range} dias`}
+                </Button>
+              ))}
+              <Button variant="secondary" onClick={exportCirculationInsightsPdf} className="flex items-center gap-2">
+                <Printer className="w-4 h-4" /> Baixar PDF
+              </Button>
+            </div>
+          </Card>
+
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 print:grid-cols-4">
+            <Card className="p-4 bg-blue-50 border-blue-100">
+              <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">Curso lider</p>
+              <p className="text-2xl font-black text-blue-700">{circulationInsightStats.topGenre?.label || 'Sem dados'}</p>
+              <p className="text-[10px] text-blue-400 mt-1">{circulationInsightStats.topGenre?.value || 0} requisicoes no periodo</p>
+            </Card>
+            <Card className="p-4 bg-purple-50 border-purple-100">
+              <p className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mb-1">Livro mais consultado</p>
+              <p className="text-lg font-black text-purple-700 line-clamp-2">{circulationInsightStats.topConsulted?.title || 'Sem dados'}</p>
+              <p className="text-[10px] text-purple-400 mt-1">{circulationInsightStats.topConsulted?.totalClicks || 0} consultas no periodo</p>
+            </Card>
+            <Card className="p-4 bg-amber-50 border-amber-100">
+              <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest mb-1">Desaparecidos do fluxo</p>
+              <p className="text-2xl font-black text-amber-700">{circulationInsightStats.flowGapCount}</p>
+              <p className="text-[10px] text-amber-400 mt-1">Sem emprestimo nem consulta na janela selecionada</p>
+            </Card>
+            <Card className="p-4 bg-rose-50 border-rose-100">
+              <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest mb-1">Fisicos em alerta</p>
+              <p className="text-2xl font-black text-rose-700">{circulationInsightStats.criticalFlowGap}</p>
+              <p className="text-[10px] text-rose-400 mt-1">Titulos fisicos fora do movimento recente</p>
+            </Card>
+          </div>
+
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+            <Card className="overflow-hidden">
+              <div className="p-4 border-b border-gray-100 flex items-center gap-2">
+                <BarChart3 className="w-4 h-4 text-blue-600" />
+                <h3 className="font-bold">Cursos mais usados</h3>
+              </div>
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    <th className="p-3 text-[11px] uppercase text-gray-400">Curso</th>
+                    <th className="p-3 text-[11px] uppercase text-gray-400 text-right">Requisicoes</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {(circulationSummary?.topGenres || []).length ? (
+                    circulationSummary.topGenres.map((row: any) => (
+                      <tr key={row.label}>
+                        <td className="p-3 text-sm font-semibold">{row.label || 'Sem curso'}</td>
+                        <td className="p-3 text-sm text-right font-bold">{row.value || 0}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={2} className="p-8 text-center text-sm text-gray-400 italic">Sem dados no periodo.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </Card>
+
+            <Card className="overflow-hidden">
+              <div className="p-4 border-b border-gray-100 flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-purple-600" />
+                <h3 className="font-bold">Livros mais consultados</h3>
+              </div>
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    <th className="p-3 text-[11px] uppercase text-gray-400">Livro</th>
+                    <th className="p-3 text-[11px] uppercase text-gray-400 text-right">Cliques</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {topConsultedBooks.length ? (
+                    topConsultedBooks.map((book: any) => (
+                      <tr
+                        key={book.id}
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => setSelectedBookInfo(book)}
+                      >
+                        <td className="p-3">
+                          <p className="text-sm font-semibold">{book.title}</p>
+                          <p className="text-[10px] text-gray-400">{book.author || 'N/D'}</p>
+                        </td>
+                        <td className="p-3 text-sm text-right font-bold">{book.totalClicks || 0}</td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={2} className="p-8 text-center text-sm text-gray-400 italic">Sem consultas no periodo.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </Card>
+
+            <Card className="overflow-hidden">
+              <div className="p-4 border-b border-gray-100 flex items-center gap-2">
+                <ArchiveX className="w-4 h-4 text-amber-600" />
+                <h3 className="font-bold">Livros desaparecidos do fluxo</h3>
+              </div>
+              <table className="w-full text-left border-collapse">
+                <thead className="bg-gray-50 border-b border-gray-100">
+                  <tr>
+                    <th className="p-3 text-[11px] uppercase text-gray-400">Livro</th>
+                    <th className="p-3 text-[11px] uppercase text-gray-400 text-right">Ultimo movimento</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {flowGapBooks.length ? (
+                    flowGapBooks.map((book: any) => (
+                      <tr
+                        key={book.id}
+                        className="hover:bg-gray-50 cursor-pointer"
+                        onClick={() => setSelectedBookInfo(book)}
+                      >
+                        <td className="p-3">
+                          <p className="text-sm font-semibold">{book.title}</p>
+                          <p className="text-[10px] text-gray-400">
+                            {book.genre || 'Sem curso'} | {book.isDigital ? 'Digital' : `ARM ${book.armario || '-'} | PRAT ${book.prateleira ?? '-'}`}
+                          </p>
+                        </td>
+                        <td className="p-3 text-right">
+                          <p className="text-xs font-semibold text-amber-700">
+                            {book.lastMovementAt ? new Date(book.lastMovementAt).toLocaleDateString() : 'Nunca'}
+                          </p>
+                          <p className="text-[10px] text-gray-400">
+                            Emp. {book.lastBorrowedAt ? new Date(book.lastBorrowedAt).toLocaleDateString() : 'Nunca'} / Cliq. {book.lastClickAt ? new Date(book.lastClickAt).toLocaleDateString() : 'Nunca'}
+                          </p>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan={2} className="p-8 text-center text-sm text-gray-400 italic">Nenhum livro ficou fora do fluxo neste periodo.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </Card>
+          </div>
         </div>
       )}
 
