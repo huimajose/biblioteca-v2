@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useEffect, useMemo, useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { 
   LayoutDashboard, 
   BookOpen, 
@@ -16,7 +16,10 @@ import {
   Bell,
   UserCircle,
   ShieldCheck,
-  HelpCircle
+  HelpCircle,
+  ChevronDown,
+  Menu,
+  X
 } from 'lucide-react';
 import { User } from '@/hooks/useAuth.ts';
 import { cn } from '@/utils/cn.ts';
@@ -32,8 +35,23 @@ interface LayoutProps {
   children: React.ReactNode;
 }
 
+interface MenuItem {
+  icon: any;
+  label: string;
+  path: string;
+  badge?: number;
+}
+
+interface MenuSection {
+  id: string;
+  label: string;
+  items: MenuItem[];
+}
+
 export const Layout = ({ user, onLogout, children }: LayoutProps) => {
+  const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState<string | null>(null);
   const [toast, setToast] = useState<{ title: string; message: string } | null>(null);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -167,6 +185,73 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
       : [{ icon: UsersIcon, label: 'Verificacao estudante', path: '/student-verification' }]),
   ];
 
+  const menuSections = useMemo<MenuSection[]>(() => {
+    if (user.isStaff) {
+      return [
+        {
+          id: 'admin-core',
+          label: 'Operacao',
+          items: adminMenuItems.filter((item) =>
+            ['/admin', '/admin/books', '/admin/catalog-review', '/admin/courses', '/admin/transactions'].includes(item.path)
+          ),
+        },
+        {
+          id: 'admin-governance',
+          label: 'Gestao',
+          items: adminMenuItems.filter((item) =>
+            ['/admin/users', '/admin/student-verifications', '/admin/reports', '/admin/audit'].includes(item.path)
+          ),
+        },
+        {
+          id: 'admin-account',
+          label: 'Conta',
+          items: adminMenuItems.filter((item) =>
+            ['/admin/as-user', '/profile'].includes(item.path)
+          ),
+        },
+      ].filter((section) => section.items.length > 0);
+    }
+
+    return [
+      {
+        id: 'reader-main',
+        label: 'Principal',
+        items: menuItems.filter((item) =>
+          ['/dashboard', '/'].includes(item.path)
+        ),
+      },
+      {
+        id: 'reader-reading',
+        label: 'Leitura',
+        items: menuItems.filter((item) =>
+          ['/shelf', '/lists'].includes(item.path)
+        ),
+      },
+      {
+        id: 'reader-account',
+        label: 'Conta',
+        items: menuItems.filter((item) =>
+          ['/history', '/profile', '/student-verification'].includes(item.path)
+        ),
+      },
+    ].filter((section) => section.items.length > 0);
+  }, [adminMenuItems, menuItems, user.isStaff]);
+
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    setOpenSections(
+      menuSections.reduce((acc, section) => {
+        acc[section.id] = true;
+        return acc;
+      }, {} as Record<string, boolean>)
+    );
+  }, [user.role, user.isStaff]);
+
+  useEffect(() => {
+    setIsMobileMenuOpen(false);
+  }, [location.pathname]);
+
   const userTourDescriptions: Record<string, string> = {
     '/dashboard': 'Este e o seu painel principal. Aqui ve um resumo rapido da conta, continua livros que deixou a meio, acompanha metas de leitura e percebe logo o que esta pendente sem precisar procurar em varias paginas.',
     '/': 'Esta e a Biblioteca, ou seja, a area para procurar livros. Pode pesquisar por titulo ou autor, abrir os detalhes de qualquer livro, marcar para ler depois, adicionar a estante e iniciar leitura digital quando o livro tiver PDF.',
@@ -243,40 +328,101 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
     };
   }, [tourActive, currentTourStep, isSidebarOpen]);
 
+  const toggleSection = (sectionId: string) => {
+    setOpenSections((prev) => ({
+      ...prev,
+      [sectionId]: !prev[sectionId],
+    }));
+  };
+
+  const renderMenuItem = (item: MenuItem) => {
+    const isActive =
+      item.path === '/'
+        ? location.pathname === '/'
+        : location.pathname === item.path || location.pathname.startsWith(`${item.path}/`);
+
+    return (
+      <Link
+        key={item.path}
+        to={item.path}
+        data-user-tour={!user.isStaff ? `menu-${item.path === '/' ? 'home' : item.path.replace(/[^a-z0-9]+/gi, '-')}` : undefined}
+        className={cn(
+          'relative flex items-center gap-3 rounded-xl p-3 transition-all group',
+          isActive
+            ? 'bg-lime-100 text-lime-800 shadow-sm'
+            : 'text-gray-600 hover:bg-lime-50 hover:text-lime-700'
+        )}
+      >
+        <item.icon className="h-5 w-5 shrink-0" />
+        {(isSidebarOpen || isMobileMenuOpen) && <span className="font-medium">{item.label}</span>}
+        {!!item.badge && (
+          <span className={cn(
+            'ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700',
+            !isSidebarOpen && !isMobileMenuOpen && 'absolute top-2 right-2'
+          )}>
+            {item.badge}
+          </span>
+        )}
+      </Link>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex">
+      {isMobileMenuOpen && (
+        <button
+          className="fixed inset-0 z-40 bg-black/45 md:hidden"
+          onClick={() => setIsMobileMenuOpen(false)}
+          aria-label="Fechar menu"
+        />
+      )}
+
       {/* Sidebar */}
       <aside className={cn(
-        "bg-white border-r border-gray-200 transition-all duration-300 flex flex-col",
-        isSidebarOpen ? "w-64" : "w-20"
+        'fixed inset-y-0 left-0 z-50 flex flex-col border-r border-gray-200 bg-white transition-all duration-300 md:static',
+        isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0',
+        isMobileMenuOpen ? 'w-[88vw] max-w-[320px]' : isSidebarOpen ? 'md:w-72' : 'md:w-24'
       )}>
         <div className="p-6 flex items-center gap-3">
           <div className="bg-white p-1 rounded-lg border border-lime-100 shadow-sm">
             <img src="/logo.png" alt="ISPI" className="w-8 h-8 object-contain" />
           </div>
-          {isSidebarOpen && <span className="font-bold text-xl tracking-tight">Biblioteca Digital</span>}
+          {(isSidebarOpen || isMobileMenuOpen) && <span className="font-bold text-xl tracking-tight">Biblioteca Digital</span>}
+          <button
+            className="ml-auto rounded-lg p-2 hover:bg-gray-100 md:hidden"
+            onClick={() => setIsMobileMenuOpen(false)}
+          >
+            <X className="h-5 w-5" />
+          </button>
         </div>
 
-        <nav className="flex-grow px-4 space-y-2">
-          {menuItems.map(item => (
-            <Link 
-              key={item.path} 
-              to={item.path}
-              data-user-tour={!user.isStaff ? `menu-${item.path === '/' ? 'home' : item.path.replace(/[^a-z0-9]+/gi, '-')}` : undefined}
-              className="relative flex items-center gap-3 p-3 rounded-xl text-gray-600 hover:bg-lime-50 hover:text-lime-700 transition-all group"
-            >
-              <item.icon className="w-5 h-5" />
-              {isSidebarOpen && <span className="font-medium">{item.label}</span>}
-              {!!item.badge && (
-                <span className={cn(
-                  "ml-auto rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-700",
-                  !isSidebarOpen && "absolute top-2 right-2"
-                )}>
-                  {item.badge}
-                </span>
-              )}
-            </Link>
-          ))}
+        <nav className="flex-grow space-y-4 overflow-y-auto px-4 pb-4">
+          {menuSections.map((section) => {
+            const sectionOpen = openSections[section.id] ?? true;
+            return (
+              <div key={section.id} className="space-y-2">
+                {(isSidebarOpen || isMobileMenuOpen) ? (
+                  <button
+                    className="flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-xs font-bold uppercase tracking-[0.22em] text-gray-400 hover:bg-gray-50"
+                    onClick={() => toggleSection(section.id)}
+                  >
+                    <span>{section.label}</span>
+                    <ChevronDown className={cn('h-4 w-4 transition-transform', sectionOpen && 'rotate-180')} />
+                  </button>
+                ) : (
+                  <div className="px-3 py-1 text-center text-[10px] font-bold uppercase tracking-[0.18em] text-gray-300">
+                    {section.label.slice(0, 3)}
+                  </div>
+                )}
+
+                {sectionOpen && (
+                  <div className="space-y-1">
+                    {section.items.map(renderMenuItem)}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </nav>
 
         <div className="p-4 border-t border-gray-100">
@@ -285,7 +431,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
             className="flex items-center gap-3 p-3 w-full rounded-xl text-red-600 hover:bg-red-50 transition-all"
           >
             <LogOut className="w-5 h-5" />
-            {isSidebarOpen && <span className="font-medium">Terminar sessao</span>}
+            {(isSidebarOpen || isMobileMenuOpen) && <span className="font-medium">Terminar sessao</span>}
           </button>
         </div>
       </aside>
@@ -293,13 +439,18 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
       {/* Main Content */}
       <main className="flex-grow flex flex-col">
         <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-8">
-          <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="p-2 hover:bg-gray-100 rounded-lg">
-            <ChevronRight className={cn("w-5 h-5 transition-transform", isSidebarOpen && "rotate-180")} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} className="hidden rounded-lg p-2 hover:bg-gray-100 md:block">
+              <ChevronRight className={cn("w-5 h-5 transition-transform", isSidebarOpen && "rotate-180")} />
+            </button>
+            <button onClick={() => setIsMobileMenuOpen(true)} className="rounded-lg p-2 hover:bg-gray-100 md:hidden">
+              <Menu className="h-5 w-5" />
+            </button>
+          </div>
           <div className="flex items-center gap-4">
             {!user.isStaff && (
               <button
-                className="inline-flex items-center gap-2 rounded-full border border-lime-200 bg-lime-50 px-3 py-1.5 text-xs font-bold text-lime-700 hover:bg-lime-100"
+                className="hidden items-center gap-2 rounded-full border border-lime-200 bg-lime-50 px-3 py-1.5 text-xs font-bold text-lime-700 hover:bg-lime-100 sm:inline-flex"
                 onClick={startTour}
               >
                 <HelpCircle className="w-4 h-4" />
