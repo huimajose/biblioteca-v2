@@ -11,7 +11,8 @@ import {
   BookMarked,
   Printer,
   Zap,
-  Clock
+  Clock,
+  AlertTriangle
 } from 'lucide-react';
 import { 
   BarChart, 
@@ -236,6 +237,10 @@ const AdminDashboard: React.FC = () => {
             <Link to="/admin/reports" className="p-4 border border-dashed border-gray-300 rounded-xl hover:bg-gray-50 transition-colors flex items-center gap-3 text-gray-600">
               <div className="p-2 bg-gray-100 rounded-lg"><Printer className="w-5 h-5" /></div>
               <span className="text-sm font-medium">Gerar relatorios</span>
+            </Link>
+            <Link to="/admin/catalog-review" className="p-4 border border-dashed border-amber-300 bg-amber-50/30 rounded-xl hover:bg-amber-50 transition-colors flex items-center gap-3 text-amber-700">
+              <div className="p-2 bg-amber-100 rounded-lg"><AlertTriangle className="w-5 h-5" /></div>
+              <span className="text-sm font-bold">Revisar acervo</span>
             </Link>
             <button 
               onClick={() => setIsInstantOpen(true)}

@@ -11,6 +11,7 @@ import { UsersPage } from './app/admin/UsersPage.tsx';
 import { TransactionsPage } from './app/admin/TransactionsPage.tsx';
 import { StudentVerificationsPage } from './app/admin/StudentVerificationsPage.tsx';
 import CoursesPage from './app/admin/CoursesPage.tsx';
+import CatalogReviewPage from './app/admin/CatalogReviewPage.tsx';
 import { StudentVerificationForm } from './app/user/StudentVerificationForm.tsx';
 import { UserShelfPage } from './app/user/UserShelfPage.tsx';
 import { UserHistoryPage } from './app/user/UserHistoryPage.tsx';
@@ -97,6 +98,7 @@ export default function App() {
                 <>
                   <Route path="/admin" element={<AdminDashboard />} />
                   <Route path="/admin/books" element={<AdminBooksPage />} />
+                  <Route path="/admin/catalog-review" element={<CatalogReviewPage />} />
                   <Route path="/admin/courses" element={<CoursesPage />} />
                   <Route path="/admin/books/new" element={<BookForm />} />
                   <Route path="/admin/books/edit" element={<BookForm />} />
