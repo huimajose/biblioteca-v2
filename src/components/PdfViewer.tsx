@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { Document, Page, pdfjs } from 'react-pdf';
 import 'react-pdf/dist/Page/TextLayer.css';
@@ -35,7 +35,9 @@ export const PdfViewer = ({
   const [activeUrl, setActiveUrl] = useState<string | null>(url);
   const [triedFallback, setTriedFallback] = useState(false);
   const [pageTurnDirection, setPageTurnDirection] = useState<1 | -1>(1);
+  const [viewerWidth, setViewerWidth] = useState<number>(0);
   const prefersReducedMotion = useReducedMotion();
+  const pageViewportRef = useRef<HTMLDivElement | null>(null);
 
   React.useEffect(() => {
     setActiveUrl(url);
@@ -47,6 +49,30 @@ export const PdfViewer = ({
     const nextPage = Math.max(1, Number(initialPage || 1));
     setPageNumber(numPages > 0 ? Math.min(nextPage, numPages) : nextPage);
   }, [initialPage, numPages]);
+
+  React.useEffect(() => {
+    const element = pageViewportRef.current;
+    if (!element) return;
+
+    const updateWidth = () => {
+      const nextWidth = Math.max(220, Math.floor(element.clientWidth));
+      setViewerWidth((current) => (current === nextWidth ? current : nextWidth));
+    };
+
+    updateWidth();
+
+    const observer =
+      typeof ResizeObserver !== 'undefined'
+        ? new ResizeObserver(() => updateWidth())
+        : null;
+    observer?.observe(element);
+    window.addEventListener('resize', updateWidth);
+
+    return () => {
+      observer?.disconnect();
+      window.removeEventListener('resize', updateWidth);
+    };
+  }, []);
 
   const applyPageChange = (nextPage: number, pages = numPages) => {
     const safeUpperBound = pages > 0 ? pages : Math.max(nextPage, 1);
@@ -109,6 +135,11 @@ export const PdfViewer = ({
   ) : null;
 
   const pdfOptions = useMemo(() => ({ cMapUrl: 'cmaps/', cMapPacked: true }), []);
+  const pageRenderWidth = useMemo(() => {
+    if (!viewerWidth) return undefined;
+    const safeViewportWidth = Math.max(220, viewerWidth - 24);
+    return Math.max(220, Math.round(safeViewportWidth * scale));
+  }, [scale, viewerWidth]);
   const pageTurnTransition = prefersReducedMotion
     ? { duration: 0 }
     : { duration: 0.35, ease: [0.22, 0.61, 0.36, 1] as const };
@@ -275,7 +306,10 @@ export const PdfViewer = ({
             loading="Carregando PDF..."
             options={pdfOptions}
           >
-            <div className="relative flex min-h-[60vh] items-center justify-center overflow-hidden rounded-[28px] px-1 py-6 md:px-8">
+            <div
+              ref={pageViewportRef}
+              className="relative flex min-h-[60vh] items-center justify-center overflow-x-auto overflow-y-hidden rounded-[28px] px-1 py-6 md:px-8"
+            >
               <button
                 type="button"
                 onClick={goToPrevPage}
@@ -319,7 +353,7 @@ export const PdfViewer = ({
               </button>
 
               <div
-                className="relative mx-auto w-full max-w-fit"
+                className="relative mx-auto w-full max-w-full"
                 style={{ perspective: '1600px' }}
               >
                 <div
@@ -340,7 +374,7 @@ export const PdfViewer = ({
                     animate="center"
                     exit="exit"
                     transition={pageTurnTransition}
-                    className="relative rounded-[24px] p-2 shadow-[0_30px_90px_rgba(15,23,42,0.18)]"
+                    className="relative mx-auto w-fit max-w-full rounded-[24px] p-2 shadow-[0_30px_90px_rgba(15,23,42,0.18)]"
                     style={{
                       transformStyle: 'preserve-3d',
                       background: darkMode ? '#0f172a' : '#fffdf7',
@@ -348,7 +382,7 @@ export const PdfViewer = ({
                   >
                     <Page
                       pageNumber={pageNumber}
-                      scale={scale}
+                      width={pageRenderWidth}
                       renderAnnotationLayer={false}
                       renderTextLayer
                       loading="Carregando pagina..."
