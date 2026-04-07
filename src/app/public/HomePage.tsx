@@ -59,6 +59,49 @@ export const HomePage = () => {
 
   const availableBooks = useMemo(() => books.length, [books]);
   const weeklyBooks = useMemo(() => books.slice(0, 6), [books]);
+  const servedCourses = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          books
+            .map((book) => String(book.genre || '').trim())
+            .filter(Boolean)
+        )
+      )
+        .sort((a, b) => a.localeCompare(b, undefined, { sensitivity: 'base' }))
+        .slice(0, 8),
+    [books]
+  );
+
+  const howItWorks = [
+    {
+      title: '1. Pesquise no catalogo',
+      description: 'Explore livros fisicos e digitais por titulo, autor ou curso para encontrar mais rapido o que precisa.',
+    },
+    {
+      title: '2. Entre na sua conta',
+      description: 'Estudantes e membros externos usam a conta para guardar favoritos, acompanhar pedidos e continuar leituras.',
+    },
+    {
+      title: '3. Requisite ou leia online',
+      description: 'Quando o livro tiver PDF pode iniciar a leitura digital. Se for fisico, faz o pedido e acompanha o estado no sistema.',
+    },
+  ];
+
+  const faqItems = [
+    {
+      question: 'Preciso de conta para ver os livros?',
+      answer: 'Nao. A pagina publica permite descobrir o acervo. A conta e necessaria para requisitar, guardar favoritos e usar a estante digital.',
+    },
+    {
+      question: 'Como um estudante passa a receber sugestoes do seu curso?',
+      answer: 'Depois da verificacao de estudante com o curso preenchido, o sistema passa a priorizar livros relacionados com essa area.',
+    },
+    {
+      question: 'Posso ler todos os livros online?',
+      answer: 'Apenas os livros com ficheiro digital disponivel. Os restantes continuam acessiveis por requisicao fisica na biblioteca.',
+    },
+  ];
 
   return (
     <div className="space-y-14">
@@ -239,6 +282,67 @@ export const HomePage = () => {
               )}
             </div>
           </Card>
+        </div>
+      </section>
+
+      <section className="space-y-5">
+        <div className="max-w-2xl">
+          <h2 className="text-2xl font-black">Como funciona</h2>
+          <p className="mt-2 text-sm text-gray-500">
+            Um fluxo simples para descobrir livros, entrar no sistema e acompanhar a leitura sem complicacao.
+          </p>
+        </div>
+        <div className="grid gap-4 md:grid-cols-3">
+          {howItWorks.map((item) => (
+            <Card key={item.title} className="border-lime-100 p-6">
+              <p className="text-sm font-black text-gray-900">{item.title}</p>
+              <p className="mt-3 text-sm leading-6 text-gray-600">{item.description}</p>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      <section className="space-y-5">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="max-w-2xl">
+            <h2 className="text-2xl font-black">Cursos atendidos</h2>
+            <p className="mt-2 text-sm text-gray-500">
+              A biblioteca organiza o acervo por cursos para facilitar catalogacao, recomendacoes e localizacao fisica.
+            </p>
+          </div>
+          <span className="text-xs font-bold uppercase tracking-[0.25em] text-lime-600">
+            {loading ? 'A carregar...' : `${servedCourses.length} cursos em destaque`}
+          </span>
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          {servedCourses.map((course) => (
+            <Card key={course} className="border-lime-100 p-5">
+              <p className="text-xs font-bold uppercase tracking-[0.25em] text-lime-600">Curso</p>
+              <p className="mt-3 text-lg font-black text-gray-900">{course}</p>
+            </Card>
+          ))}
+          {!servedCourses.length && (
+            <Card className="border-dashed border-lime-200 p-6 text-sm text-gray-500 sm:col-span-2 lg:col-span-4">
+              Os cursos serao apresentados aqui assim que o acervo publico estiver carregado.
+            </Card>
+          )}
+        </div>
+      </section>
+
+      <section className="space-y-5">
+        <div className="max-w-2xl">
+          <h2 className="text-2xl font-black">Perguntas frequentes</h2>
+          <p className="mt-2 text-sm text-gray-500">
+            Respostas rapidas para as duvidas mais comuns antes de entrar ou pedir verificacao.
+          </p>
+        </div>
+        <div className="grid gap-4">
+          {faqItems.map((item) => (
+            <Card key={item.question} className="border-lime-100 p-5">
+              <p className="text-base font-bold text-gray-900">{item.question}</p>
+              <p className="mt-2 text-sm leading-6 text-gray-600">{item.answer}</p>
+            </Card>
+          ))}
         </div>
       </section>
 
