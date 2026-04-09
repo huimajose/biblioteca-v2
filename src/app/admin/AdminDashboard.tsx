@@ -79,6 +79,16 @@ const AdminDashboard: React.FC = () => {
     fetchTopClicked('30');
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleNotification = () => {
+      fetchStats();
+      fetchPending();
+    };
+    window.addEventListener('app:notification', handleNotification);
+    return () => window.removeEventListener('app:notification', handleNotification);
+  }, []);
+
   const fetchStats = async () => {
     const res = await fetch('/api/admin/stats');
     setStats(await res.json());

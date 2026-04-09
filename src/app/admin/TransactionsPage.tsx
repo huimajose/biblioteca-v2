@@ -41,6 +41,15 @@ export const TransactionsPage = () => {
     fetchTransactions();
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleNotification = () => {
+      fetchTransactions();
+    };
+    window.addEventListener('app:notification', handleNotification);
+    return () => window.removeEventListener('app:notification', handleNotification);
+  }, [startDate, endDate]);
+
   const pending = transactions.filter((t) => (t.status || '').toLowerCase() === 'pending');
   const history = transactions.filter((t) => (t.status || '').toLowerCase() !== 'pending');
 

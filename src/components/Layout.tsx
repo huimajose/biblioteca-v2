@@ -98,6 +98,9 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
           if (first !== "{" && first !== "[") return;
           const payload = JSON.parse(text);
           if (payload?.title) {
+            if (typeof window !== 'undefined') {
+              window.dispatchEvent(new CustomEvent('app:notification', { detail: payload }));
+            }
             setToast({ title: payload.title, message: payload.message });
             setNotifications((prev) => [
               {
