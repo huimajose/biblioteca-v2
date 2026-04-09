@@ -72,6 +72,11 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
   const roleLabel = getRoleLabel(user.role);
 
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem('userId', user.id);
+  }, [user.id]);
+
+  useEffect(() => {
     if (user.isStaff) return;
     fetch('/api/user/student-info', { headers: { 'x-user-id': user.id } })
       .then(res => res.json())

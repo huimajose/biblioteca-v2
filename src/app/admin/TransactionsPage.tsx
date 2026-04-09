@@ -10,7 +10,6 @@ import { LOGO_WATERMARK } from '@/constants.ts';
 import { addCenteredWatermarkToAllPages, loadWatermarkImage } from '@/utils/pdfWatermark.ts';
 
 export const TransactionsPage = () => {
-  const actorUserId = typeof window !== 'undefined' ? window.localStorage.getItem('userId') || '' : '';
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [statusFilter, setStatusFilter] = useState<'all' | 'borrowed' | 'returned' | 'rejected'>('all');
@@ -25,6 +24,8 @@ export const TransactionsPage = () => {
     transaction.isTempUser
       ? `${transaction.userName || transaction.userId} (Temp)`
       : transaction.userName || transaction.userId || 'N/D';
+  const getActorUserId = () =>
+    typeof window !== 'undefined' ? window.localStorage.getItem('userId') || '' : '';
 
   const fetchTransactions = async () => {
     const query = new URLSearchParams();
@@ -97,7 +98,7 @@ export const TransactionsPage = () => {
     try {
       const res = await fetch('/api/transactions/return', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': actorUserId },
+        headers: { 'Content-Type': 'application/json', 'x-user-id': getActorUserId() },
         body: JSON.stringify({ transactionId: tid }),
       });
       if (res.ok) {
@@ -145,7 +146,7 @@ export const TransactionsPage = () => {
     try {
       const res = await fetch('/api/transactions/accept', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': actorUserId },
+        headers: { 'Content-Type': 'application/json', 'x-user-id': getActorUserId() },
         body: JSON.stringify({ tid, userId }),
       });
       const data = await res.json().catch(() => ({}));
@@ -165,7 +166,7 @@ export const TransactionsPage = () => {
     try {
       const res = await fetch('/api/transactions/reject', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-user-id': actorUserId },
+        headers: { 'Content-Type': 'application/json', 'x-user-id': getActorUserId() },
         body: JSON.stringify({ tid, userId }),
       });
       if (res.ok) fetchTransactions();

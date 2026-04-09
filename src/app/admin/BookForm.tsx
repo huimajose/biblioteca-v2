@@ -15,7 +15,6 @@ export const BookForm = () => {
   const [searchParams] = useSearchParams();
   const bookId = searchParams.get('id');
   const isEdit = Boolean(bookId);
-  const actorUserId = typeof window !== 'undefined' ? window.localStorage.getItem('userId') || '' : '';
 
   const [activeTab, setActiveTab] = useState<'dados' | 'disponibilidade' | 'media'>('dados');
   const [genres, setGenres] = useState<any[]>([]);
@@ -41,6 +40,9 @@ export const BookForm = () => {
     addCopies: 0,
   });
   const [pendingPdf, setPendingPdf] = useState<{ name: string; base64: string } | null>(null);
+
+  const getActorUserId = () =>
+    typeof window !== 'undefined' ? window.localStorage.getItem('userId') || '' : '';
 
   const getGenreMeta = (genreName: string) =>
     genres.find((genre) => String(genre.name || '').toLowerCase() === String(genreName || '').toLowerCase()) || null;
@@ -233,7 +235,7 @@ export const BookForm = () => {
 
     const res = await fetch(isEdit ? `/api/admin/books/${bookId}` : '/api/admin/books', {
       method: isEdit ? 'PUT' : 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-user-id': actorUserId },
+      headers: { 'Content-Type': 'application/json', 'x-user-id': getActorUserId() },
       body: JSON.stringify(payload),
     });
     if (!res.ok) {

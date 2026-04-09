@@ -52,14 +52,6 @@ export async function POST(req: NextRequest) {
     status: "pending",
     createdAt: now,
   });
-  await db.insert(schema.studentsVerifications).values({
-    clerkId: userId,
-    fullName,
-    studentNumber,
-    course,
-    status: "pending",
-    createdAt: now,
-  });
 
   await notifyUser(
     db,
