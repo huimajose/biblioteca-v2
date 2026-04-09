@@ -1,6 +1,7 @@
 import webpush from "web-push";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
+import { canAccessAdminSection } from "@/utils/roles";
 
 type ClientSet = Set<ReadableStreamDefaultController<Uint8Array>>;
 
@@ -100,8 +101,24 @@ export async function notifyUser(db: any, userId: string, title: string, message
 }
 
 export async function notifyAdmins(db: any, title: string, message: string) {
-  const admins = await db.select().from(schema.admin);
+  const [admins, users] = await Promise.all([
+    db.select().from(schema.admin),
+    db.select().from(schema.users),
+  ]);
+
+  const recipientIds = new Set<string>();
+
+  admins.forEach((admin: any) => {
+    if (admin?.clerkId) recipientIds.add(String(admin.clerkId));
+  });
+
+  users.forEach((user: any) => {
+    if (user?.clerkId && canAccessAdminSection(user?.role, "transactions")) {
+      recipientIds.add(String(user.clerkId));
+    }
+  });
+
   await Promise.allSettled(
-    admins.map((admin: any) => notifyUser(db, admin.clerkId, title, message))
+    Array.from(recipientIds).map((userId) => notifyUser(db, userId, title, message))
   );
 }
