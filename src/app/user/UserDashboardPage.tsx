@@ -53,7 +53,7 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
   const [studentInfo, setStudentInfo] = useState<{ course?: string | null; status?: string | null }>({});
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const loadDashboard = () => {
     const clickedRaw = typeof window !== 'undefined' ? window.localStorage.getItem('recentBookClicks') : null;
     const clickedList = clickedRaw ? JSON.parse(clickedRaw) as number[] : [];
     const recParams = new URLSearchParams({ userId: user.id });
@@ -71,6 +71,7 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
     const fallbackStart = start.toISOString().slice(0, 10);
     const fallbackEnd = end.toISOString().slice(0, 10);
 
+    setLoading(true);
     Promise.all([
       fetch('/api/user/shelf', { headers: { 'x-user-id': user.id } }).then(r => r.json()).catch(() => []),
       fetch('/api/user/history', { headers: { 'x-user-id': user.id } }).then(r => r.json()).catch(() => []),
@@ -117,6 +118,19 @@ export const UserDashboardPage = ({ user }: UserDashboardPageProps) => {
         .sort((a, b) => new Date(a.expectedReturnDate).getTime() - new Date(b.expectedReturnDate).getTime())[0];
       setNextReturn(next?.expectedReturnDate ?? null);
     }).finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadDashboard();
+  }, [user.id]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleNotification = () => {
+      loadDashboard();
+    };
+    window.addEventListener('app:notification', handleNotification);
+    return () => window.removeEventListener('app:notification', handleNotification);
   }, [user.id]);
 
   const handleSaveGoal = async () => {

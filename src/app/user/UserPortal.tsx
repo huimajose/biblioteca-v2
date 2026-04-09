@@ -55,7 +55,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
   const [favoriteLoading, setFavoriteLoading] = useState<Record<number, boolean>>({});
   const [toast, setToast] = useState<{ title: string; message: string } | null>(null);
 
-  useEffect(() => {
+  const loadPortalData = () => {
     setLoading(true);
     Promise.all([
       fetch('/api/books').then(res => res.json()).then(setBooks),
@@ -123,7 +123,20 @@ export const UserPortal = ({ user }: UserPortalProps) => {
         .then(data => setRecommendations(Array.isArray(data) ? data : []))
         .catch(() => setRecommendations([])),
     ]).finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadPortalData();
   }, []);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleNotification = () => {
+      loadPortalData();
+    };
+    window.addEventListener('app:notification', handleNotification);
+    return () => window.removeEventListener('app:notification', handleNotification);
+  }, [user.id]);
 
   useEffect(() => {
     if (typeof window !== 'undefined' && user?.id) {

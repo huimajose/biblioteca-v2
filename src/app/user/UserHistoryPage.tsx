@@ -18,7 +18,7 @@ export const UserHistoryPage = ({ user }: UserHistoryPageProps) => {
   const [selected, setSelected] = useState<any | null>(null);
   const navigate = useNavigate();
 
-  useEffect(() => {
+  const loadHistory = () => {
     setLoading(true);
     fetch('/api/user/history', {
       headers: { 'x-user-id': user.id },
@@ -26,6 +26,19 @@ export const UserHistoryPage = ({ user }: UserHistoryPageProps) => {
       .then(res => res.json())
       .then(data => setHistory(Array.isArray(data) ? data : data?.data ?? []))
       .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadHistory();
+  }, [user.id]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const handleNotification = () => {
+      loadHistory();
+    };
+    window.addEventListener('app:notification', handleNotification);
+    return () => window.removeEventListener('app:notification', handleNotification);
   }, [user.id]);
 
   const totalPages = Math.max(1, Math.ceil(history.length / pageSize));
