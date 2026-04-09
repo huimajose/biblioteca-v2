@@ -71,6 +71,30 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
   const displayInitial = displayName ? displayName[0].toUpperCase() : '?';
   const roleLabel = getRoleLabel(user.role);
 
+  const refreshNotificationState = async () => {
+    const [unreadRes, notificationsRes, settingsRes] = await Promise.all([
+      fetch(`/api/notifications/unread-count?userId=${user.id}`).then(res => res.json()).catch(() => ({ count: 0 })),
+      fetch(`/api/notifications/${user.id}`).then(res => res.json()).catch(() => []),
+      fetch(`/api/notifications/settings?userId=${user.id}`).then(res => res.json()).catch(() => ({ pushEnabled: true })),
+    ]);
+
+    setUnreadCount(unreadRes?.count ?? 0);
+    setNotifications(Array.isArray(notificationsRes) ? notificationsRes : []);
+    setPushEnabled(settingsRes?.pushEnabled ?? true);
+  };
+
+  const refreshStaffBadges = async () => {
+    if (!user.isStaff) return;
+
+    const [stats, pendingUsers] = await Promise.all([
+      fetch('/api/admin/stats').then((res) => res.json()).catch(() => null),
+      fetch('/api/admin/pending-users').then((res) => res.json()).catch(() => []),
+    ]);
+
+    setPendingTransactionsCount(Number(stats?.pending ?? 0));
+    setPendingUsersCount(Array.isArray(pendingUsers) ? pendingUsers.length : 0);
+  };
+
   useEffect(() => {
     if (typeof window === 'undefined') return;
     window.localStorage.setItem('userId', user.id);
@@ -112,6 +136,9 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
               ...prev,
             ].slice(0, 10));
             setUnreadCount((c) => c + 1);
+            if (user.isStaff) {
+              refreshStaffBadges();
+            }
           }
         } catch {}
       };
@@ -144,27 +171,21 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
   }, [user.id, user.fullName]);
 
   useEffect(() => {
-    fetch(`/api/notifications/unread-count?userId=${user.id}`)
-      .then(res => res.json())
-      .then(data => setUnreadCount(data?.count ?? 0));
-    fetch(`/api/notifications/${user.id}`)
-      .then(res => res.json())
-      .then(data => setNotifications(Array.isArray(data) ? data : []));
-    fetch(`/api/notifications/settings?userId=${user.id}`)
-      .then(res => res.json())
-      .then(data => setPushEnabled(data?.pushEnabled ?? true));
+    refreshNotificationState();
+    const intervalId = window.setInterval(() => {
+      refreshNotificationState();
+    }, 15000);
+    return () => window.clearInterval(intervalId);
   }, [user.id]);
 
   useEffect(() => {
-    if (!user.isStaff) return;
+    if (!user.isStaff) return undefined;
 
-    Promise.all([
-      fetch('/api/admin/stats').then((res) => res.json()).catch(() => null),
-      fetch('/api/admin/pending-users').then((res) => res.json()).catch(() => []),
-    ]).then(([stats, pendingUsers]) => {
-      setPendingTransactionsCount(Number(stats?.pending ?? 0));
-      setPendingUsersCount(Array.isArray(pendingUsers) ? pendingUsers.length : 0);
-    });
+    refreshStaffBadges();
+    const intervalId = window.setInterval(() => {
+      refreshStaffBadges();
+    }, 15000);
+    return () => window.clearInterval(intervalId);
   }, [user.id, user.isStaff]);
 
   const adminMenuItems = [
