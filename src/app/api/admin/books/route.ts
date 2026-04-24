@@ -144,23 +144,27 @@ export async function POST(req: NextRequest) {
       await createPhysicalCopies(db, created.id, availableCopies);
     }
     if (actorUserId) {
-      await notifyUser(
-        db,
-        actorUserId,
-        'Livro criado',
-        `O livro "${created.title}" foi adicionado com sucesso.`
-      );
-      await appendAuditLog(db, {
-        actorUserId,
-        action: 'create-book',
-        entityType: 'book',
-        entityId: created.id,
-        details: `Livro "${created.title}" criado no curso ${created.genre || 'Sem curso'}.`,
-        metadata: {
-          catalogCode: created.catalogCode ?? created.catalog_code ?? null,
-          isDigital: created.is_digital ?? false,
-        },
-      });
+      try {
+        await notifyUser(
+          db,
+          actorUserId,
+          'Livro criado',
+          `O livro "${created.title}" foi adicionado com sucesso.`
+        );
+        await appendAuditLog(db, {
+          actorUserId,
+          action: 'create-book',
+          entityType: 'book',
+          entityId: created.id,
+          details: `Livro "${created.title}" criado no curso ${created.genre || 'Sem curso'}.`,
+          metadata: {
+            catalogCode: created.catalogCode ?? created.catalog_code ?? null,
+            isDigital: created.is_digital ?? false,
+          },
+        });
+      } catch (sideEffectError) {
+        console.error('Failed to run post-create book side effects', sideEffectError);
+      }
     }
     return NextResponse.json(mapBookRow(created));
   } catch (error: any) {

@@ -62,20 +62,22 @@ export async function POST(req: Request) {
       );
     }
 
-    const physicalRef = await db
-      .select()
-      .from(schema.physicalBooks)
-      .where(eq(schema.physicalBooks.pid, tx[0].physicalBookId))
-      .limit(1);
+    const transactionPhysicalRef = tx[0].physicalBookId
+      ? await db
+          .select()
+          .from(schema.physicalBooks)
+          .where(eq(schema.physicalBooks.pid, tx[0].physicalBookId))
+          .limit(1)
+      : [];
 
-    if (!physicalRef[0]) {
+    if (!transactionPhysicalRef[0]) {
       return NextResponse.json(
         { error: "Exemplar fisico nao encontrado" },
         { status: 400 }
       );
     }
 
-    const bookId = physicalRef[0].bookId;
+    const bookId = transactionPhysicalRef[0].bookId;
     const book = await db
       .select()
       .from(schema.books)
@@ -93,16 +95,18 @@ export async function POST(req: Request) {
       );
     }
 
-    const availablePhysical = await db
-      .select()
-      .from(schema.physicalBooks)
-      .where(
-        and(
-          eq(schema.physicalBooks.bookId, bookId),
-          eq(schema.physicalBooks.borrowed, false)
-        )
-      )
-      .limit(1);
+    const availablePhysical = !transactionPhysicalRef[0].borrowed
+      ? transactionPhysicalRef
+      : await db
+          .select()
+          .from(schema.physicalBooks)
+          .where(
+            and(
+              eq(schema.physicalBooks.bookId, bookId),
+              eq(schema.physicalBooks.borrowed, false)
+            )
+          )
+          .limit(1);
 
     if (!availablePhysical[0]) {
       return NextResponse.json(
@@ -141,25 +145,29 @@ export async function POST(req: Request) {
       .set({ availableCopies: Math.max((book[0].availableCopies ?? 0) - 1, 0) })
       .where(eq(schema.books.id, bookId));
 
-    await notifyUser(
-      db,
-      userId,
-      "Pedido aprovado",
-      `O seu pedido do livro "${book[0].title}" foi aprovado.`
-    );
-    await appendAuditLog(db, {
-      actorUserId: adminId,
-      action: "approve-transaction",
-      entityType: "transaction",
-      entityId: tid,
-      details: `Emprestimo aprovado para "${book[0].title}".`,
-      metadata: { userId, bookId },
-    });
+    try {
+      await notifyUser(
+        db,
+        userId,
+        "Pedido aprovado",
+        `O seu pedido do livro "${book[0].title}" foi aprovado.`
+      );
+      await appendAuditLog(db, {
+        actorUserId: adminId,
+        action: "approve-transaction",
+        entityType: "transaction",
+        entityId: tid,
+        details: `Emprestimo aprovado para "${book[0].title}".`,
+        metadata: { userId, bookId },
+      });
+    } catch (sideEffectError) {
+      console.error("Failed to run post-accept transaction side effects", sideEffectError);
+    }
 
     return NextResponse.json({ success: true });
-  } catch (error) {
+  } catch (error: any) {
     return NextResponse.json(
-      { success: false, error: "Erro interno do servidor" },
+      { success: false, error: error?.message || "Erro interno do servidor" },
       { status: 500 }
     );
   }
