@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { asc, eq } from 'drizzle-orm';
+import { asc, eq, sql } from 'drizzle-orm';
 import * as schema from '@/db/pgSchema';
 import { getDb } from '@/app/api/_utils/db';
 import { DEFAULT_BOOK_COVER } from '@/constants';
@@ -84,6 +84,50 @@ const logBookRouteError = (stage: string, error: any, extra: Record<string, unkn
     code: error?.code ?? null,
     stack: error?.stack ?? null,
   });
+};
+
+const isBooksPrimaryKeyConflict = (error: any) => {
+  const message = String(error?.cause?.message || error?.message || '');
+  const code = String(error?.cause?.code || error?.code || '');
+  const constraint = String(error?.cause?.constraint || error?.constraint || '');
+
+  return (
+    code === '23505' &&
+    (constraint === 'books_pkey' || /books_pkey/i.test(message))
+  );
+};
+
+const syncBooksIdSequence = async (db: ReturnType<typeof getDb>) => {
+  await db.execute(sql`
+    SELECT setval(
+      pg_get_serial_sequence('books', 'id'),
+      COALESCE((SELECT MAX(id) FROM books), 0) + 1,
+      false
+    )
+  `);
+};
+
+const insertBookWithSequenceRecovery = async (
+  db: ReturnType<typeof getDb>,
+  values: any,
+) => {
+  try {
+    return await db.insert(schema.books).values(values).returning();
+  } catch (error: any) {
+    if (!isBooksPrimaryKeyConflict(error)) {
+      throw error;
+    }
+
+    console.warn('[admin/books][POST] books id sequence out of sync, attempting repair', {
+      message: error?.message ?? null,
+      cause: error?.cause?.message ?? error?.cause ?? null,
+      code: error?.code ?? error?.cause?.code ?? null,
+      constraint: error?.constraint ?? error?.cause?.constraint ?? null,
+    });
+
+    await syncBooksIdSequence(db);
+    return db.insert(schema.books).values(values).returning();
+  }
 };
 
 const createPhysicalCopies = async (db: ReturnType<typeof getDb>, bookId: number, copies: number) => {
@@ -200,29 +244,28 @@ export async function POST(req: NextRequest) {
       catalogData,
     });
 
-    const inserted = await db
-      .insert(schema.books)
-      .values({
-        title: body.title,
-        author: body.author,
-        genre: body.genre ?? '',
-        totalCopies,
-        availableCopies,
-        cover: body.cover || DEFAULT_BOOK_COVER,
-        editora: normalizeNullableText(body.editora),
-        cdu: normalizeNullableText(body.cdu),
-        armario: catalogData.armario || null,
-        prateleira: body.prateleira ?? null,
-        courseSequence: catalogData.courseSequence,
-        catalogCode: catalogData.catalogCode,
-        anoEdicao: body.anoEdicao ?? null,
-        edicao: body.edicao ?? null,
-        isbn,
-        fileUrl: normalizeNullableText(body.fileUrl),
-        document_type: body.documentType ?? 1,
-        is_digital: hasDigital,
-      })
-      .returning();
+    const bookValues = {
+      title: body.title,
+      author: body.author,
+      genre: body.genre ?? '',
+      totalCopies,
+      availableCopies,
+      cover: body.cover || DEFAULT_BOOK_COVER,
+      editora: normalizeNullableText(body.editora),
+      cdu: normalizeNullableText(body.cdu),
+      armario: catalogData.armario || null,
+      prateleira: body.prateleira ?? null,
+      courseSequence: catalogData.courseSequence,
+      catalogCode: catalogData.catalogCode,
+      anoEdicao: body.anoEdicao ?? null,
+      edicao: body.edicao ?? null,
+      isbn,
+      fileUrl: normalizeNullableText(body.fileUrl),
+      document_type: body.documentType ?? 1,
+      is_digital: hasDigital,
+    };
+
+    const inserted = await insertBookWithSequenceRecovery(db, bookValues);
     console.info('[admin/books][POST] book inserted', {
       actorUserId: actorUserId || null,
       isbn,

@@ -4,7 +4,8 @@
   "version": "2.0.0",
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
+    "dev:turbo": "next dev",
     "build": "next build",
     "start": "next start",
     "clean": "rimraf .next",
