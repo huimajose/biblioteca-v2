@@ -33,6 +33,30 @@ const mapBookRow = (row: any) => ({
   createdAt: row.created_at ?? row.createdAt,
 });
 
+const normalizeNullableText = (value: unknown) => {
+  const text = String(value ?? '').trim();
+  return text ? text : null;
+};
+
+const normalizeIsbn = (value: unknown) => String(value ?? '').trim();
+
+const resolveDbErrorMessage = (error: any, fallback: string) => {
+  const raw =
+    error?.cause?.message ||
+    error?.message ||
+    fallback;
+  const normalized = String(raw || fallback);
+
+  if (/duplicate key value/i.test(normalized) || /unique constraint/i.test(normalized)) {
+    if (/isbn/i.test(normalized)) {
+      return 'Ja existe um livro com este ISBN.';
+    }
+    return 'Ja existe um registo com estes dados.';
+  }
+
+  return normalized;
+};
+
 const createPhysicalCopies = async (db: ReturnType<typeof getDb>, bookId: number, copies: number) => {
   if (copies <= 0) return;
   const rows = Array.from({ length: copies }).map(() => ({
@@ -124,6 +148,20 @@ export async function PUT(
       return NextResponse.json({ error: 'Livro nao encontrado' }, { status: 404 });
     }
 
+    const nextIsbn = normalizeIsbn(body.isbn ?? existing[0].isbn);
+    if (!nextIsbn) {
+      return NextResponse.json({ error: 'ISBN obrigatorio' }, { status: 400 });
+    }
+
+    const existingByIsbn = await db
+      .select({ id: schema.books.id })
+      .from(schema.books)
+      .where(eq(schema.books.isbn, nextIsbn))
+      .limit(1);
+    if (existingByIsbn[0] && existingByIsbn[0].id !== bookId) {
+      return NextResponse.json({ error: 'Ja existe um livro com este ISBN.' }, { status: 409 });
+    }
+
     const addCopies = Number(body.addCopies ?? 0);
     const nextDocumentType = body.documentType ?? existing[0].document_type ?? 1;
     const isPhysical = nextDocumentType !== 2;
@@ -157,16 +195,16 @@ export async function PUT(
         totalCopies,
         availableCopies,
         cover: body.cover ?? existing[0].cover ?? DEFAULT_BOOK_COVER,
-        editora: body.editora ?? existing[0].editora ?? null,
-        cdu: body.cdu ?? existing[0].cdu ?? null,
+        editora: normalizeNullableText(body.editora ?? existing[0].editora),
+        cdu: normalizeNullableText(body.cdu ?? existing[0].cdu),
         armario: catalogData.armario || null,
         prateleira: body.prateleira ?? existing[0].prateleira ?? null,
         courseSequence: catalogData.courseSequence,
         catalogCode: catalogData.catalogCode,
         anoEdicao: body.anoEdicao ?? existing[0].anoEdicao ?? null,
         edicao: body.edicao ?? existing[0].edicao ?? null,
-        isbn: body.isbn ?? existing[0].isbn,
-        fileUrl: body.fileUrl ?? existing[0].fileUrl,
+        isbn: nextIsbn,
+        fileUrl: normalizeNullableText(body.fileUrl ?? existing[0].fileUrl),
         document_type: nextDocumentType,
         is_digital: hasDigital,
       })
@@ -203,7 +241,7 @@ export async function PUT(
     return NextResponse.json(mapBookRow(updated[0]));
   } catch (error: any) {
     return NextResponse.json(
-      { error: error?.message || 'Erro ao atualizar livro' },
+      { error: resolveDbErrorMessage(error, 'Erro ao atualizar livro') },
       { status: 500 }
     );
   }

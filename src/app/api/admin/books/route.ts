@@ -33,6 +33,30 @@ const mapBookRow = (row: any) => ({
   createdAt: row.created_at ?? row.createdAt,
 });
 
+const normalizeNullableText = (value: unknown) => {
+  const text = String(value ?? '').trim();
+  return text ? text : null;
+};
+
+const normalizeIsbn = (value: unknown) => String(value ?? '').trim();
+
+const resolveDbErrorMessage = (error: any, fallback: string) => {
+  const raw =
+    error?.cause?.message ||
+    error?.message ||
+    fallback;
+  const normalized = String(raw || fallback);
+
+  if (/duplicate key value/i.test(normalized) || /unique constraint/i.test(normalized)) {
+    if (/isbn/i.test(normalized)) {
+      return 'Ja existe um livro com este ISBN.';
+    }
+    return 'Ja existe um registo com estes dados.';
+  }
+
+  return normalized;
+};
+
 const createPhysicalCopies = async (db: ReturnType<typeof getDb>, bookId: number, copies: number) => {
   if (copies <= 0) return;
   const rows = Array.from({ length: copies }).map(() => ({
@@ -105,6 +129,20 @@ export async function POST(req: NextRequest) {
     if (!canAccessAdminSection(actorRole, 'books')) {
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
+    const isbn = normalizeIsbn(body.isbn);
+    if (!isbn) {
+      return NextResponse.json({ error: 'ISBN obrigatorio' }, { status: 400 });
+    }
+
+    const existingByIsbn = await db
+      .select({ id: schema.books.id })
+      .from(schema.books)
+      .where(eq(schema.books.isbn, isbn))
+      .limit(1);
+    if (existingByIsbn[0]) {
+      return NextResponse.json({ error: 'Ja existe um livro com este ISBN.' }, { status: 409 });
+    }
+
     const hasDigital =
       Boolean(body.fileUrl) || body.hasDigital === true || body.isDigital === true || body.documentType === 2;
     const isPhysical = (body.documentType ?? 1) !== 2;
@@ -124,16 +162,16 @@ export async function POST(req: NextRequest) {
         totalCopies,
         availableCopies,
         cover: body.cover || DEFAULT_BOOK_COVER,
-        editora: body.editora ?? null,
-        cdu: body.cdu ?? null,
+        editora: normalizeNullableText(body.editora),
+        cdu: normalizeNullableText(body.cdu),
         armario: catalogData.armario || null,
         prateleira: body.prateleira ?? null,
         courseSequence: catalogData.courseSequence,
         catalogCode: catalogData.catalogCode,
         anoEdicao: body.anoEdicao ?? null,
         edicao: body.edicao ?? null,
-        isbn: body.isbn,
-        fileUrl: body.fileUrl ?? null,
+        isbn,
+        fileUrl: normalizeNullableText(body.fileUrl),
         document_type: body.documentType ?? 1,
         is_digital: hasDigital,
       })
@@ -169,7 +207,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(mapBookRow(created));
   } catch (error: any) {
     return NextResponse.json(
-      { error: error?.message || 'Erro ao criar livro' },
+      { error: resolveDbErrorMessage(error, 'Erro ao criar livro') },
       { status: 500 }
     );
   }
