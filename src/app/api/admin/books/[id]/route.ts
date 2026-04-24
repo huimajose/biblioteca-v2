@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import * as schema from '@/db/pgSchema';
 import { getDb } from '@/app/api/_utils/db';
 import { DEFAULT_BOOK_COVER } from '@/constants';
@@ -75,7 +75,7 @@ const summarizeBookPayload = (body: any) => ({
 });
 
 const logBookRouteError = (stage: string, error: any, extra: Record<string, unknown> = {}) => {
-  console.error('[admin/books][PUT] failure', {
+  console.error('[admin/books][id] failure', {
     stage,
     ...extra,
     message: error?.message ?? null,
@@ -317,6 +317,109 @@ export async function PUT(
     logBookRouteError('request-handler', error, { bookId });
     return NextResponse.json(
       { error: resolveDbErrorMessage(error, 'Erro ao atualizar livro') },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  req: NextRequest,
+  context: { params: Promise<{ id: string }> }
+) {
+  const { id } = await context.params;
+  const bookId = Number(id);
+  if (Number.isNaN(bookId)) {
+    return NextResponse.json({ error: 'Livro invalido' }, { status: 400 });
+  }
+
+  try {
+    const actorUserId = req.headers.get('x-user-id') || '';
+    const db = getDb();
+    const actorRole = await resolveActorRole(db, actorUserId);
+    if (!canAccessAdminSection(actorRole, 'books')) {
+      console.warn('[admin/books][DELETE] access denied', { actorUserId: actorUserId || null, actorRole, bookId });
+      return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
+    }
+
+    const existing = await db
+      .select()
+      .from(schema.books)
+      .where(eq(schema.books.id, bookId))
+      .limit(1);
+    if (!existing[0]) {
+      console.warn('[admin/books][DELETE] book not found', { actorUserId: actorUserId || null, bookId });
+      return NextResponse.json({ error: 'Livro nao encontrado' }, { status: 404 });
+    }
+
+    const physicalCopies = await db
+      .select({ pid: schema.physicalBooks.pid, borrowed: schema.physicalBooks.borrowed })
+      .from(schema.physicalBooks)
+      .where(eq(schema.physicalBooks.bookId, bookId));
+
+    const physicalIds = physicalCopies.map((copy) => copy.pid);
+    const activeTransactions =
+      physicalIds.length > 0
+        ? await db
+            .select({ tid: schema.transactions.tid, status: schema.transactions.status })
+            .from(schema.transactions)
+            .where(
+              and(
+                inArray(schema.transactions.physicalBookId, physicalIds),
+                inArray(schema.transactions.status, ['PENDING', 'BORROWED', 'pending', 'borrowed'])
+              )
+            )
+            .limit(5)
+        : [];
+
+    const borrowedPhysicalCopies = physicalCopies.filter((copy) => copy.borrowed);
+
+    if (activeTransactions.length > 0 || borrowedPhysicalCopies.length > 0) {
+      return NextResponse.json(
+        { error: 'Nao pode apagar um livro com emprestimos ou pedidos ativos.' },
+        { status: 409 }
+      );
+    }
+
+    await db.delete(schema.userReadingListItems).where(eq(schema.userReadingListItems.bookId, bookId));
+    await db.delete(schema.userReadingProgress).where(eq(schema.userReadingProgress.bookId, bookId));
+    await db.delete(schema.userBookFavorites).where(eq(schema.userBookFavorites.bookId, bookId));
+    await db.delete(schema.userDigitalBooks).where(eq(schema.userDigitalBooks.bookId, bookId));
+    await db.delete(schema.bookClicks).where(eq(schema.bookClicks.bookId, bookId));
+    await db.delete(schema.physicalBooks).where(eq(schema.physicalBooks.bookId, bookId));
+    await db.delete(schema.books).where(eq(schema.books.id, bookId));
+
+    if (actorUserId) {
+      try {
+        await notifyUser(
+          db,
+          actorUserId,
+          'Livro apagado',
+          `O livro "${existing[0].title}" foi apagado com sucesso.`
+        );
+        await appendAuditLog(db, {
+          actorUserId,
+          action: 'delete-book',
+          entityType: 'book',
+          entityId: bookId,
+          details: `Livro "${existing[0].title}" apagado.`,
+          metadata: {
+            isbn: existing[0].isbn ?? null,
+            genre: existing[0].genre ?? null,
+          },
+        });
+      } catch (sideEffectError) {
+        logBookRouteError('post-delete-side-effects', sideEffectError, {
+          actorUserId,
+          bookId,
+        });
+      }
+    }
+
+    return NextResponse.json({ success: true, id: bookId });
+  } catch (error: any) {
+    logBookRouteError('delete-handler', error, { bookId });
+    return NextResponse.json(
+      { error: resolveDbErrorMessage(error, 'Erro ao apagar livro') },
       { status: 500 }
     );
   }

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Pencil, PlusCircle, FileDown, ChevronDown, Tags } from 'lucide-react';
+import { Pencil, PlusCircle, FileDown, ChevronDown, Tags, Trash2 } from 'lucide-react';
 import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
 import { BookInfoModal } from '@/components/BookInfoModal.tsx';
@@ -31,6 +31,16 @@ export const AdminBooksPage = () => {
   const [genres, setGenres] = useState<any[]>([]);
   const [genreFilter, setGenreFilter] = useState<string>('all');
   const [selectedBook, setSelectedBook] = useState<any | null>(null);
+  const [deletingBookId, setDeletingBookId] = useState<number | null>(null);
+
+  const getActorUserId = () =>
+    typeof window !== 'undefined' ? window.localStorage.getItem('userId') || '' : '';
+
+  const loadBooks = async () => {
+    const res = await fetch('/api/books');
+    const data = await res.json().catch(() => []);
+    setBooks(Array.isArray(data) ? data : data?.data ?? []);
+  };
 
   const getGenreOrder = (genreName: string) => {
     const match = genres.find((genre) => String(genre.name || '').toLowerCase() === String(genreName || '').toLowerCase());
@@ -43,14 +53,39 @@ export const AdminBooksPage = () => {
   };
 
   useEffect(() => {
-    fetch('/api/books')
-      .then(res => res.json())
-      .then(data => setBooks(Array.isArray(data) ? data : data?.data ?? []));
+    loadBooks().catch(() => setBooks([]));
     fetch('/api/genres')
       .then(res => res.json())
       .then(data => setGenres(Array.isArray(data) ? data : []))
       .catch(() => setGenres([]));
   }, []);
+
+  const handleDeleteBook = async (book: any) => {
+    if (deletingBookId) return;
+
+    const confirmed = window.confirm(`Tem certeza que deseja apagar o livro "${book.title}"?`);
+    if (!confirmed) return;
+
+    setDeletingBookId(book.id);
+    try {
+      const res = await fetch(`/api/admin/books/${book.id}`, {
+        method: 'DELETE',
+        headers: { 'x-user-id': getActorUserId() },
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        alert(data?.error || 'Falha ao apagar o livro.');
+        return;
+      }
+
+      setBooks((prev) => prev.filter((item) => item.id !== book.id));
+      if (selectedBook?.id === book.id) {
+        setSelectedBook(null);
+      }
+    } finally {
+      setDeletingBookId(null);
+    }
+  };
 
   useEffect(() => {
     setPage(1);
@@ -521,6 +556,18 @@ export const AdminBooksPage = () => {
                           
                         </Button>
                       </Link>
+                      <Button
+                        variant="danger"
+                        className="inline-flex items-center gap-2"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteBook(book);
+                        }}
+                        disabled={deletingBookId === book.id}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                        {deletingBookId === book.id ? 'A apagar...' : ''}
+                      </Button>
                     </div>
                   </td>
                 </tr>
