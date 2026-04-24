@@ -57,6 +57,35 @@ const resolveDbErrorMessage = (error: any, fallback: string) => {
   return normalized;
 };
 
+const summarizeBookPayload = (body: any) => ({
+  title: String(body?.title ?? '').trim(),
+  author: String(body?.author ?? '').trim(),
+  genre: String(body?.genre ?? '').trim(),
+  isbn: normalizeIsbn(body?.isbn),
+  documentType: Number(body?.documentType ?? 1),
+  totalCopies: Number(body?.totalCopies ?? 0),
+  hasDigital: Boolean(body?.hasDigital),
+  hasFileUrl: Boolean(normalizeNullableText(body?.fileUrl)),
+  hasCover: Boolean(normalizeNullableText(body?.cover)),
+  armario: normalizeNullableText(body?.armario),
+  prateleira: body?.prateleira ?? null,
+  anoEdicao: body?.anoEdicao ?? null,
+  edicao: body?.edicao ?? null,
+});
+
+const logBookRouteError = (stage: string, error: any, extra: Record<string, unknown> = {}) => {
+  console.error('[admin/books][POST] failure', {
+    stage,
+    ...extra,
+    message: error?.message ?? null,
+    cause: error?.cause?.message ?? error?.cause ?? null,
+    detail: error?.detail ?? null,
+    hint: error?.hint ?? null,
+    code: error?.code ?? null,
+    stack: error?.stack ?? null,
+  });
+};
+
 const createPhysicalCopies = async (db: ReturnType<typeof getDb>, bookId: number, copies: number) => {
   if (copies <= 0) return;
   const rows = Array.from({ length: copies }).map(() => ({
@@ -121,16 +150,24 @@ const resolveBookCatalogData = async (db: ReturnType<typeof getDb>, input: {
 };
 
 export async function POST(req: NextRequest) {
+  let body: any = null;
   try {
-    const body = await req.json();
+    body = await req.json();
     const actorUserId = req.headers.get('x-user-id') || '';
     const db = getDb();
+    console.info('[admin/books][POST] request received', {
+      actorUserId: actorUserId || null,
+      payload: summarizeBookPayload(body),
+    });
     const actorRole = await resolveActorRole(db, actorUserId);
     if (!canAccessAdminSection(actorRole, 'books')) {
+      console.warn('[admin/books][POST] access denied', { actorUserId: actorUserId || null, actorRole });
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
+    console.info('[admin/books][POST] actor resolved', { actorUserId: actorUserId || null, actorRole });
     const isbn = normalizeIsbn(body.isbn);
     if (!isbn) {
+      console.warn('[admin/books][POST] missing isbn', { actorUserId: actorUserId || null });
       return NextResponse.json({ error: 'ISBN obrigatorio' }, { status: 400 });
     }
 
@@ -140,6 +177,11 @@ export async function POST(req: NextRequest) {
       .where(eq(schema.books.isbn, isbn))
       .limit(1);
     if (existingByIsbn[0]) {
+      console.warn('[admin/books][POST] duplicate isbn blocked', {
+        actorUserId: actorUserId || null,
+        isbn,
+        existingBookId: existingByIsbn[0].id,
+      });
       return NextResponse.json({ error: 'Ja existe um livro com este ISBN.' }, { status: 409 });
     }
 
@@ -151,6 +193,11 @@ export async function POST(req: NextRequest) {
     const catalogData = await resolveBookCatalogData(db, {
       genre: body.genre ?? '',
       armario: body.armario ?? null,
+    });
+    console.info('[admin/books][POST] catalog data resolved', {
+      actorUserId: actorUserId || null,
+      isbn,
+      catalogData,
     });
 
     const inserted = await db
@@ -176,10 +223,21 @@ export async function POST(req: NextRequest) {
         is_digital: hasDigital,
       })
       .returning();
+    console.info('[admin/books][POST] book inserted', {
+      actorUserId: actorUserId || null,
+      isbn,
+      insertedCount: inserted.length,
+      createdBookId: inserted[0]?.id ?? null,
+    });
 
     const created = inserted[0];
     if (isPhysical && availableCopies > 0) {
       await createPhysicalCopies(db, created.id, availableCopies);
+      console.info('[admin/books][POST] physical copies created', {
+        actorUserId: actorUserId || null,
+        bookId: created.id,
+        copies: availableCopies,
+      });
     }
     if (actorUserId) {
       try {
@@ -201,11 +259,18 @@ export async function POST(req: NextRequest) {
           },
         });
       } catch (sideEffectError) {
-        console.error('Failed to run post-create book side effects', sideEffectError);
+        logBookRouteError('post-create-side-effects', sideEffectError, {
+          actorUserId,
+          bookId: created.id,
+          isbn,
+        });
       }
     }
     return NextResponse.json(mapBookRow(created));
   } catch (error: any) {
+    logBookRouteError('request-handler', error, {
+      payload: summarizeBookPayload(body),
+    });
     return NextResponse.json(
       { error: resolveDbErrorMessage(error, 'Erro ao criar livro') },
       { status: 500 }

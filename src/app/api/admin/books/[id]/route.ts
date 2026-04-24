@@ -57,6 +57,36 @@ const resolveDbErrorMessage = (error: any, fallback: string) => {
   return normalized;
 };
 
+const summarizeBookPayload = (body: any) => ({
+  title: String(body?.title ?? '').trim(),
+  author: String(body?.author ?? '').trim(),
+  genre: String(body?.genre ?? '').trim(),
+  isbn: normalizeIsbn(body?.isbn),
+  documentType: Number(body?.documentType ?? 1),
+  totalCopies: Number(body?.totalCopies ?? 0),
+  addCopies: Number(body?.addCopies ?? 0),
+  hasDigital: Boolean(body?.hasDigital),
+  hasFileUrl: Boolean(normalizeNullableText(body?.fileUrl)),
+  hasCover: Boolean(normalizeNullableText(body?.cover)),
+  armario: normalizeNullableText(body?.armario),
+  prateleira: body?.prateleira ?? null,
+  anoEdicao: body?.anoEdicao ?? null,
+  edicao: body?.edicao ?? null,
+});
+
+const logBookRouteError = (stage: string, error: any, extra: Record<string, unknown> = {}) => {
+  console.error('[admin/books][PUT] failure', {
+    stage,
+    ...extra,
+    message: error?.message ?? null,
+    cause: error?.cause?.message ?? error?.cause ?? null,
+    detail: error?.detail ?? null,
+    hint: error?.hint ?? null,
+    code: error?.code ?? null,
+    stack: error?.stack ?? null,
+  });
+};
+
 const createPhysicalCopies = async (db: ReturnType<typeof getDb>, bookId: number, copies: number) => {
   if (copies <= 0) return;
   const rows = Array.from({ length: copies }).map(() => ({
@@ -134,8 +164,14 @@ export async function PUT(
     const body = await req.json();
     const actorUserId = req.headers.get('x-user-id') || '';
     const db = getDb();
+    console.info('[admin/books][PUT] request received', {
+      actorUserId: actorUserId || null,
+      bookId,
+      payload: summarizeBookPayload(body),
+    });
     const actorRole = await resolveActorRole(db, actorUserId);
     if (!canAccessAdminSection(actorRole, 'books')) {
+      console.warn('[admin/books][PUT] access denied', { actorUserId: actorUserId || null, actorRole, bookId });
       return NextResponse.json({ error: 'Acesso negado' }, { status: 403 });
     }
 
@@ -145,11 +181,13 @@ export async function PUT(
       .where(eq(schema.books.id, bookId))
       .limit(1);
     if (!existing[0]) {
+      console.warn('[admin/books][PUT] book not found', { actorUserId: actorUserId || null, bookId });
       return NextResponse.json({ error: 'Livro nao encontrado' }, { status: 404 });
     }
 
     const nextIsbn = normalizeIsbn(body.isbn ?? existing[0].isbn);
     if (!nextIsbn) {
+      console.warn('[admin/books][PUT] missing isbn', { actorUserId: actorUserId || null, bookId });
       return NextResponse.json({ error: 'ISBN obrigatorio' }, { status: 400 });
     }
 
@@ -159,6 +197,12 @@ export async function PUT(
       .where(eq(schema.books.isbn, nextIsbn))
       .limit(1);
     if (existingByIsbn[0] && existingByIsbn[0].id !== bookId) {
+      console.warn('[admin/books][PUT] duplicate isbn blocked', {
+        actorUserId: actorUserId || null,
+        bookId,
+        isbn: nextIsbn,
+        existingBookId: existingByIsbn[0].id,
+      });
       return NextResponse.json({ error: 'Ja existe um livro com este ISBN.' }, { status: 409 });
     }
 
@@ -178,6 +222,13 @@ export async function PUT(
       currentBookId: bookId,
       preserveSequence: genreChanged ? null : (existing[0].courseSequence ?? existing[0].course_sequence ?? null),
       preserveCatalogCode: genreChanged ? null : (existing[0].catalogCode ?? existing[0].catalog_code ?? null),
+    });
+    console.info('[admin/books][PUT] catalog data resolved', {
+      actorUserId: actorUserId || null,
+      bookId,
+      isbn: nextIsbn,
+      catalogData,
+      genreChanged,
     });
 
     const baseTotal = Number(body.totalCopies ?? existing[0].totalCopies ?? 0);
@@ -210,36 +261,60 @@ export async function PUT(
       })
       .where(eq(schema.books.id, bookId))
       .returning();
+    console.info('[admin/books][PUT] book updated', {
+      actorUserId: actorUserId || null,
+      bookId,
+      isbn: nextIsbn,
+      addCopies,
+    });
 
     if (isPhysical && addCopies > 0) {
       await createPhysicalCopies(db, bookId, addCopies);
+      console.info('[admin/books][PUT] physical copies created', {
+        actorUserId: actorUserId || null,
+        bookId,
+        copies: addCopies,
+      });
     }
     if (!isPhysical) {
       await db.delete(schema.physicalBooks).where(eq(schema.physicalBooks.bookId, bookId));
+      console.info('[admin/books][PUT] physical copies removed for digital conversion', {
+        actorUserId: actorUserId || null,
+        bookId,
+      });
     }
     if (actorUserId) {
-      await notifyUser(
-        db,
-        actorUserId,
-        'Livro atualizado',
-        `As alteracoes do livro "${updated[0].title}" foram guardadas com sucesso.`
-      );
-      await appendAuditLog(db, {
-        actorUserId,
-        action: 'update-book',
-        entityType: 'book',
-        entityId: bookId,
-        details: `Livro "${updated[0].title}" atualizado.`,
-        metadata: {
-          previousGenre: existing[0].genre ?? null,
-          nextGenre: updated[0].genre ?? null,
-          addCopies,
-        },
-      });
+      try {
+        await notifyUser(
+          db,
+          actorUserId,
+          'Livro atualizado',
+          `As alteracoes do livro "${updated[0].title}" foram guardadas com sucesso.`
+        );
+        await appendAuditLog(db, {
+          actorUserId,
+          action: 'update-book',
+          entityType: 'book',
+          entityId: bookId,
+          details: `Livro "${updated[0].title}" atualizado.`,
+          metadata: {
+            previousGenre: existing[0].genre ?? null,
+            nextGenre: updated[0].genre ?? null,
+            addCopies,
+          },
+        });
+      } catch (sideEffectError) {
+        logBookRouteError('post-update-side-effects', sideEffectError, {
+          actorUserId,
+          bookId,
+          isbn: nextIsbn,
+        });
+      }
     }
 
     return NextResponse.json(mapBookRow(updated[0]));
   } catch (error: any) {
+    logBookRouteError('request-handler', error, { bookId });
     return NextResponse.json(
       { error: resolveDbErrorMessage(error, 'Erro ao atualizar livro') },
       { status: 500 }
