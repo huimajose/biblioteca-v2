@@ -28,12 +28,34 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
   const [tickets, setTickets] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
 
+  const getVisitorLabel = () => {
+    const now = new Date();
+    const dateCode = [
+      now.getFullYear(),
+      String(now.getMonth() + 1).padStart(2, '0'),
+      String(now.getDate()).padStart(2, '0'),
+    ].join('');
+    const storageKey = `instant-visitor-sequence:${dateCode}`;
+    const lastSequence =
+      typeof window !== 'undefined'
+        ? Number(window.localStorage.getItem(storageKey) || '0')
+        : 0;
+    const nextSequence = lastSequence + 1;
+
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem(storageKey, String(nextSequence));
+    }
+
+    return `Visitante ${dateCode}-${String(nextSequence).padStart(3, '0')}`;
+  };
+
   const createVisitorUser = () => {
     const randomCode = Math.random().toString(36).slice(2, 8).toUpperCase();
+    const visitorLabel = getVisitorLabel();
 
     return {
       clerkId: `TEMP-${Date.now().toString(36).toUpperCase()}-${randomCode}`,
-      fullName: 'Visitante 1',
+      fullName: visitorLabel,
       primaryEmail: '',
       role: 'external',
       isGenerated: true,
