@@ -153,7 +153,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
     event?.preventDefault();
     const matchedBook = findBookByScan(scanCode);
     if (!matchedBook) {
-      setError('Nenhum livro fisico disponivel encontrado para o codigo lido.');
+      setError('Nenhum livro físico disponível encontrado para o código lido.');
       return;
     }
     setError(null);
@@ -188,10 +188,10 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
       if (res.ok && data.success) {
         setTickets(data.results);
       } else {
-        setError(data?.error || data.errors?.[0]?.error || "Falha ao processar a transacao.");
+        setError(data?.error || data.errors?.[0]?.error || "Falha ao processar a transação.");
       }
     } catch (err) {
-      setError("Falha ao processar a transacao.");
+      setError("Falha ao processar a transação.");
     } finally {
       setLoading(false);
     }
@@ -218,8 +218,8 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
                   <Zap className="w-6 h-6 fill-yellow-400 text-yellow-400" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-bold leading-tight">Balcao de circulacao</h2>
-                  <p className="text-lime-100 text-xs uppercase tracking-widest font-bold">Ponto de servico imediato</p>
+                  <h2 className="text-xl font-bold leading-tight">Balcão de circulação</h2>
+                  <p className="text-lime-100 text-xs uppercase tracking-widest font-bold">Ponto de serviço imediato</p>
                 </div>
               </div>
               <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full transition-colors">
@@ -248,7 +248,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
                     >
                       <div>
                         <h3 className="text-2xl font-bold mb-2">Identificar utilizador</h3>
-                        <p className="text-gray-500 mb-6">Procure um estudante verificado ou gere um visitante numerado para requisicao imediata.</p>
+                        <p className="text-gray-500 mb-6">Procure um estudante verificado ou gere um visitante numerado para requisição imediata.</p>
                         <div className="relative">
                           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                           <input 
@@ -290,7 +290,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
                               <CheckCircle2 className="w-5 h-5 text-transparent group-hover:text-lime-500" />
                             </button>
                           ))}
-                          {filteredUsers.length === 0 && <p className="text-sm text-gray-400 italic p-4">Nao foram encontrados estudantes verificados com essa pesquisa.</p>}
+                          {filteredUsers.length === 0 && <p className="text-sm text-gray-400 italic p-4">Não foram encontrados estudantes verificados com essa pesquisa.</p>}
                         </div>
                       </div>
                     </motion.div>
@@ -308,7 +308,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
                         <div className="flex justify-between items-end mb-4">
                           <div>
                             <h3 className="text-2xl font-bold">Selecionar livros</h3>
-                            <p className="text-gray-500">Leia o ISBN ou pesquise exemplares fisicos disponiveis em stock.</p>
+                            <p className="text-gray-500">Leia o ISBN ou pesquise exemplares físicos disponíveis em stock.</p>
                           </div>
                           <button onClick={() => setStep('user')} className="text-sm text-lime-600 font-bold hover:underline mb-1">Alterar utilizador</button>
                         </div>
@@ -323,11 +323,11 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
                           />
                         </div>
                         <form className="mt-3" onSubmit={handleScanSubmit}>
-                          <label className="text-xs uppercase text-gray-400">Leitor de codigo</label>
+                          <label className="text-xs uppercase text-gray-400">Leitor de código</label>
                           <div className="mt-1 flex gap-2">
                             <input
                               className="w-full px-4 py-3 border-2 border-dashed border-lime-200 rounded-2xl focus:border-lime-500 outline-none transition-all text-sm font-mono"
-                              placeholder="Leia ISBN ou codigo catalogo e pressione Enter"
+                              placeholder="Leia ISBN ou código de catálogo e pressione Enter"
                               value={scanCode}
                               onChange={(e) => setScanCode(e.target.value)}
                             />
@@ -390,7 +390,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
                             </button>
                           );
                         })}
-                        {filteredBooks.length === 0 && <p className="text-sm text-gray-400 italic p-8 text-center col-span-full">Nao foram encontrados livros disponiveis para a sua pesquisa.</p>}
+                        {filteredBooks.length === 0 && <p className="text-sm text-gray-400 italic p-8 text-center col-span-full">Não foram encontrados livros disponíveis para a sua pesquisa.</p>}
                       </div>
                     </motion.div>
                   )}
@@ -406,13 +406,13 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
                         <div className="w-20 h-20 bg-lime-100 rounded-full flex items-center justify-center text-lime-600 mx-auto mb-4">
                           <Zap className="w-10 h-10 fill-lime-600" />
                         </div>
-                        <h3 className="text-3xl font-black">Confirmacao final</h3>
-                        <p className="text-gray-500">Verifique os detalhes da requisicao antes de continuar.</p>
+                        <h3 className="text-3xl font-black">Confirmação final</h3>
+                        <p className="text-gray-500">Verifique os detalhes da requisição antes de continuar.</p>
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div className="space-y-4">
-                          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Informacao do cliente</p>
+                          <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">Informação do cliente</p>
                           <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100 flex items-center gap-4">
                             <div className="w-16 h-16 bg-lime-600 rounded-2xl flex items-center justify-center text-white text-2xl font-black shadow-xl shadow-lime-200">
                               {(selectedUser?.fullName || selectedUser?.primaryEmail || '?')[0].toUpperCase()}
@@ -446,7 +446,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
 
               {/* Right Panel: Summary & Action */}
               <div className="w-96 bg-gray-50 p-8 flex flex-col">
-                <h3 className="text-xs font-bold text-gray-400 uppercase mb-6 tracking-widest">Resumo da transacao</h3>
+                <h3 className="text-xs font-bold text-gray-400 uppercase mb-6 tracking-widest">Resumo da transação</h3>
                 
                 <div className="flex-grow space-y-8">
                   {/* User Summary Widget */}
@@ -471,7 +471,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
                     ) : (
                       <div className="flex items-center gap-3 text-gray-400 py-2">
                         <User className="w-5 h-5 opacity-50" />
-                        <p className="text-sm italic">Selecao pendente...</p>
+                        <p className="text-sm italic">Seleção pendente...</p>
                       </div>
                     )}
                   </div>
@@ -510,7 +510,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
                       {selectedBooks.length === 0 && (
                         <div className="p-10 border-2 border-dashed border-gray-200 rounded-3xl flex flex-col items-center justify-center text-center bg-gray-50/50">
                           <BookIcon className="w-10 h-10 text-gray-200 mb-3" />
-                          <p className="text-xs text-gray-400 leading-relaxed">Ainda nao foram adicionados livros a<br/>transacao.</p>
+                          <p className="text-xs text-gray-400 leading-relaxed">Ainda não foram adicionados livros à<br/>transação.</p>
                         </div>
                       )}
                     </div>
@@ -550,7 +550,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
                       disabled={!selectedUser || selectedBooks.length === 0}
                       onClick={() => setStep('confirm')}
                     >
-                      Continuar para requisicao
+                      Continuar para requisição
                     </Button>
                   )}
                   
@@ -573,7 +573,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
               className="w-full max-w-2xl flex justify-between items-center text-white"
             >
               <div>
-                <h2 className="text-3xl font-black">Requisicao concluida com sucesso</h2>
+                <h2 className="text-3xl font-black">Requisição concluída com sucesso</h2>
                 <p className="text-lime-300 text-sm font-medium">Todos os itens foram processados com sucesso.</p>
               </div>
               <button 
@@ -615,7 +615,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
                 onClick={() => window.print()}
               >
                 <Printer className="w-6 h-6" />
-                Imprimir todos os taloes
+                Imprimir todos os talões
               </Button>
             </div>
           </div>
