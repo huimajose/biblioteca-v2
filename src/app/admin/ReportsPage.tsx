@@ -219,7 +219,7 @@ export const ReportsPage = () => {
       : Object.entries(adminCounts).sort((a, b) => b[1] - a[1])[0];
     if (topAdmin) {
       doc.setFontSize(10);
-      doc.text(`Admin com mais emprestimos aprovados: ${topAdmin[0]} (${topAdmin[1]})`, 40, 90);
+      doc.text(`Admin com mais empréstimos aprovados: ${topAdmin[0]} (${topAdmin[1]})`, 40, 90);
     }
 
     const trend = summary?.trend || [];
@@ -311,7 +311,7 @@ export const ReportsPage = () => {
     if (topUsers.length) {
       autoTable(doc, {
         startY: tableStartY,
-        head: [['Top utilizadores (mais emprestimos)', 'Total']],
+        head: [['Top utilizadores (mais empréstimos)', 'Total']],
         body: topUsers.map((row) => [row.name, String(row.count)]),
         styles: { fontSize: 9 },
         headStyles: { fillColor: [101, 163, 13] },
@@ -323,7 +323,7 @@ export const ReportsPage = () => {
     if (sortedUsers.length) {
       autoTable(doc, {
         startY: tableStartY,
-        head: [['Utilizadores com emprestimos', 'Total']],
+        head: [['Utilizadores com empréstimos', 'Total']],
         body: sortedUsers.map((row) => [row.name, String(row.count)]),
         styles: { fontSize: 9 },
         headStyles: { fillColor: [132, 204, 22] },
@@ -642,7 +642,7 @@ export const ReportsPage = () => {
   const exportGenrePdf = async () => {
     const doc = new jsPDF('p', 'pt');
     doc.setFontSize(16);
-    doc.text('Relatorio de inventario por curso', 40, 40);
+    doc.text('Relatório de inventário por curso', 40, 40);
     doc.setFontSize(10);
     doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 40, 58);
 
@@ -675,7 +675,7 @@ export const ReportsPage = () => {
             book.author || 'N/D',
             book.isbn || 'N/D',
             book.isDigital ? 'Digital' : 'Fisico',
-            book.isDigital ? 'Sempre disponivel' : String(book.availableCopies ?? 0),
+            book.isDigital ? 'Sempre disponível' : String(book.availableCopies ?? 0),
           ]),
           styles: { fontSize: 9 },
           headStyles: { fillColor: [101, 163, 13] },
@@ -742,7 +742,7 @@ export const ReportsPage = () => {
   const exportLocationInventoryPdf = async () => {
     const doc = new jsPDF('p', 'pt');
     doc.setFontSize(16);
-    doc.text('Relatorio de inventario por armario e prateleira', 40, 40);
+    doc.text('Relatório de inventário por armário e prateleira', 40, 40);
     doc.setFontSize(10);
     doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 40, 58);
     doc.text(
@@ -750,7 +750,7 @@ export const ReportsPage = () => {
       40,
       72
     );
-    doc.text(`Pendentes de localizacao: ${locationInventoryStats.pendingLocation}`, 40, 86);
+    doc.text(`Pendentes de localização: ${locationInventoryStats.pendingLocation}`, 40, 86);
 
     let currentY = 116;
     if (!physicalBooksByLocation.length) {
@@ -815,11 +815,11 @@ export const ReportsPage = () => {
       40,
       72
     );
-    doc.text(`Sem codigo de catalogo: ${neverBorrowedStats.withoutCatalog}`, 40, 86);
+    doc.text(`Sem código de catálogo: ${neverBorrowedStats.withoutCatalog}`, 40, 86);
 
     autoTable(doc, {
       startY: 106,
-      head: [['Codigo', 'Titulo', 'Autor', 'Curso', 'Localizacao', 'Tipo']],
+      head: [['Código', 'Título', 'Autor', 'Curso', 'Localização', 'Tipo']],
       body: neverBorrowedBooks.length
         ? neverBorrowedBooks.map((book: any) => [
             book.catalogCode || `ID ${book.id}`,
@@ -844,9 +844,9 @@ export const ReportsPage = () => {
 
   const exportCirculationInsightsPdf = async () => {
     const doc = new jsPDF('p', 'pt');
-    const rangeLabel = insightRange === 'all' ? 'Todo o historico' : `Ultimos ${insightRange} dias`;
+    const rangeLabel = insightRange === 'all' ? 'Todo o histórico' : `Últimos ${insightRange} dias`;
     doc.setFontSize(16);
-    doc.text('Relatorio de circulacao do acervo', 40, 40);
+    doc.text('Relatório de circulação do acervo', 40, 40);
     doc.setFontSize(10);
     doc.text(`Periodo: ${rangeLabel}`, 40, 58);
     doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 40, 72);
@@ -873,7 +873,7 @@ export const ReportsPage = () => {
 
     autoTable(doc, {
       startY: ((doc as any).lastAutoTable?.finalY || 92) + 20,
-      head: [['Livros desaparecidos do fluxo', 'Curso', 'Ultimo emprestimo', 'Ultimo clique']],
+      head: [['Livros desaparecidos do fluxo', 'Curso', 'Último empréstimo', 'Último clique']],
       body: flowGapBooks.length
         ? flowGapBooks.map((book: any) => [
             book.title || 'N/D',
@@ -897,7 +897,7 @@ export const ReportsPage = () => {
   const exportUsersPdf = async () => {
     const doc = new jsPDF('p', 'pt');
     doc.setFontSize(16);
-    doc.text('Relatorio de utilizadores e emprestimos', 40, 40);
+    doc.text('Relatório de utilizadores e empréstimos', 40, 40);
     doc.setFontSize(10);
     doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 40, 58);
 
@@ -938,7 +938,7 @@ export const ReportsPage = () => {
                 String(borrow.physicalBookId ?? '-'),
                 'Emprestimo ativo',
               ])
-            : [['-', 'Sem emprestimos ativos', '-', 'Conta sem movimentos ativos']],
+            : [['-', 'Sem empréstimos ativos', '-', 'Conta sem movimentos ativos']],
           styles: { fontSize: 9 },
           headStyles: { fillColor: [132, 204, 22] },
         });
@@ -1038,7 +1038,7 @@ export const ReportsPage = () => {
             reportType === 'users' ? "bg-lime-600 text-white shadow-lg" : "bg-white text-gray-500 hover:bg-gray-50"
           )}
         >
-          <Users className="w-4 h-4" /> Utilizadores e emprestimos
+          <Users className="w-4 h-4" /> Utilizadores e empréstimos
         </button>
         <button 
           onClick={() => setReportType('top-books')}
@@ -1056,7 +1056,7 @@ export const ReportsPage = () => {
             reportType === 'circulation-insights' ? "bg-lime-600 text-white shadow-lg" : "bg-white text-gray-500 hover:bg-gray-50"
           )}
         >
-          <BarChart3 className="w-4 h-4" /> Circulacao do acervo
+          <BarChart3 className="w-4 h-4" /> Circulação do acervo
         </button>
         <button 
           onClick={() => setReportType('never-borrowed')}
@@ -1241,7 +1241,7 @@ export const ReportsPage = () => {
                     <td colSpan={5} className="p-12 text-center">
                       <div className="flex flex-col items-center gap-2 text-gray-400">
                         <History className="w-8 h-8 opacity-20" />
-                        <p className="text-sm font-medium italic">Nao foram encontradas atividades para o intervalo selecionado.</p>
+                        <p className="text-sm font-medium italic">Não foram encontradas atividades para o intervalo selecionado.</p>
                       </div>
                     </td>
                   </tr>
@@ -1345,7 +1345,7 @@ export const ReportsPage = () => {
                     }}
                   >
                     {[10, 20, 30, 50].map((size) => (
-                      <option key={size} value={size}>{size}/pagina</option>
+                      <option key={size} value={size}>{size}/página</option>
                     ))}
                   </select>
                   <Button
@@ -1389,7 +1389,7 @@ export const ReportsPage = () => {
             {Object.keys(booksByGenre).length === 0 ? (
               <Card className="p-20 text-center flex flex-col items-center gap-4 text-gray-400">
                 <ListFilter className="w-12 h-12 opacity-10" />
-                <p className="text-lg font-medium italic">Nao foram encontrados livros no inventario.</p>
+                <p className="text-lg font-medium italic">Não foram encontrados livros no inventário.</p>
               </Card>
             ) : (
               Object.entries(booksByGenre).map(([genre, genreBooks]: [string, any]) => (
@@ -1443,19 +1443,19 @@ export const ReportsPage = () => {
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 print:grid-cols-4">
             <Card className="p-4 bg-lime-50 border-lime-100">
-              <p className="text-[10px] font-bold text-lime-400 uppercase tracking-widest mb-1">Total de titulos</p>
+              <p className="text-[10px] font-bold text-lime-400 uppercase tracking-widest mb-1">Total de títulos</p>
               <p className="text-2xl font-black text-lime-700">{inventoryStats.totalBooks}</p>
               <p className="text-[10px] text-lime-400 mt-1">{inventoryStats.physicalBooks} Fisicos / {inventoryStats.digitalBooks} Digitais</p>
             </Card>
             <Card className="p-4 bg-emerald-50 border-emerald-100">
               <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1">Total de exemplares</p>
               <p className="text-2xl font-black text-emerald-700">{inventoryStats.totalCopies}</p>
-              <p className="text-[10px] text-emerald-400 mt-1">{inventoryStats.availableCopies} Disponiveis para requisicao</p>
+              <p className="text-[10px] text-emerald-400 mt-1">{inventoryStats.availableCopies} Disponíveis para requisição</p>
             </Card>
             <Card className="p-4 bg-red-50 border-red-100">
               <p className="text-[10px] font-bold text-red-400 uppercase tracking-widest mb-1">Esgotado</p>
               <p className="text-2xl font-black text-red-700">{inventoryStats.outOfStock}</p>
-              <p className="text-[10px] text-red-400 mt-1">Titulos sem exemplares disponiveis</p>
+              <p className="text-[10px] text-red-400 mt-1">Títulos sem exemplares disponíveis</p>
             </Card>
             <Card className="p-4 bg-amber-50 border-amber-100">
               <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest mb-1">Stock baixo</p>
@@ -1466,7 +1466,7 @@ export const ReportsPage = () => {
 
           <Card className="overflow-hidden">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center print:hidden">
-              <h2 className="text-xl font-bold">Estado completo do inventario</h2>
+              <h2 className="text-xl font-bold">Estado completo do inventário</h2>
               <Button variant="secondary" onClick={exportInventoryPdf} className="flex items-center gap-2">
                 <Printer className="w-4 h-4" /> Baixar PDF
               </Button>
@@ -1518,7 +1518,7 @@ export const ReportsPage = () => {
                       )}
                       {book.isDigital && (
                         <span className="px-2 py-1 rounded-full text-[10px] font-bold uppercase bg-lime-100 text-lime-700">
-                          Sempre disponivel
+                          Sempre disponível
                         </span>
                       )}
                     </td>
@@ -1534,7 +1534,7 @@ export const ReportsPage = () => {
         <div className="space-y-6">
           <Card className="p-6 print:hidden flex justify-between items-center">
             <div>
-              <h2 className="text-xl font-bold">Diretorio de utilizadores e emprestimos ativos</h2>
+              <h2 className="text-xl font-bold">Diretório de utilizadores e empréstimos ativos</h2>
               <p className="text-sm text-gray-500">Lista completa de todos os utilizadores registados e dos itens atualmente requisitados.</p>
             </div>
             <Button variant="secondary" onClick={exportUsersPdf} className="flex items-center gap-2">
@@ -1544,13 +1544,13 @@ export const ReportsPage = () => {
 
           <Card className="overflow-hidden print:border-none print:shadow-none">
             <div className="p-6 border-b border-gray-100 hidden print:block">
-              <h1 className="text-2xl font-bold">Relatorio de utilizadores da biblioteca</h1>
+              <h1 className="text-2xl font-bold">Relatório de utilizadores da biblioteca</h1>
               <p className="text-sm text-gray-500">Gerado em {new Date().toLocaleDateString()}</p>
             </div>
             <table className="w-full text-left border-collapse">
               <thead className="bg-gray-50 border-b border-gray-100">
                 <tr>
-                  <th className="p-4 font-semibold text-xs uppercase text-gray-400">Informacao do utilizador</th>
+                  <th className="p-4 font-semibold text-xs uppercase text-gray-400">Informação do utilizador</th>
                   <th className="p-4 font-semibold text-xs uppercase text-gray-400">Estado</th>
                   <th className="p-4 font-semibold text-xs uppercase text-gray-400">Registado em</th>
                   <th className="p-4 font-semibold text-xs uppercase text-gray-400">Emprestimos ativos</th>
@@ -1562,7 +1562,7 @@ export const ReportsPage = () => {
                     <td colSpan={4} className="p-20 text-center">
                       <div className="flex flex-col items-center gap-4 text-gray-400">
                         <Users className="w-12 h-12 opacity-10" />
-                        <p className="text-lg font-medium italic">Nao foram encontrados utilizadores registados.</p>
+                        <p className="text-lg font-medium italic">Não foram encontrados utilizadores registados.</p>
                       </div>
                     </td>
                   </tr>
@@ -1586,7 +1586,7 @@ export const ReportsPage = () => {
                       </td>
                       <td className="p-4">
                         {user.activeBorrows.length === 0 ? (
-                          <span className="text-xs text-gray-400 italic">Sem emprestimos ativos</span>
+                          <span className="text-xs text-gray-400 italic">Sem empréstimos ativos</span>
                         ) : (
                           <table className="w-full text-left border-collapse">
                             <thead className="bg-lime-50/60">
@@ -1631,7 +1631,7 @@ export const ReportsPage = () => {
                     }}
                   >
                     {[8, 16, 24, 40].map((size) => (
-                      <option key={size} value={size}>{size}/pagina</option>
+                      <option key={size} value={size}>{size}/página</option>
                     ))}
                   </select>
                   <Button
@@ -1665,22 +1665,22 @@ export const ReportsPage = () => {
             <Card className="p-4 bg-sky-50 border-sky-100">
               <p className="text-[10px] font-bold text-sky-500 uppercase tracking-widest mb-1">Armarios mapeados</p>
               <p className="text-2xl font-black text-sky-700">{locationInventoryStats.armarios}</p>
-              <p className="text-[10px] text-sky-500 mt-1">Grupos fisicos com localizacao definida</p>
+              <p className="text-[10px] text-sky-500 mt-1">Grupos físicos com localização definida</p>
             </Card>
             <Card className="p-4 bg-cyan-50 border-cyan-100">
               <p className="text-[10px] font-bold text-cyan-500 uppercase tracking-widest mb-1">Prateleiras</p>
               <p className="text-2xl font-black text-cyan-700">{locationInventoryStats.prateleiras}</p>
-              <p className="text-[10px] text-cyan-500 mt-1">Faixas ativas no inventario fisico</p>
+              <p className="text-[10px] text-cyan-500 mt-1">Faixas ativas no inventário físico</p>
             </Card>
             <Card className="p-4 bg-emerald-50 border-emerald-100">
               <p className="text-[10px] font-bold text-emerald-400 uppercase tracking-widest mb-1">Livros localizados</p>
               <p className="text-2xl font-black text-emerald-700">{locationInventoryStats.locatedBooks}</p>
-              <p className="text-[10px] text-emerald-400 mt-1">Titulos fisicos com armario e prateleira</p>
+              <p className="text-[10px] text-emerald-400 mt-1">Títulos físicos com armário e prateleira</p>
             </Card>
             <Card className="p-4 bg-amber-50 border-amber-100">
               <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest mb-1">Pendentes</p>
               <p className="text-2xl font-black text-amber-700">{locationInventoryStats.pendingLocation}</p>
-              <p className="text-[10px] text-amber-400 mt-1">Livros fisicos sem localizacao completa</p>
+              <p className="text-[10px] text-amber-400 mt-1">Livros físicos sem localização completa</p>
             </Card>
           </div>
 
@@ -1688,7 +1688,7 @@ export const ReportsPage = () => {
             <div className="p-6 border-b border-gray-100 flex justify-between items-center print:hidden">
               <div>
                 <h2 className="text-xl font-bold">Inventario por armario e prateleira</h2>
-                <p className="text-sm text-gray-500">Agrupamento fisico para impressao e conferencia no armario.</p>
+                <p className="text-sm text-gray-500">Agrupamento físico para impressão e conferência no armário.</p>
               </div>
               <Button variant="secondary" onClick={exportLocationInventoryPdf} className="flex items-center gap-2">
                 <Printer className="w-4 h-4" /> Baixar PDF
@@ -1698,7 +1698,7 @@ export const ReportsPage = () => {
               {physicalBooksByLocation.length === 0 ? (
                 <div className="text-center py-12 text-gray-400">
                   <MapPinned className="w-10 h-10 mx-auto mb-3 opacity-20" />
-                  <p className="text-sm font-medium italic">Ainda nao ha livros fisicos para organizar por localizacao.</p>
+                  <p className="text-sm font-medium italic">Ainda não há livros físicos para organizar por localização.</p>
                 </div>
               ) : (
                 physicalBooksByLocation.map((group: any) => (
@@ -1706,7 +1706,7 @@ export const ReportsPage = () => {
                     <div className="p-4 border-b border-sky-50 bg-sky-50/60 flex items-center justify-between">
                       <div>
                         <h3 className="text-lg font-bold text-sky-900">Armario {group.armario}</h3>
-                        <p className="text-xs text-sky-600">{group.totalBooks} livros fisicos neste armario</p>
+                        <p className="text-xs text-sky-600">{group.totalBooks} livros físicos neste armário</p>
                       </div>
                       <span className="px-3 py-1 rounded-full bg-white text-sky-700 text-xs font-bold uppercase">
                         {group.shelves.length} prateleiras
@@ -1764,7 +1764,7 @@ export const ReportsPage = () => {
           <Card className="p-6 print:hidden flex flex-wrap gap-4 items-end justify-between">
             <div>
               <h2 className="text-xl font-bold">Livros mais requisitados</h2>
-              <p className="text-sm text-gray-500">Ranking dos titulos com mais requisicoes.</p>
+              <p className="text-sm text-gray-500">Ranking dos títulos com mais requisições.</p>
             </div>
             <div className="flex flex-wrap gap-3 items-end">
               <div>
@@ -1848,7 +1848,7 @@ export const ReportsPage = () => {
           <Card className="p-6 print:hidden flex flex-wrap items-end justify-between gap-4">
             <div>
               <h2 className="text-xl font-bold">Cursos mais usados, consultas e fluxo</h2>
-              <p className="text-sm text-gray-500">Leitura combinada de requisicoes, consultas e livros que perderam circulacao.</p>
+              <p className="text-sm text-gray-500">Leitura combinada de requisições, consultas e livros que perderam circulação.</p>
             </div>
             <div className="flex flex-wrap gap-2 items-center">
               {(['30', '90', '180', 'all'] as const).map((range) => (
@@ -1857,7 +1857,7 @@ export const ReportsPage = () => {
                   variant={insightRange === range ? 'primary' : 'secondary'}
                   onClick={() => setInsightRange(range)}
                 >
-                  {range === 'all' ? 'Todo historico' : `${range} dias`}
+                  {range === 'all' ? 'Todo histórico' : `${range} dias`}
                 </Button>
               ))}
               <Button variant="secondary" onClick={exportCirculationInsightsPdf} className="flex items-center gap-2">
@@ -1880,12 +1880,12 @@ export const ReportsPage = () => {
             <Card className="p-4 bg-amber-50 border-amber-100">
               <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest mb-1">Desaparecidos do fluxo</p>
               <p className="text-2xl font-black text-amber-700">{circulationInsightStats.flowGapCount}</p>
-              <p className="text-[10px] text-amber-400 mt-1">Sem emprestimo nem consulta na janela selecionada</p>
+              <p className="text-[10px] text-amber-400 mt-1">Sem empréstimo nem consulta na janela selecionada</p>
             </Card>
             <Card className="p-4 bg-rose-50 border-rose-100">
               <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest mb-1">Fisicos em alerta</p>
               <p className="text-2xl font-black text-rose-700">{circulationInsightStats.criticalFlowGap}</p>
-              <p className="text-[10px] text-rose-400 mt-1">Titulos fisicos fora do movimento recente</p>
+              <p className="text-[10px] text-rose-400 mt-1">Títulos físicos fora do movimento recente</p>
             </Card>
           </div>
 
@@ -2009,20 +2009,20 @@ export const ReportsPage = () => {
             <Card className="p-4 bg-amber-50 border-amber-100">
               <p className="text-[10px] font-bold text-amber-400 uppercase tracking-widest mb-1">Nunca emprestados</p>
               <p className="text-2xl font-black text-amber-700">{neverBorrowedStats.total}</p>
-              <p className="text-[10px] text-amber-400 mt-1">Titulos sem nenhuma requisicao registada</p>
+              <p className="text-[10px] text-amber-400 mt-1">Títulos sem nenhuma requisição registada</p>
             </Card>
             <Card className="p-4 bg-blue-50 border-blue-100">
               <p className="text-[10px] font-bold text-blue-400 uppercase tracking-widest mb-1">Fisicos</p>
               <p className="text-2xl font-black text-blue-700">{neverBorrowedStats.physical}</p>
-              <p className="text-[10px] text-blue-400 mt-1">Acervo fisico parado no inventario</p>
+              <p className="text-[10px] text-blue-400 mt-1">Acervo físico parado no inventário</p>
             </Card>
             <Card className="p-4 bg-purple-50 border-purple-100">
               <p className="text-[10px] font-bold text-purple-400 uppercase tracking-widest mb-1">Digitais</p>
               <p className="text-2xl font-black text-purple-700">{neverBorrowedStats.digital}</p>
-              <p className="text-[10px] text-purple-400 mt-1">Titulos digitais sem historico</p>
+              <p className="text-[10px] text-purple-400 mt-1">Títulos digitais sem histórico</p>
             </Card>
             <Card className="p-4 bg-rose-50 border-rose-100">
-              <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest mb-1">Sem catalogo</p>
+              <p className="text-[10px] font-bold text-rose-400 uppercase tracking-widest mb-1">Sem catálogo</p>
               <p className="text-2xl font-black text-rose-700">{neverBorrowedStats.withoutCatalog}</p>
               <p className="text-[10px] text-rose-400 mt-1">Itens que ainda merecem revisao</p>
             </Card>
@@ -2032,7 +2032,7 @@ export const ReportsPage = () => {
             <div className="p-6 border-b border-gray-100 flex justify-between items-center print:hidden">
               <div>
                 <h2 className="text-xl font-bold">Livros nunca emprestados</h2>
-                <p className="text-sm text-gray-500">Ajuda a identificar titulos que ainda nao circularam na biblioteca.</p>
+                <p className="text-sm text-gray-500">Ajuda a identificar títulos que ainda não circularam na biblioteca.</p>
               </div>
               <Button variant="secondary" onClick={exportNeverBorrowedPdf} className="flex items-center gap-2">
                 <Printer className="w-4 h-4" /> Baixar PDF
@@ -2044,7 +2044,7 @@ export const ReportsPage = () => {
                   <th className="p-4 font-semibold text-xs uppercase text-gray-400">Codigo</th>
                   <th className="p-4 font-semibold text-xs uppercase text-gray-400">Titulo</th>
                   <th className="p-4 font-semibold text-xs uppercase text-gray-400">Curso</th>
-                  <th className="p-4 font-semibold text-xs uppercase text-gray-400">Localizacao</th>
+                  <th className="p-4 font-semibold text-xs uppercase text-gray-400">Localização</th>
                   <th className="p-4 font-semibold text-xs uppercase text-gray-400">Tipo</th>
                 </tr>
               </thead>
@@ -2054,7 +2054,7 @@ export const ReportsPage = () => {
                     <td colSpan={5} className="p-12 text-center">
                       <div className="flex flex-col items-center gap-2 text-gray-400">
                         <BookX className="w-8 h-8 opacity-20" />
-                        <p className="text-sm font-medium italic">Todos os livros ja tiveram pelo menos uma requisicao.</p>
+                        <p className="text-sm font-medium italic">Todos os livros já tiveram pelo menos uma requisição.</p>
                       </div>
                     </td>
                   </tr>
@@ -2113,11 +2113,11 @@ export const ReportsPage = () => {
                 <div className="p-2 bg-amber-50 rounded-lg">
                   <AlertTriangle className="w-6 h-6" />
                 </div>
-                <h3 className="text-lg font-bold">Confirmar devolucao</h3>
+                <h3 className="text-lg font-bold">Confirmar devolução</h3>
               </div>
               
               <div className="p-6 space-y-4">
-                <p className="text-gray-600">Tem a certeza de que quer marcar este livro como devolvido? Isto ira atualizar o inventario e notificar reservas pendentes.</p>
+                <p className="text-gray-600">Tem a certeza de que quer marcar este livro como devolvido? Isto irá atualizar o inventário e notificar reservas pendentes.</p>
                 
                 <div className="bg-gray-50 p-4 rounded-xl space-y-2">
                   <div className="flex justify-between text-xs">
@@ -2129,7 +2129,7 @@ export const ReportsPage = () => {
                     <span className="font-bold">{confirmReturn.userName || confirmReturn.userEmail || confirmReturn.userId}</span>
                   </div>
                   <div className="flex justify-between text-xs">
-                    <span className="text-gray-400 uppercase font-bold">ID fisico</span>
+                    <span className="text-gray-400 uppercase font-bold">ID físico</span>
                     <span className="font-mono">{confirmReturn.physicalBookId}</span>
                   </div>
                 </div>
@@ -2140,7 +2140,7 @@ export const ReportsPage = () => {
                   Cancelar
                 </Button>
                 <Button className="flex-1 bg-emerald-600 hover:bg-emerald-700" onClick={handleReturn} disabled={loading}>
-                  {loading ? 'A processar...' : 'Confirmar devolucao'}
+                  {loading ? 'A processar...' : 'Confirmar devolução'}
                 </Button>
               </div>
             </motion.div>
