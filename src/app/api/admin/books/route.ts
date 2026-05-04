@@ -100,8 +100,8 @@ const isBooksPrimaryKeyConflict = (error: any) => {
 const syncBooksIdSequence = async (db: ReturnType<typeof getDb>) => {
   await db.execute(sql`
     SELECT setval(
-      pg_get_serial_sequence('books', 'id'),
-      COALESCE((SELECT MAX(id) FROM books), 0) + 1,
+      pg_get_serial_sequence('books_temp', 'id'),
+      COALESCE((SELECT MAX(id) FROM books_temp), 0) + 1,
       false
     )
   `);

@@ -44,11 +44,11 @@ const renumberBooksForGenre = async (db: ReturnType<typeof getDb>, genreName?: s
               '0'
             )
           ) AS next_catalog_code
-        FROM books b
+        FROM books_temp b
         LEFT JOIN genres g ON g.name = b.genre
         WHERE b.genre = ${genreName}
       )
-      UPDATE books AS b
+      UPDATE books_temp AS b
       SET
         course_sequence = ranked.next_sequence,
         catalog_code = ranked.next_catalog_code
@@ -86,10 +86,10 @@ const renumberBooksForGenre = async (db: ReturnType<typeof getDb>, genreName?: s
             '0'
           )
         ) AS next_catalog_code
-      FROM books b
+      FROM books_temp b
       LEFT JOIN genres g ON g.name = b.genre
     )
-    UPDATE books AS b
+    UPDATE books_temp AS b
     SET
       course_sequence = ranked.next_sequence,
       catalog_code = ranked.next_catalog_code
