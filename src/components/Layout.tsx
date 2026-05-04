@@ -191,12 +191,12 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
   const adminMenuItems = [
     canAccessAdminSection(user.role, 'dashboard') ? { icon: LayoutDashboard, label: 'Painel', path: '/admin' } : null,
     canAccessAdminSection(user.role, 'books') ? { icon: BookOpen, label: 'Livros', path: '/admin/books' } : null,
-    canAccessAdminSection(user.role, 'catalog-review') ? { icon: AlertTriangle, label: 'Revisao acervo', path: '/admin/catalog-review' } : null,
+    canAccessAdminSection(user.role, 'catalog-review') ? { icon: AlertTriangle, label: 'Revisão acervo', path: '/admin/catalog-review' } : null,
     canAccessAdminSection(user.role, 'courses') ? { icon: FolderTree, label: 'Cursos', path: '/admin/courses' } : null,
     canAccessAdminSection(user.role, 'users') ? { icon: UsersIcon, label: 'Utilizadores', path: '/admin/users', badge: pendingUsersCount } : null,
-    canAccessAdminSection(user.role, 'student-verifications') ? { icon: UsersIcon, label: 'Verificacao estudantes', path: '/admin/student-verifications' } : null,
-    canAccessAdminSection(user.role, 'transactions') ? { icon: History, label: 'Transacoes', path: '/admin/transactions', badge: pendingTransactionsCount } : null,
-    canAccessAdminSection(user.role, 'reports') ? { icon: Printer, label: 'Relatorios', path: '/admin/reports' } : null,
+    canAccessAdminSection(user.role, 'student-verifications') ? { icon: UsersIcon, label: 'Verificação estudantes', path: '/admin/student-verifications' } : null,
+    canAccessAdminSection(user.role, 'transactions') ? { icon: History, label: 'Transações', path: '/admin/transactions', badge: pendingTransactionsCount } : null,
+    canAccessAdminSection(user.role, 'reports') ? { icon: Printer, label: 'Relatórios', path: '/admin/reports' } : null,
     canAccessAdminSection(user.role, 'audit') ? { icon: ShieldCheck, label: 'Auditoria', path: '/admin/audit' } : null,
     { icon: UserCircle, label: 'Perfil', path: '/profile' },
   ].filter(Boolean) as Array<{ icon: any; label: string; path: string; badge?: number }>;
@@ -206,11 +206,11 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
     { icon: Library, label: 'Biblioteca', path: '/' },
     { icon: BookMarked, label: 'A Minha Estante', path: '/shelf' },
     { icon: ListChecks, label: 'Listas de leitura', path: '/lists' },
-    { icon: History, label: 'O Meu Historico', path: '/history' },
+    { icon: History, label: 'O Meu Histórico', path: '/history' },
     { icon: UserCircle, label: 'Perfil', path: '/profile' },
     ...((user.role === 'student' || verificationStatus === 'pending')
       ? []
-      : [{ icon: UsersIcon, label: 'Verificacao estudante', path: '/student-verification' }]),
+      : [{ icon: UsersIcon, label: 'Verificação estudante', path: '/student-verification' }]),
   ];
 
   const menuSections = useMemo<MenuSection[]>(() => {
@@ -218,14 +218,14 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
       return [
         {
           id: 'admin-core',
-          label: 'Operacao',
+          label: 'Operação',
           items: adminMenuItems.filter((item) =>
             ['/admin', '/admin/books', '/admin/catalog-review', '/admin/courses', '/admin/transactions'].includes(item.path)
           ),
         },
         {
           id: 'admin-governance',
-          label: 'Gestao',
+          label: 'Gestão',
           items: adminMenuItems.filter((item) =>
             ['/admin/users', '/admin/student-verifications', '/admin/reports', '/admin/audit'].includes(item.path)
           ),
@@ -281,13 +281,13 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
   }, [location.pathname]);
 
   const userTourDescriptions: Record<string, string> = {
-    '/dashboard': 'Este e o seu painel principal. Aqui ve um resumo rapido da conta, continua livros que deixou a meio, acompanha metas de leitura e percebe logo o que esta pendente sem precisar procurar em varias paginas.',
-    '/': 'Esta e a Biblioteca, ou seja, a area para procurar livros. Pode pesquisar por titulo ou autor, abrir os detalhes de qualquer livro, marcar para ler depois, adicionar a estante e iniciar leitura digital quando o livro tiver PDF.',
-    '/shelf': 'A Minha Estante guarda os seus livros digitais desbloqueados. Entre aqui quando quiser voltar a um livro que ja abriu, organizar favoritos ou continuar uma leitura sem ter de procurar outra vez no catalogo.',
-    '/lists': 'As Listas de leitura servem para organizar o que pretende ler. Pode criar listas como "Provas", "Ler este mes" ou "Direito" para separar livros por objetivo e manter tudo mais arrumado.',
-    '/history': 'No Historico acompanha tudo o que ja aconteceu com a sua conta. Aqui aparecem pedidos aceites, livros devolvidos e tambem pedidos rejeitados, para nao ficar com duvidas sobre o estado das suas requisicoes.',
-    '/profile': 'No Perfil pode atualizar os seus dados, confirmar o nome usado no sistema e manter a conta correta. Isto ajuda nas notificacoes, nos registos e na identificacao dentro da biblioteca.',
-    '/student-verification': 'Esta area e importante para validar que e estudante. Depois da verificacao, o sistema consegue aplicar corretamente os acessos, beneficios e regras da sua conta academica.',
+    '/dashboard': 'Este é o seu painel principal. Aqui vê um resumo rápido da conta, continua livros que deixou a meio, acompanha metas de leitura e percebe logo o que está pendente sem precisar de procurar em várias páginas.',
+    '/': 'Esta é a Biblioteca, ou seja, a área para procurar livros. Pode pesquisar por título ou autor, abrir os detalhes de qualquer livro, marcar para ler depois, adicionar à estante e iniciar leitura digital quando o livro tiver PDF.',
+    '/shelf': 'A Minha Estante guarda os seus livros digitais desbloqueados. Entre aqui quando quiser voltar a um livro que já abriu, organizar favoritos ou continuar uma leitura sem ter de procurar outra vez no catálogo.',
+    '/lists': 'As Listas de leitura servem para organizar o que pretende ler. Pode criar listas como "Provas", "Ler este mês" ou "Direito" para separar livros por objetivo e manter tudo mais arrumado.',
+    '/history': 'No Histórico acompanha tudo o que já aconteceu com a sua conta. Aqui aparecem pedidos aceites, livros devolvidos e também pedidos rejeitados, para não ficar com dúvidas sobre o estado das suas requisições.',
+    '/profile': 'No Perfil pode atualizar os seus dados, confirmar o nome usado no sistema e manter a conta correta. Isto ajuda nas notificações, nos registos e na identificação dentro da biblioteca.',
+    '/student-verification': 'Esta área é importante para validar que é estudante. Depois da verificação, o sistema consegue aplicar corretamente os acessos, benefícios e regras da sua conta académica.',
   };
 
   const userTourSteps = !user.isStaff
@@ -295,17 +295,17 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
         ...menuItems.map((item) => ({
           key: `menu-${item.path === '/' ? 'home' : item.path.replace(/[^a-z0-9]+/gi, '-')}`,
           title: item.label,
-          description: userTourDescriptions[item.path] || `Use esta opcao para abrir ${item.label.toLowerCase()} e explorar essa area do sistema.`,
+          description: userTourDescriptions[item.path] || `Use esta opção para abrir ${item.label.toLowerCase()} e explorar essa área do sistema.`,
         })),
         {
           key: 'notifications',
-          title: 'Notificacoes',
-          description: 'Use este sino para ver avisos do sistema. Aqui podem aparecer lembretes de devolucao, mensagens sobre reservas, atualizacoes da conta e outras informacoes importantes que merecem atencao.',
+          title: 'Notificações',
+          description: 'Use este sino para ver avisos do sistema. Aqui podem aparecer lembretes de devolução, mensagens sobre reservas, atualizações da conta e outras informações importantes que merecem atenção.',
         },
         {
           key: 'profile-summary',
           title: 'Resumo do perfil',
-          description: 'Nesta zona ve rapidamente quem esta ligado no sistema. Confira aqui o seu nome, o tipo de utilizador e os dados principais da sessao para ter certeza de que entrou na conta certa.',
+          description: 'Nesta zona vê rapidamente quem está ligado no sistema. Confira aqui o seu nome, o tipo de utilizador e os dados principais da sessão para ter a certeza de que entrou na conta certa.',
         },
       ]
     : [];
@@ -508,7 +508,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
             className="flex items-center gap-3 p-3 w-full rounded-xl text-red-600 hover:bg-red-50 transition-all"
           >
             <LogOut className="w-5 h-5" />
-            {(isSidebarOpen || isMobileMenuOpen) && <span className="font-medium">Terminar sessao</span>}
+            {(isSidebarOpen || isMobileMenuOpen) && <span className="font-medium">Terminar sessão</span>}
           </button>
         </div>
       </aside>
@@ -559,7 +559,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
               {notifOpen && (
                 <div className="absolute right-0 z-30 mt-2 w-[min(20rem,calc(100vw-1rem))] overflow-hidden rounded-xl border border-gray-100 bg-white shadow-lg sm:w-80">
                   <div className="p-3 border-b border-gray-100 flex items-center justify-between">
-                    <p className="text-sm font-bold">Notificacoes</p>
+                    <p className="text-sm font-bold">Notificações</p>
                     <button
                       className="text-xs text-lime-700 font-bold"
                       onClick={() => {
@@ -577,7 +577,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
                   </div>
                   <div className="max-h-64 overflow-y-auto">
                     {notifications.length === 0 ? (
-                      <p className="p-4 text-xs text-gray-400">Sem notificacoes.</p>
+                      <p className="p-4 text-xs text-gray-400">Sem notificações.</p>
                     ) : (
                       notifications.slice(0, 10).map((n) => (
                         <div key={n.id} className="p-3 border-b border-gray-50">
@@ -624,8 +624,8 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
           <div className="w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-2xl">
             <div className="p-6 border-b border-gray-100">
-              <h3 className="text-lg font-bold">Nome completo obrigatorio</h3>
-              <p className="text-xs text-gray-500 mt-1">Precisamos do seu nome completo para assinar registos e notificacoes.</p>
+              <h3 className="text-lg font-bold">Nome completo obrigatório</h3>
+              <p className="text-xs text-gray-500 mt-1">Precisamos do seu nome completo para assinar registos e notificações.</p>
             </div>
             <div className="p-6 space-y-4">
               <div>
@@ -634,7 +634,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
                   className="w-full px-4 py-2 border rounded-lg"
                   value={fullNameDraft}
                   onChange={(e) => setFullNameDraft(e.target.value)}
-                  placeholder="Ex: Maria Joao Silva"
+                  placeholder="Ex: Maria João Silva"
                 />
               </div>
             </div>
