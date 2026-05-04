@@ -27,14 +27,13 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
   const [loading, setLoading] = useState(false);
   const [tickets, setTickets] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [visitorSequence, setVisitorSequence] = useState(1);
 
-  const createVisitorUser = (sequence: number) => {
+  const createVisitorUser = () => {
     const randomCode = Math.random().toString(36).slice(2, 8).toUpperCase();
 
     return {
       clerkId: `TEMP-${Date.now().toString(36).toUpperCase()}-${randomCode}`,
-      fullName: `Visitante ${sequence}`,
+      fullName: 'Visitante 1',
       primaryEmail: '',
       role: 'external',
       isGenerated: true,
@@ -42,8 +41,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
   };
 
   const pickVisitorUser = () => {
-    const visitorUser = createVisitorUser(visitorSequence);
-    setVisitorSequence((current) => current + 1);
+    const visitorUser = createVisitorUser();
     setError(null);
     handleSelectUser(visitorUser);
   };
@@ -80,7 +78,6 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
       setBookSearch('');
       setScanCode('');
       setBookGenreFilter('all');
-      setVisitorSequence(1);
     }
   }, [actorUserId, isOpen]);
 
