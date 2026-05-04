@@ -23,7 +23,7 @@ export const systemMetadata = pgTable('systemMetadata', {
   maxDays: integer().notNull().default(15),
 });
 
-export const books = pgTable('books', {
+export const books = pgTable('books_temp', {
   id: serial('id').primaryKey(),
   title: varchar('title', { length: 255 }).notNull(),
   author: varchar('author', { length: 255 }).notNull(),
