@@ -27,27 +27,25 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
   const [loading, setLoading] = useState(false);
   const [tickets, setTickets] = useState<any[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [visitorSequence, setVisitorSequence] = useState(1);
 
-  const createRandomUser = () => {
-    const firstNames = ['Ana', 'Paulo', 'Marta', 'Joao', 'Carla', 'Luis', 'Sofia', 'Daniel'];
-    const lastNames = ['Silva', 'Santos', 'Costa', 'Pereira', 'Fernandes', 'Almeida', 'Mendes', 'Rocha'];
-    const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-    const lastName = lastNames[Math.floor(Math.random() * lastNames.length)];
+  const createVisitorUser = (sequence: number) => {
     const randomCode = Math.random().toString(36).slice(2, 8).toUpperCase();
 
     return {
       clerkId: `TEMP-${Date.now().toString(36).toUpperCase()}-${randomCode}`,
-      fullName: `${firstName} ${lastName}`,
+      fullName: `Visitante ${sequence}`,
       primaryEmail: '',
       role: 'external',
       isGenerated: true,
     };
   };
 
-  const pickRandomUser = () => {
-    const randomUser = createRandomUser();
+  const pickVisitorUser = () => {
+    const visitorUser = createVisitorUser(visitorSequence);
+    setVisitorSequence((current) => current + 1);
     setError(null);
-    handleSelectUser(randomUser);
+    handleSelectUser(visitorUser);
   };
 
   useEffect(() => {
@@ -82,6 +80,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
       setBookSearch('');
       setScanCode('');
       setBookGenreFilter('all');
+      setVisitorSequence(1);
     }
   }, [actorUserId, isOpen]);
 
@@ -230,7 +229,7 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
                     >
                       <div>
                         <h3 className="text-2xl font-bold mb-2">Identificar utilizador</h3>
-                        <p className="text-gray-500 mb-6">Procure um estudante verificado ou gere um cliente aleatorio para requisicao imediata.</p>
+                        <p className="text-gray-500 mb-6">Procure um estudante verificado ou gere um visitante numerado para requisicao imediata.</p>
                         <div className="relative">
                           <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 w-5 h-5" />
                           <input 
@@ -243,11 +242,11 @@ export const InstantServiceModal = ({ isOpen, onClose, books }: InstantServiceMo
                         </div>
                         <button
                           type="button"
-                          onClick={pickRandomUser}
+                          onClick={pickVisitorUser}
                           className="mt-3 inline-flex items-center gap-2 rounded-xl border border-lime-200 bg-lime-50 px-4 py-3 text-sm font-bold text-lime-700 transition-colors hover:bg-lime-100"
                         >
                           <Plus className="w-4 h-4" />
-                          Gerar utilizador aleatorio
+                          Gerar visitante
                         </button>
                       </div>
 
