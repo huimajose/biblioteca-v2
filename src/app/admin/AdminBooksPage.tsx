@@ -168,7 +168,7 @@ export const AdminBooksPage = () => {
   const exportInventoryPdf = async (byGenre: boolean) => {
     const doc = new jsPDF('p', 'pt');
     doc.setFontSize(16);
-    doc.text('Inventario de Livros', 40, 40);
+    doc.text('Inventário de Livros', 40, 40);
     doc.setFontSize(10);
     doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 40, 58);
 
@@ -236,8 +236,8 @@ export const AdminBooksPage = () => {
       : orderedInventoryBooks.map((b) => [getGenreCode(b.genre), b.courseSequence ?? '-', b.catalogCode || '-', b.title, b.author, b.isbn, b.isDigital ? '-' : `${b.availableCopies}`]);
 
     const header = byGenre
-      ? [['curso', 'Seq', 'Codigo', 'Titulo', 'Autor', 'ISBN', 'Disponivel']]
-      : [['Curso', 'Seq', 'Codigo', 'Titulo', 'Autor', 'ISBN', 'Disponivel']];
+      ? [['Curso', 'Seq', 'Código', 'Título', 'Autor', 'ISBN', 'Disponível']]
+      : [['Curso', 'Seq', 'Código', 'Título', 'Autor', 'ISBN', 'Disponível']];
 
     const worksheet = XLSX.utils.aoa_to_sheet([...header, ...rows]);
     const workbook = XLSX.utils.book_new();
@@ -399,7 +399,7 @@ export const AdminBooksPage = () => {
     <div className="space-y-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-2xl font-bold">Gestao de livros</h1>
+          <h1 className="text-2xl font-bold">Gestão de livros</h1>
           <p className="text-sm text-gray-500">Crie, edite e acompanhe o stock.</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -415,29 +415,29 @@ export const AdminBooksPage = () => {
                   className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50"
                   onClick={() => exportInventoryPdf(false)}
                 >
-                  Inventario completo (PDF)
+                  Inventário completo (PDF)
                 </button>
                 <button
                   className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50"
                   onClick={() => exportInventoryPdf(true)}
                 >
-                  Inventario por curso (PDF)
+                  Inventário por curso (PDF)
                 </button>
                 <button
                   className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50"
                   onClick={() => exportInventoryExcel(false)}
                 >
-                  Inventario completo (Excel)
+                  Inventário completo (Excel)
                 </button>
                 <button
                   className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50"
                   onClick={() => exportInventoryExcel(true)}
                 >
-                  Inventario por curso (Excel)
+                  Inventário por curso (Excel)
                 </button>
 
-                 <button  className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50" onClick={exportAllLabelsPdf}>
-          Imprimir Etiquetas (todos)
+                <button className="w-full text-left px-4 py-3 text-sm hover:bg-gray-50" onClick={exportAllLabelsPdf}>
+                  Imprimir etiquetas (todos)
                 </button>
               </div>
             )}
@@ -455,20 +455,20 @@ export const AdminBooksPage = () => {
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-7">
           <input
             className="px-4 py-2 border rounded-lg"
-            placeholder="Pesquisar por titulo, autor ou ISBN"
+            placeholder="Pesquisar por título, autor ou ISBN"
             value={search}
             onChange={(e) => { setSearch(e.target.value); setPage(1); }}
           />
           <input
             className="px-4 py-2 border rounded-lg font-mono"
-            placeholder="Filtrar por catalogo"
+            placeholder="Filtrar por catálogo"
             value={catalogCodeFilter}
             onChange={(e) => { setCatalogCodeFilter(e.target.value); setPage(1); }}
           />
           <select className="px-4 py-2 border rounded-lg" value={armarioFilter} onChange={(e) => { setArmarioFilter(e.target.value); setPage(1); }}>
-            <option value="all">Todos armarios</option>
+            <option value="all">Todos os armários</option>
             {armarioOptions.map((armario) => (
-              <option key={armario} value={armario}>Armario {armario}</option>
+              <option key={armario} value={armario}>Armário {armario}</option>
             ))}
           </select>
           <select className="px-4 py-2 border rounded-lg" value={prateleiraFilter} onChange={(e) => { setPrateleiraFilter(e.target.value); setPage(1); }}>
@@ -478,9 +478,9 @@ export const AdminBooksPage = () => {
             ))}
           </select>
           <select className="px-4 py-2 border rounded-lg" value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
-            <option value="title">Ordenar por titulo</option>
+            <option value="title">Ordenar por título</option>
             <option value="author">Ordenar por autor</option>
-            <option value="available">Ordenar por disponiveis</option>
+            <option value="available">Ordenar por disponíveis</option>
             <option value="created">Ordenar por data</option>
           </select>
           <select className="px-4 py-2 border rounded-lg" value={sortOrder} onChange={(e) => setSortOrder(e.target.value as any)}>
@@ -489,7 +489,7 @@ export const AdminBooksPage = () => {
           </select>
           <select className="px-4 py-2 border rounded-lg" value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}>
             {[10, 20, 30, 50].map(size => (
-              <option key={size} value={size}>{size} por pagina</option>
+              <option key={size} value={size}>{size} por página</option>
             ))}
           </select>
           <select className="px-4 py-2 border rounded-lg" value={genreFilter} onChange={(e) => { setGenreFilter(e.target.value); setPage(1); }}>
@@ -506,12 +506,12 @@ export const AdminBooksPage = () => {
         <table className="min-w-[760px] w-full text-left border-collapse">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
-              <th className="p-4 text-xs uppercase text-gray-400">Titulo</th>
+              <th className="p-4 text-xs uppercase text-gray-400">Título</th>
               <th className="p-4 text-xs uppercase text-gray-400">Autor</th>
               <th className="p-4 text-xs uppercase text-gray-400">ISBN</th>
               <th className="p-4 text-xs uppercase text-gray-400">Tipo</th>
-              <th className="p-4 text-xs uppercase text-gray-400 text-right">Disponivel</th>
-              <th className="p-4 text-xs uppercase text-gray-400 text-right">Acoes</th>
+              <th className="p-4 text-xs uppercase text-gray-400 text-right">Disponível</th>
+              <th className="p-4 text-xs uppercase text-gray-400 text-right">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -532,10 +532,10 @@ export const AdminBooksPage = () => {
                   <td className="p-4 text-sm text-gray-600">{book.author}</td>
                   <td className="p-4 text-xs font-mono text-gray-400">{book.isbn}</td>
                   <td className="p-4 text-xs">
-                    {book.isDigital && (book.totalCopies ?? 0) > 0 ? 'Digital + Fisico' : (book.isDigital ? 'Digital' : 'Fisico')}
+                    {book.isDigital && (book.totalCopies ?? 0) > 0 ? 'Digital + Físico' : (book.isDigital ? 'Digital' : 'Físico')}
                   </td>
                   <td className="p-4 text-sm text-right font-mono">
-                    {book.isDigital ? 'inf' : `${book.availableCopies} / ${book.totalCopies}`}
+                    {book.isDigital ? 'inf.' : `${book.availableCopies} / ${book.totalCopies}`}
                   </td>
                   <td className="p-4 text-right">
                     <div className="flex items-center justify-end gap-2">
@@ -583,7 +583,7 @@ export const AdminBooksPage = () => {
       )}
 
       <div className="flex flex-col gap-3 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between">
-        <span>Pagina {page} de {totalPages}</span>
+        <span>Página {page} de {totalPages}</span>
         <div className="flex flex-wrap items-center gap-2">
           <Button variant="secondary" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>Anterior</Button>
           <Button variant="secondary" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page >= totalPages}>Seguinte</Button>

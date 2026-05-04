@@ -173,7 +173,7 @@ export const BookForm = () => {
       const urlEndpoint = process.env.NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT;
 
       if (!publicKey || !urlEndpoint) {
-        alert('ImageKit nao configurado.');
+        alert('ImageKit não configurado.');
         return;
       }
 
@@ -217,7 +217,7 @@ export const BookForm = () => {
     if (formData.fileUrl) {
       const ok = await validatePdf();
       if (!ok) {
-        alert('PDF nao encontrado. Verifique o URL.');
+        alert('PDF não encontrado. Verifique o URL.');
         return;
       }
     }
@@ -272,7 +272,7 @@ export const BookForm = () => {
       <Card className="p-6 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">{isEdit ? 'Editar livro' : 'Adicionar novo livro'}</h1>
-          <p className="text-sm text-gray-500">Organizado por separadores para manter o form leve.</p>
+          <p className="text-sm text-gray-500">Organizado por separadores para manter o formulário leve.</p>
         </div>
         <div className="flex gap-2">
           {(['dados', 'disponibilidade', 'media'] as const).map(tab => (
@@ -293,7 +293,7 @@ export const BookForm = () => {
           {activeTab === 'dados' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="col-span-2">
-                <label className="block text-sm font-medium mb-1">Titulo</label>
+                <label className="block text-sm font-medium mb-1">Título</label>
                 <input required className="w-full px-4 py-2 border rounded-lg" value={formData.title} onChange={e => setFormData({ ...formData, title: e.target.value })} />
               </div>
               <div>
@@ -305,7 +305,7 @@ export const BookForm = () => {
                 <input required className="w-full px-4 py-2 border rounded-lg" value={formData.isbn} onChange={e => setFormData({ ...formData, isbn: e.target.value })} />
               </div>
               <div className="col-span-2">
-                <label className="block text-sm font-medium mb-1">curso</label>
+                <label className="block text-sm font-medium mb-1">Curso</label>
                 <select className="w-full px-4 py-2 border rounded-lg" value={formData.genre} onChange={e => handleGenreChange(e.target.value)}>
                   <option value="">Selecionar curso</option>
                   {genres.map((g) => (
@@ -314,7 +314,7 @@ export const BookForm = () => {
                 </select>
                 {selectedGenreMeta && (
                   <p className="mt-1 text-xs text-gray-500">
-                    Codigo {selectedGenreMeta.code || 'CUR'} | Ordem {selectedGenreMeta.displayOrder || 'N/D'} | Armario padrao {selectedGenreMeta.defaultArmario || 'N/D'} | Prateleiras {selectedGenreMeta.shelfStart ?? 'N/D'}-{selectedGenreMeta.shelfEnd ?? 'N/D'}
+                    Código {selectedGenreMeta.code || 'CUR'} | Ordem {selectedGenreMeta.displayOrder || 'N/D'} | Armário padrão {selectedGenreMeta.defaultArmario || 'N/D'} | Prateleiras {selectedGenreMeta.shelfStart ?? 'N/D'}-{selectedGenreMeta.shelfEnd ?? 'N/D'}
                   </p>
                 )}
               </div>
@@ -327,12 +327,12 @@ export const BookForm = () => {
                 <input className="w-full px-4 py-2 border rounded-lg" value={formData.cdu} onChange={e => setFormData({ ...formData, cdu: e.target.value })} />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Armario</label>
+                <label className="block text-sm font-medium mb-1">Armário</label>
                 <input
                   className="w-full px-4 py-2 border rounded-lg"
                   value={formData.armario}
                   onChange={e => setFormData({ ...formData, armario: e.target.value })}
-                  placeholder="Deixar vazio para usar o padrao do curso"
+                  placeholder="Deixar vazio para usar o padrão do curso"
                 />
               </div>
               <div>
@@ -346,7 +346,7 @@ export const BookForm = () => {
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium mb-1">Ano de edicao</label>
+                <label className="block text-sm font-medium mb-1">Ano de edição</label>
                 <input
                   type="number"
                   min="0"
@@ -363,7 +363,7 @@ export const BookForm = () => {
               <div>
                 <label className="block text-sm font-medium mb-1">Tipo principal</label>
                 <select className="w-full px-4 py-2 border rounded-lg" value={formData.documentType} onChange={e => setFormData({ ...formData, documentType: parseInt(e.target.value) })}>
-                  <option value={1}>Fisico</option>
+                  <option value={1}>Físico</option>
                   <option value={2}>Digital</option>
                 </select>
               </div>
@@ -377,11 +377,11 @@ export const BookForm = () => {
                 <div>
                   <label className="block text-sm font-medium mb-1">Adicionar exemplares</label>
                   <input type="number" min="0" className="w-full px-4 py-2 border rounded-lg" value={formData.addCopies} onChange={e => setFormData({ ...formData, addCopies: parseInt(e.target.value) || 0 })} />
-                  <p className="text-xs text-gray-400 mt-1">Cria novas instancias fisicas.</p>
+                  <p className="text-xs text-gray-400 mt-1">Cria novas instâncias físicas.</p>
                 </div>
               )}
               <div className="col-span-2">
-                <label className="block text-sm font-medium mb-1">Livro fisico com versao digital</label>
+                <label className="block text-sm font-medium mb-1">Livro físico com versão digital</label>
                 <div className="flex items-center gap-3">
                   <input
                     type="checkbox"
@@ -420,7 +420,7 @@ export const BookForm = () => {
                     />
                   ) : (
                     <div className="w-full h-56 border rounded-lg bg-gray-50 flex items-center justify-center text-xs text-gray-400">
-                      PDF indisponivel para pre-visualizacao.
+                      PDF indisponível para pré-visualização.
                     </div>
                   )
                 ) : (
@@ -483,7 +483,7 @@ export const BookForm = () => {
 
           <div className="flex justify-end gap-4">
             <Button variant="secondary" type="button" onClick={() => navigate(-1)}>Cancelar</Button>
-            <Button type="submit">{isEdit ? 'Guardar alteracoes' : 'Adicionar livro'}</Button>
+            <Button type="submit">{isEdit ? 'Guardar alterações' : 'Adicionar livro'}</Button>
           </div>
         </form>
       </Card>
