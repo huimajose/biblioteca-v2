@@ -65,7 +65,7 @@ export const UsersPage = () => {
     const list = role === 'all' ? users : users.filter((u) => (u.role || 'external') === role);
     const doc = new jsPDF('p', 'pt');
     doc.setFontSize(16);
-    doc.text('Relatorio de Utilizadores', 40, 40);
+    doc.text('Relatório de Utilizadores', 40, 40);
     doc.setFontSize(10);
     doc.text(`Gerado em: ${new Date().toLocaleDateString()}`, 40, 58);
     autoTable(doc, {
@@ -177,7 +177,7 @@ export const UsersPage = () => {
           <div className="relative" ref={pdfMenuRef}>
             <Button variant="secondary" className="flex items-center gap-2" onClick={() => setPdfOpen(!pdfOpen)}>
               <FileDown className="w-4 h-4" />
-              Relatorio PDF
+              Relatório PDF
               <ChevronDown className="w-4 h-4" />
             </Button>
             {pdfOpen && (
@@ -213,7 +213,7 @@ export const UsersPage = () => {
               <th className="p-4 text-xs uppercase text-gray-400">Nome</th>
               <th className="p-4 text-xs uppercase text-gray-400">Email</th>
               <th className="p-4 text-xs uppercase text-gray-400">Tipo</th>
-              <th className="p-4 text-xs uppercase text-gray-400 text-right">Acoes</th>
+              <th className="p-4 text-xs uppercase text-gray-400 text-right">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
@@ -260,11 +260,11 @@ export const UsersPage = () => {
       </Card>
 
       <div className="flex items-center justify-between text-sm text-gray-500">
-        <span>Pagina {page} de {totalPages}</span>
+        <span>Página {page} de {totalPages}</span>
         <div className="flex items-center gap-2">
           <select className="px-3 py-1 border rounded-lg" value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}>
             {[15, 30, 50].map(size => (
-              <option key={size} value={size}>{size} por pagina</option>
+              <option key={size} value={size}>{size} por página</option>
             ))}
           </select>
           <button className="px-3 py-1 border rounded-lg" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>Anterior</button>
@@ -317,7 +317,7 @@ export const UsersPage = () => {
                 Cancelar
               </Button>
               <Button className="flex-1" onClick={saveEdit} disabled={savingUser || !editDraft.fullName.trim()}>
-                {savingUser ? 'A guardar...' : 'Guardar alteracoes'}
+                {savingUser ? 'A guardar...' : 'Guardar alterações'}
               </Button>
             </div>
           </div>
