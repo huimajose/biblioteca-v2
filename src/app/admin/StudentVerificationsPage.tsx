@@ -39,8 +39,8 @@ export const StudentVerificationsPage = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Verificacao de estudantes</h1>
-        <p className="text-sm text-gray-500">Pedidos pendentes para validacao.</p>
+        <h1 className="text-2xl font-bold">Verificação de estudantes</h1>
+        <p className="text-sm text-gray-500">Pedidos pendentes para validação.</p>
       </div>
 
       <Card className="overflow-hidden">
@@ -49,11 +49,11 @@ export const StudentVerificationsPage = () => {
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
               <th className="p-4 text-xs uppercase text-gray-400">Aluno</th>
-              <th className="p-4 text-xs uppercase text-gray-400">Numero</th>
+              <th className="p-4 text-xs uppercase text-gray-400">Número</th>
               <th className="p-4 text-xs uppercase text-gray-400">Curso</th>
               <th className="p-4 text-xs uppercase text-gray-400">Estado</th>
               <th className="p-4 text-xs uppercase text-gray-400">Data</th>
-              <th className="p-4 text-xs uppercase text-gray-400 text-right">Acoes</th>
+              <th className="p-4 text-xs uppercase text-gray-400 text-right">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
