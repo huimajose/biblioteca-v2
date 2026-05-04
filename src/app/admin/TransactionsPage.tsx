@@ -64,7 +64,7 @@ export const TransactionsPage = () => {
   const exportTransactionsPdf = async () => {
     const doc = new jsPDF('p', 'pt');
     doc.setFontSize(16);
-    doc.text('Relatorio de transacoes', 40, 40);
+    doc.text('Relatório de transações', 40, 40);
     doc.setFontSize(10);
     doc.text(`Intervalo: ${startDate || 'Todos'} - ${endDate || 'Todos'}`, 40, 58);
     doc.text(`Estado: ${statusFilter === 'all' ? 'Todos' : statusFilter}`, 40, 72);
@@ -111,10 +111,10 @@ export const TransactionsPage = () => {
         body: JSON.stringify({ transactionId: tid }),
       });
       if (res.ok) {
-        setQuickReturnMessage('Devolucao registada com sucesso.');
+        setQuickReturnMessage('Devolução registada com sucesso.');
         fetchTransactions();
       } else {
-        setQuickReturnMessage('Nao foi possivel concluir a devolucao.');
+        setQuickReturnMessage('Não foi possível concluir a devolução.');
       }
     } finally {
       setLoading(false);
@@ -141,7 +141,7 @@ export const TransactionsPage = () => {
     });
 
     if (borrowedMatches.length === 0) {
-      setQuickReturnMessage('Nenhum emprestimo ativo encontrado para o codigo lido.');
+      setQuickReturnMessage('Nenhum empréstimo ativo encontrado para o código lido.');
       return;
     }
 
@@ -163,7 +163,7 @@ export const TransactionsPage = () => {
         setQuickReturnMessage(null);
         fetchTransactions();
       } else {
-        setQuickReturnMessage(data?.error || 'Nao foi possivel aprovar o pedido.');
+        setQuickReturnMessage(data?.error || 'Não foi possível aprovar o pedido.');
       }
     } finally {
       setLoading(false);
@@ -187,14 +187,14 @@ export const TransactionsPage = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold">Emprestimos e devolucoes</h1>
-        <p className="text-sm text-gray-500">Gestao de transacoes de livros.</p>
+        <h1 className="text-2xl font-bold">Empréstimos e devoluções</h1>
+        <p className="text-sm text-gray-500">Gestão de transações de livros.</p>
       </div>
 
       <Card className="p-4">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-5 items-end">
           <div>
-            <label className="text-xs uppercase text-gray-400">Data inicio</label>
+            <label className="text-xs uppercase text-gray-400">Data início</label>
             <input className="w-full px-4 py-2 border rounded-lg" type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
           </div>
           <div>
@@ -224,17 +224,17 @@ export const TransactionsPage = () => {
       <Card className="p-4">
         <form className="grid grid-cols-1 gap-3 md:grid-cols-[1fr_auto] items-end" onSubmit={handleQuickReturn}>
           <div>
-            <label className="text-xs uppercase text-gray-400">Leitor de codigo para devolucao</label>
+            <label className="text-xs uppercase text-gray-400">Leitor de código para devolução</label>
             <input
               className="w-full px-4 py-3 border-2 border-dashed border-lime-200 rounded-2xl focus:border-lime-500 outline-none transition-all text-sm font-mono"
-              placeholder="Leia catalogo, ISBN ou ID da transacao e pressione Enter"
+              placeholder="Leia catálogo, ISBN ou ID da transação e pressione Enter"
               value={quickReturnCode}
               onChange={(e) => setQuickReturnCode(e.target.value)}
             />
             {quickReturnMessage && <p className="mt-2 text-xs text-gray-500">{quickReturnMessage}</p>}
           </div>
           <Button className="h-[50px] w-full md:w-auto" disabled={loading || !quickReturnCode.trim()}>
-            {loading ? 'A processar...' : 'Devolver rapido'}
+            {loading ? 'A processar...' : 'Devolver rápido'}
           </Button>
         </form>
       </Card>
@@ -242,7 +242,7 @@ export const TransactionsPage = () => {
       <Card className="overflow-hidden">
         <div className="p-4 border-b border-gray-100 bg-amber-50/40">
           <h2 className="text-sm font-bold text-amber-700 uppercase tracking-wider">Pedidos pendentes</h2>
-          <p className="text-xs text-amber-600">Aprovar ou rejeitar requisicoes antes de entrar no historico.</p>
+          <p className="text-xs text-amber-600">Aprovar ou rejeitar requisições antes de entrar no histórico.</p>
         </div>
         <div className="overflow-x-auto">
         <table className="min-w-[720px] w-full text-left border-collapse">
@@ -251,7 +251,7 @@ export const TransactionsPage = () => {
               <th className="p-4 text-xs uppercase text-amber-700">Data</th>
               <th className="p-4 text-xs uppercase text-amber-700">Utilizador</th>
               <th className="p-4 text-xs uppercase text-amber-700">Livro</th>
-              <th className="p-4 text-xs uppercase text-amber-700 text-right">Acoes</th>
+              <th className="p-4 text-xs uppercase text-amber-700 text-right">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-amber-50">
@@ -330,8 +330,8 @@ export const TransactionsPage = () => {
 
       <Card className="overflow-hidden">
         <div className="p-4 border-b border-gray-100 bg-gray-50">
-          <h2 className="text-sm font-bold text-gray-600 uppercase tracking-wider">Historico de transacoes</h2>
-          <p className="text-xs text-gray-500">Emprestimos aprovados, devolvidos e rejeitados.</p>
+          <h2 className="text-sm font-bold text-gray-600 uppercase tracking-wider">Histórico de transações</h2>
+          <p className="text-xs text-gray-500">Empréstimos aprovados, devolvidos e rejeitados.</p>
         </div>
         <div className="overflow-x-auto">
         <table className="min-w-[780px] w-full text-left border-collapse">
@@ -341,14 +341,14 @@ export const TransactionsPage = () => {
               <th className="p-4 text-xs uppercase text-gray-400">Utilizador</th>
               <th className="p-4 text-xs uppercase text-gray-400">Livro</th>
               <th className="p-4 text-xs uppercase text-gray-400">Estado</th>
-              <th className="p-4 text-xs uppercase text-gray-400 text-right">Acoes</th>
+              <th className="p-4 text-xs uppercase text-gray-400 text-right">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {paged.length === 0 ? (
               <tr>
                 <td colSpan={5} className="p-10 text-center text-sm text-gray-400">
-                  Nenhuma transacao encontrada.
+                  Nenhuma transação encontrada.
                 </td>
               </tr>
             ) : (
@@ -424,11 +424,11 @@ export const TransactionsPage = () => {
       </Card>
 
       <div className="flex flex-col gap-3 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between">
-        <span>Pagina {page} de {totalPages}</span>
+        <span>Página {page} de {totalPages}</span>
         <div className="flex flex-wrap items-center gap-2">
           <select className="px-3 py-1 border rounded-lg" value={pageSize} onChange={(e) => { setPageSize(Number(e.target.value)); setPage(1); }}>
             {[5, 10, 15].map(size => (
-              <option key={size} value={size}>{size} por pagina</option>
+              <option key={size} value={size}>{size} por página</option>
             ))}
           </select>
           <button className="px-3 py-1 border rounded-lg" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page <= 1}>Anterior</button>
