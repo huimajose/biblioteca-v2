@@ -183,7 +183,7 @@ export const AdminBooksPage = () => {
       let y = 80;
       Object.entries(grouped).forEach(([genre, list]) => {
         doc.setFontSize(12);
-        doc.text(`${getGenreCode(genre)} | ${genre}`, 40, y);
+        doc.text(`${getGenreCode(genre)} | ${genre} (${list.length})`, 40, y);
         y += 8;
         autoTable(doc, {
           startY: y + 8,
@@ -232,7 +232,17 @@ export const AdminBooksPage = () => {
 
   const exportInventoryExcel = (byGenre: boolean) => {
     const rows = byGenre
-      ? orderedInventoryBooks.flatMap((b) => [[b.genre || 'Sem curso', b.courseSequence ?? '-', b.catalogCode || '-', b.title, b.author, b.isbn, b.isDigital ? '-' : `${b.availableCopies}`]])
+      ? (() => {
+          const grouped: Record<string, any[]> = {};
+          orderedInventoryBooks.forEach((b) => {
+            const key = b.genre || 'Sem curso';
+            grouped[key] = grouped[key] || [];
+            grouped[key].push(b);
+          });
+          return Object.entries(grouped).flatMap(([genre, list]) =>
+            list.map((b) => [`${genre} (${list.length})`, b.courseSequence ?? '-', b.catalogCode || '-', b.title, b.author, b.isbn, b.isDigital ? '-' : `${b.availableCopies}`])
+          );
+        })()
       : orderedInventoryBooks.map((b) => [getGenreCode(b.genre), b.courseSequence ?? '-', b.catalogCode || '-', b.title, b.author, b.isbn, b.isDigital ? '-' : `${b.availableCopies}`]);
 
     const header = byGenre

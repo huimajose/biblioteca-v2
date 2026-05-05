@@ -12,6 +12,7 @@ import { LOGO_WATERMARK } from '@/constants.ts';
 import { addCenteredWatermarkToAllPages, loadWatermarkImage } from '@/utils/pdfWatermark.ts';
 
 export const ReportsPage = () => {
+  const GENRE_REPORT_PAGE_SIZE = 5;
   const [reportType, setReportType] = useState<'activity' | 'genre' | 'inventory' | 'location-inventory' | 'users' | 'top-books' | 'never-borrowed' | 'circulation-insights'>('activity');
   const [activities, setActivities] = useState<any[]>([]);
   const [activitySummary, setActivitySummary] = useState<any | null>(null);
@@ -36,6 +37,7 @@ export const ReportsPage = () => {
   const [usersPage, setUsersPage] = useState(1);
   const [activityPageSize, setActivityPageSize] = useState(10);
   const [usersPageSize, setUsersPageSize] = useState(8);
+  const [genrePages, setGenrePages] = useState<Record<string, number>>({});
   const [selectedBookInfo, setSelectedBookInfo] = useState<any | null>(null);
   const getActivityUserLabel = (activity: any) =>
     activity.isTempUser
@@ -518,6 +520,17 @@ export const ReportsPage = () => {
     acc[genre].push(book);
     return acc;
   }, {});
+
+  const getGenrePage = (genre: string) => genrePages[genre] || 1;
+
+  const getPagedGenreBooks = (genre: string, genreBooks: any[]) => {
+    const currentPage = getGenrePage(genre);
+    const start = (currentPage - 1) * GENRE_REPORT_PAGE_SIZE;
+    return genreBooks.slice(start, start + GENRE_REPORT_PAGE_SIZE);
+  };
+
+  const getGenreTotalPages = (genreBooks: any[]) =>
+    Math.max(1, Math.ceil(genreBooks.length / GENRE_REPORT_PAGE_SIZE));
 
   const physicalBooksByLocation = useMemo(() => {
     const physicalBooks = books
@@ -1392,7 +1405,12 @@ export const ReportsPage = () => {
                 <p className="text-lg font-medium italic">Não foram encontrados livros no inventário.</p>
               </Card>
             ) : (
-              Object.entries(booksByGenre).map(([genre, genreBooks]: [string, any]) => (
+              Object.entries(booksByGenre).map(([genre, genreBooks]: [string, any]) => {
+                const currentPage = getGenrePage(genre);
+                const totalPages = getGenreTotalPages(genreBooks);
+                const pagedGenreBooks = getPagedGenreBooks(genre, genreBooks);
+
+                return (
                 <div key={genre}>
                   <Card className="overflow-hidden print:border-none print:shadow-none">
                     <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
@@ -1411,7 +1429,7 @@ export const ReportsPage = () => {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-gray-50">
-                        {genreBooks.map((book: any) => (
+                        {pagedGenreBooks.map((book: any) => (
                           <tr
                             key={book.id}
                             className="hover:bg-gray-50 transition-colors cursor-pointer"
@@ -1433,9 +1451,30 @@ export const ReportsPage = () => {
                         ))}
                       </tbody>
                     </table>
+                    {genreBooks.length > GENRE_REPORT_PAGE_SIZE && (
+                      <div className="p-4 border-t border-gray-100 flex flex-col gap-3 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between print:hidden">
+                        <span>Pagina {currentPage} de {totalPages}</span>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <Button
+                            variant="secondary"
+                            onClick={() => setGenrePages((prev) => ({ ...prev, [genre]: Math.max(1, currentPage - 1) }))}
+                            disabled={currentPage <= 1}
+                          >
+                            Anterior
+                          </Button>
+                          <Button
+                            variant="secondary"
+                            onClick={() => setGenrePages((prev) => ({ ...prev, [genre]: Math.min(totalPages, currentPage + 1) }))}
+                            disabled={currentPage >= totalPages}
+                          >
+                            Seguinte
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </Card>
                 </div>
-              ))
+              )})
             )}
           </div>
         </>
