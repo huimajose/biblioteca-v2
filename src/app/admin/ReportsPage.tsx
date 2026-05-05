@@ -1396,7 +1396,9 @@ export const ReportsPage = () => {
                 <div key={genre}>
                   <Card className="overflow-hidden print:border-none print:shadow-none">
                     <div className="p-4 bg-gray-50 border-b border-gray-100 flex justify-between items-center">
-                      <h3 className="font-bold text-lime-600 uppercase tracking-wider text-sm">{genre}</h3>
+                      <h3 className="font-bold text-lime-600 uppercase tracking-wider text-sm">
+                        {genre} ({genreBooks.length})
+                      </h3>
                       <span className="text-xs font-bold bg-white px-2 py-1 rounded-lg border border-gray-200">{genreBooks.length} Livros</span>
                     </div>
                     <table className="w-full text-left border-collapse">
