@@ -357,14 +357,21 @@ export const BookForm = () => {
               </div>
               <div>
                 <label className="block text-sm font-medium mb-1">Edição</label>
-                <input
-                  type="number"
-                  min="1"
+                <select
                   className="w-full px-4 py-2 border rounded-lg"
                   value={formData.edicao}
                   onChange={e => setFormData({ ...formData, edicao: e.target.value })}
-                  placeholder="Ex.: 1, 2, 3"
-                />
+                >
+                  <option value="">Selecionar edição</option>
+                  {Array.from({ length: 20 }, (_, index) => {
+                    const edition = String(index + 1);
+                    return (
+                      <option key={edition} value={edition}>
+                        {edition}
+                      </option>
+                    );
+                  })}
+                </select>
               </div>
             </div>
           )}
