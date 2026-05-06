@@ -11,6 +11,11 @@ import autoTable from 'jspdf-autotable';
 import { LOGO_WATERMARK } from '@/constants.ts';
 import { addCenteredWatermarkToAllPages, loadWatermarkImage } from '@/utils/pdfWatermark.ts';
 
+const formatBookEdition = (edition?: number | string | null) => {
+  const normalized = String(edition ?? '').trim();
+  return normalized ? `${normalized}ª` : '1ª';
+};
+
 export const ReportsPage = () => {
   const GENRE_REPORT_PAGE_SIZE = 5;
   const [reportType, setReportType] = useState<'activity' | 'genre' | 'inventory' | 'location-inventory' | 'users' | 'top-books' | 'never-borrowed' | 'circulation-insights'>('activity');
@@ -787,12 +792,13 @@ export const ReportsPage = () => {
         for (const shelf of group.shelves) {
           autoTable(doc, {
             startY: currentY + 10,
-            head: [[`Prateleira ${shelf.prateleira}`, 'Codigo', 'Titulo', 'Autor', 'Disponiveis']],
+            head: [[`Prateleira ${shelf.prateleira}`, 'Codigo', 'Titulo', 'Autor', 'Edicao', 'Disponiveis']],
             body: shelf.books.map((book: any) => [
               String(shelf.prateleira),
               book.catalogCode || `ID ${book.id}`,
               book.title || 'N/D',
               book.author || 'N/D',
+              formatBookEdition(book.edicao),
               String(book.availableCopies ?? 0),
             ]),
             styles: { fontSize: 9 },
@@ -1767,6 +1773,7 @@ export const ReportsPage = () => {
                                 <th className="p-3 font-semibold text-[11px] uppercase text-gray-400">Titulo</th>
                                 <th className="p-3 font-semibold text-[11px] uppercase text-gray-400">Autor</th>
                                 <th className="p-3 font-semibold text-[11px] uppercase text-gray-400">Curso</th>
+                                <th className="p-3 font-semibold text-[11px] uppercase text-gray-400">Edicao</th>
                                 <th className="p-3 font-semibold text-[11px] uppercase text-gray-400 text-right">Disponiveis</th>
                               </tr>
                             </thead>
@@ -1784,6 +1791,7 @@ export const ReportsPage = () => {
                                   </td>
                                   <td className="p-3 text-sm text-gray-600">{book.author || 'N/D'}</td>
                                   <td className="p-3 text-sm text-gray-600">{book.genre || 'Sem curso'}</td>
+                                  <td className="p-3 text-sm text-gray-600">{formatBookEdition(book.edicao)}</td>
                                   <td className="p-3 text-right text-sm font-mono">{book.availableCopies ?? 0}</td>
                                 </tr>
                               ))}
