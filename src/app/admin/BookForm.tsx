@@ -355,6 +355,17 @@ export const BookForm = () => {
                   onChange={e => setFormData({ ...formData, anoEdicao: e.target.value })}
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Edição</label>
+                <input
+                  type="number"
+                  min="1"
+                  className="w-full px-4 py-2 border rounded-lg"
+                  value={formData.edicao}
+                  onChange={e => setFormData({ ...formData, edicao: e.target.value })}
+                  placeholder="Ex.: 1, 2, 3"
+                />
+              </div>
             </div>
           )}
 
