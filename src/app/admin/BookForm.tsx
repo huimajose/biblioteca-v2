@@ -363,7 +363,7 @@ export const BookForm = () => {
                   onChange={e => setFormData({ ...formData, edicao: e.target.value })}
                 >
                   <option value="">Selecionar edição</option>
-                  {Array.from({ length: 20 }, (_, index) => {
+                  {Array.from({ length: 100 }, (_, index) => {
                     const edition = String(index + 1);
                     return (
                       <option key={edition} value={edition}>
