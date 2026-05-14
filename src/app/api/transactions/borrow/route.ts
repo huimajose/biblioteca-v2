@@ -141,6 +141,24 @@ export async function POST(req: Request) {
       );
     }
 
+    const userRecord = await db
+      .select({ fullName: schema.users.fullName })
+      .from(schema.users)
+      .where(eq(schema.users.clerkId, userId))
+      .limit(1);
+
+    let userName = String(userRecord[0]?.fullName || "").trim() || null;
+
+    if (!userName) {
+      const verification = await db
+        .select({ fullName: schema.studentVerifications.fullName })
+        .from(schema.studentVerifications)
+        .where(eq(schema.studentVerifications.clerkId, userId))
+        .limit(1);
+
+      userName = String(verification[0]?.fullName || "").trim() || null;
+    }
+
     const transaction = await db
       .insert(schema.transactions)
       .values({
@@ -151,7 +169,7 @@ export async function POST(req: Request) {
         borrowedDate: now,
         returnedDate: null,
         scoreApplied: false,
-        user_name: userId,
+        user_name: userName || userId,
       })
       .returning();
 
@@ -164,7 +182,7 @@ export async function POST(req: Request) {
     await notifyAdmins(
       db,
       "Novo pedido de emprestimo",
-      `Pedido de ${userId} para "${book[0].title}".`
+      `Pedido de ${userName || userId} para "${book[0].title}".`
     );
 
     return NextResponse.json({
