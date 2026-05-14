@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import * as schema from '@/db/pgSchema';
 import { getDb } from '@/app/api/_utils/db';
 import { DEFAULT_BOOK_COVER } from '@/constants';
@@ -39,6 +39,10 @@ const normalizeNullableText = (value: unknown) => {
 };
 
 const normalizeIsbn = (value: unknown) => String(value ?? '').trim();
+const normalizeEdition = (value: unknown, fallback = 1) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+};
 
 const resolveDbErrorMessage = (error: any, fallback: string) => {
   const raw =
@@ -48,8 +52,8 @@ const resolveDbErrorMessage = (error: any, fallback: string) => {
   const normalized = String(raw || fallback);
 
   if (/duplicate key value/i.test(normalized) || /unique constraint/i.test(normalized)) {
-    if (/isbn/i.test(normalized)) {
-      return 'Ja existe um livro com este ISBN.';
+    if (/isbn/i.test(normalized) || /edicao/i.test(normalized)) {
+      return 'Ja existe um livro com este ISBN e edição.';
     }
     return 'Ja existe um registo com estes dados.';
   }
@@ -85,6 +89,43 @@ const logBookRouteError = (stage: string, error: any, extra: Record<string, unkn
     code: error?.code ?? null,
     stack: error?.stack ?? null,
   });
+};
+
+const ensureBooksEditionUniqueConstraint = async (db: ReturnType<typeof getDb>) => {
+  await db.execute(sql`
+    UPDATE books_temp
+    SET edicao = 1
+    WHERE edicao IS NULL
+  `);
+
+  await db.execute(sql`
+    ALTER TABLE books_temp
+    ALTER COLUMN edicao SET DEFAULT 1
+  `);
+
+  await db.execute(sql`
+    DO $$
+    DECLARE
+      idx RECORD;
+    BEGIN
+      FOR idx IN
+        SELECT indexname
+        FROM pg_indexes
+        WHERE schemaname = current_schema()
+          AND tablename = 'books_temp'
+          AND indexdef ILIKE '%UNIQUE%'
+          AND indexdef ILIKE '%(isbn)%'
+          AND indexdef NOT ILIKE '%edicao%'
+      LOOP
+        EXECUTE format('DROP INDEX IF EXISTS %I', idx.indexname);
+      END LOOP;
+    END $$;
+  `);
+
+  await db.execute(sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS books_temp_isbn_edicao_unique
+    ON books_temp (isbn, edicao)
+  `);
 };
 
 const createPhysicalCopies = async (db: ReturnType<typeof getDb>, bookId: number, copies: number) => {
@@ -186,24 +227,28 @@ export async function PUT(
     }
 
     const nextIsbn = normalizeIsbn(body.isbn ?? existing[0].isbn);
+    const nextEdition = normalizeEdition(body.edicao ?? existing[0].edicao, 1);
     if (!nextIsbn) {
       console.warn('[admin/books][PUT] missing isbn', { actorUserId: actorUserId || null, bookId });
       return NextResponse.json({ error: 'ISBN obrigatorio' }, { status: 400 });
     }
 
-    const existingByIsbn = await db
+    await ensureBooksEditionUniqueConstraint(db);
+
+    const existingByIsbnEdition = await db
       .select({ id: schema.books.id })
       .from(schema.books)
-      .where(eq(schema.books.isbn, nextIsbn))
+      .where(and(eq(schema.books.isbn, nextIsbn), eq(schema.books.edicao, nextEdition)))
       .limit(1);
-    if (existingByIsbn[0] && existingByIsbn[0].id !== bookId) {
-      console.warn('[admin/books][PUT] duplicate isbn blocked', {
+    if (existingByIsbnEdition[0] && existingByIsbnEdition[0].id !== bookId) {
+      console.warn('[admin/books][PUT] duplicate isbn+edition blocked', {
         actorUserId: actorUserId || null,
         bookId,
         isbn: nextIsbn,
-        existingBookId: existingByIsbn[0].id,
+        edition: nextEdition,
+        existingBookId: existingByIsbnEdition[0].id,
       });
-      return NextResponse.json({ error: 'Ja existe um livro com este ISBN.' }, { status: 409 });
+      return NextResponse.json({ error: 'Ja existe um livro com este ISBN e edição.' }, { status: 409 });
     }
 
     const addCopies = Number(body.addCopies ?? 0);
@@ -227,6 +272,7 @@ export async function PUT(
       actorUserId: actorUserId || null,
       bookId,
       isbn: nextIsbn,
+      edition: nextEdition,
       catalogData,
       genreChanged,
     });
@@ -253,7 +299,7 @@ export async function PUT(
         courseSequence: catalogData.courseSequence,
         catalogCode: catalogData.catalogCode,
         anoEdicao: body.anoEdicao ?? existing[0].anoEdicao ?? null,
-        edicao: body.edicao ?? existing[0].edicao ?? null,
+        edicao: nextEdition,
         isbn: nextIsbn,
         fileUrl: normalizeNullableText(body.fileUrl ?? existing[0].fileUrl),
         document_type: nextDocumentType,
@@ -265,6 +311,7 @@ export async function PUT(
       actorUserId: actorUserId || null,
       bookId,
       isbn: nextIsbn,
+      edition: nextEdition,
       addCopies,
     });
 
@@ -308,6 +355,7 @@ export async function PUT(
           actorUserId,
           bookId,
           isbn: nextIsbn,
+          edition: nextEdition,
         });
       }
     }

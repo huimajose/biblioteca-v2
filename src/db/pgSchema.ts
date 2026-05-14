@@ -28,7 +28,7 @@ export const books = pgTable('books_temp', {
   title: varchar('title', { length: 255 }).notNull(),
   author: varchar('author', { length: 255 }).notNull(),
   genre: varchar('genre', { length: 100 }).notNull(),
-  isbn: varchar('isbn', { length: 13 }).notNull().unique(),
+  isbn: varchar('isbn', { length: 13 }).notNull(),
   totalCopies: integer('total_copies').notNull().default(0),
   availableCopies: integer('available_copies').notNull().default(0),
   cover: varchar('cover', { length: 255 }).notNull(),
@@ -44,7 +44,9 @@ export const books = pgTable('books_temp', {
   document_type: integer('document_type').notNull().default(1),
   is_digital: boolean('is_digital').notNull().default(false),
   created_at: timestamp('created_at').notNull().defaultNow(),
-});
+}, (table) => ({
+  booksIsbnEditionUnique: unique('books_temp_isbn_edicao_unique').on(table.isbn, table.edicao),
+}));
 
 export const genres = pgTable('genres', {
   id: serial('id').primaryKey(),

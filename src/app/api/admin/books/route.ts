@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { asc, eq, sql } from 'drizzle-orm';
+import { and, asc, eq, sql } from 'drizzle-orm';
 import * as schema from '@/db/pgSchema';
 import { getDb } from '@/app/api/_utils/db';
 import { DEFAULT_BOOK_COVER } from '@/constants';
@@ -39,6 +39,10 @@ const normalizeNullableText = (value: unknown) => {
 };
 
 const normalizeIsbn = (value: unknown) => String(value ?? '').trim();
+const normalizeEdition = (value: unknown, fallback = 1) => {
+  const parsed = Number(value);
+  return Number.isInteger(parsed) && parsed > 0 ? parsed : fallback;
+};
 
 const resolveDbErrorMessage = (error: any, fallback: string) => {
   const raw =
@@ -48,8 +52,8 @@ const resolveDbErrorMessage = (error: any, fallback: string) => {
   const normalized = String(raw || fallback);
 
   if (/duplicate key value/i.test(normalized) || /unique constraint/i.test(normalized)) {
-    if (/isbn/i.test(normalized)) {
-      return 'Ja existe um livro com este ISBN.';
+    if (/isbn/i.test(normalized) || /edicao/i.test(normalized)) {
+      return 'Ja existe um livro com este ISBN e edição.';
     }
     return 'Ja existe um registo com estes dados.';
   }
@@ -104,6 +108,43 @@ const syncBooksIdSequence = async (db: ReturnType<typeof getDb>) => {
       COALESCE((SELECT MAX(id) FROM books_temp), 0) + 1,
       false
     )
+  `);
+};
+
+const ensureBooksEditionUniqueConstraint = async (db: ReturnType<typeof getDb>) => {
+  await db.execute(sql`
+    UPDATE books_temp
+    SET edicao = 1
+    WHERE edicao IS NULL
+  `);
+
+  await db.execute(sql`
+    ALTER TABLE books_temp
+    ALTER COLUMN edicao SET DEFAULT 1
+  `);
+
+  await db.execute(sql`
+    DO $$
+    DECLARE
+      idx RECORD;
+    BEGIN
+      FOR idx IN
+        SELECT indexname
+        FROM pg_indexes
+        WHERE schemaname = current_schema()
+          AND tablename = 'books_temp'
+          AND indexdef ILIKE '%UNIQUE%'
+          AND indexdef ILIKE '%(isbn)%'
+          AND indexdef NOT ILIKE '%edicao%'
+      LOOP
+        EXECUTE format('DROP INDEX IF EXISTS %I', idx.indexname);
+      END LOOP;
+    END $$;
+  `);
+
+  await db.execute(sql`
+    CREATE UNIQUE INDEX IF NOT EXISTS books_temp_isbn_edicao_unique
+    ON books_temp (isbn, edicao)
   `);
 };
 
@@ -210,23 +251,27 @@ export async function POST(req: NextRequest) {
     }
     console.info('[admin/books][POST] actor resolved', { actorUserId: actorUserId || null, actorRole });
     const isbn = normalizeIsbn(body.isbn);
+    const edition = normalizeEdition(body.edicao, 1);
     if (!isbn) {
       console.warn('[admin/books][POST] missing isbn', { actorUserId: actorUserId || null });
       return NextResponse.json({ error: 'ISBN obrigatorio' }, { status: 400 });
     }
 
-    const existingByIsbn = await db
+    await ensureBooksEditionUniqueConstraint(db);
+
+    const existingByIsbnEdition = await db
       .select({ id: schema.books.id })
       .from(schema.books)
-      .where(eq(schema.books.isbn, isbn))
+      .where(and(eq(schema.books.isbn, isbn), eq(schema.books.edicao, edition)))
       .limit(1);
-    if (existingByIsbn[0]) {
-      console.warn('[admin/books][POST] duplicate isbn blocked', {
+    if (existingByIsbnEdition[0]) {
+      console.warn('[admin/books][POST] duplicate isbn+edition blocked', {
         actorUserId: actorUserId || null,
         isbn,
-        existingBookId: existingByIsbn[0].id,
+        edition,
+        existingBookId: existingByIsbnEdition[0].id,
       });
-      return NextResponse.json({ error: 'Ja existe um livro com este ISBN.' }, { status: 409 });
+      return NextResponse.json({ error: 'Ja existe um livro com este ISBN e edição.' }, { status: 409 });
     }
 
     const hasDigital =
@@ -241,6 +286,7 @@ export async function POST(req: NextRequest) {
     console.info('[admin/books][POST] catalog data resolved', {
       actorUserId: actorUserId || null,
       isbn,
+      edition,
       catalogData,
     });
 
@@ -258,7 +304,7 @@ export async function POST(req: NextRequest) {
       courseSequence: catalogData.courseSequence,
       catalogCode: catalogData.catalogCode,
       anoEdicao: body.anoEdicao ?? null,
-      edicao: body.edicao ?? null,
+      edicao: edition,
       isbn,
       fileUrl: normalizeNullableText(body.fileUrl),
       document_type: body.documentType ?? 1,
@@ -269,6 +315,7 @@ export async function POST(req: NextRequest) {
     console.info('[admin/books][POST] book inserted', {
       actorUserId: actorUserId || null,
       isbn,
+      edition,
       insertedCount: inserted.length,
       createdBookId: inserted[0]?.id ?? null,
     });
@@ -306,6 +353,7 @@ export async function POST(req: NextRequest) {
           actorUserId,
           bookId: created.id,
           isbn,
+          edition,
         });
       }
     }
