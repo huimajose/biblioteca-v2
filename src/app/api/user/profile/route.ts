@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
+import { normalizeUserRole } from "@/utils/roles";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,7 +22,12 @@ export async function GET(req: NextRequest) {
     .where(eq(schema.users.clerkId, userId))
     .limit(1);
 
-  return NextResponse.json({ fullName: record[0]?.fullName ?? "" });
+  const user = record[0];
+  return NextResponse.json({
+    fullName: user?.fullName ?? "",
+    email: user?.primaryEmail ?? "",
+    role: normalizeUserRole(user?.role),
+  });
 }
 
 export async function POST(req: NextRequest) {
@@ -33,7 +39,6 @@ export async function POST(req: NextRequest) {
   const body = (await req.json().catch(() => ({}))) as {
     fullName?: string;
     email?: string;
-    role?: string;
   };
 
   const name = String(body?.fullName || "").trim();
@@ -45,22 +50,29 @@ export async function POST(req: NextRequest) {
   }
 
   const db = getDb();
+  const existing = await db
+    .select()
+    .from(schema.users)
+    .where(eq(schema.users.clerkId, userId))
+    .limit(1);
+
+  const existingRole = normalizeUserRole(existing[0]?.role);
+
   await db
     .insert(schema.users)
     .values({
       clerkId: userId,
-      primaryEmail: body?.email || "",
+      primaryEmail: body?.email || existing[0]?.primaryEmail || "",
       fullName: name,
-      role: body?.role || "external",
+      role: existingRole,
     })
     .onConflictDoUpdate({
       target: schema.users.clerkId,
       set: {
         fullName: name,
-        primaryEmail: body?.email || "",
-        role: body?.role || "external",
+        primaryEmail: body?.email || existing[0]?.primaryEmail || "",
       },
     });
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, role: existingRole });
 }
