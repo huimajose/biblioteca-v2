@@ -25,10 +25,10 @@ export const exportCatalogReviewPdf = async ({
   const generatedAt = new Date();
 
   doc.setFontSize(16);
-  doc.text('Relatorio de revisao do acervo', 40, 40);
+  doc.text('Relatório de revisão do acervo', 40, 40);
   doc.setFontSize(10);
   doc.text(`Filtro: ${filterLabel}`, 40, 58);
-  doc.text(`Pesquisa: ${search.trim() || 'Nenhuma'}`, 40, 72);
+  doc.text(`Pesquisa: ${search.trim() || 'Nenhum'}`, 40, 72);
   doc.text(`Total listado: ${books.length}`, 40, 86);
   doc.text(`Gerado em: ${generatedAt.toLocaleDateString()} ${generatedAt.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`, 40, 100);
 
@@ -46,7 +46,7 @@ export const exportCatalogReviewPdf = async ({
 
   autoTable(doc, {
     startY: 118,
-    head: [['#', 'Titulo', 'Autor', 'Curso', 'ISBN', 'Catalogo', 'Armario', 'Prateleira', 'Problemas']],
+    head: [['#', 'Titulo', 'Autor', 'Curso', 'ISBN', 'Catalogo', 'Armário', 'Prateleira', 'Problemas']],
     body: rows.length ? rows : [['-', 'Nenhum livro encontrado', '-', '-', '-', '-', '-', '-', '-']],
     styles: { fontSize: 7, cellPadding: 4, overflow: 'linebreak', valign: 'middle' },
     headStyles: { fillColor: [101, 163, 13], textColor: 255, fontStyle: 'bold' },
@@ -72,8 +72,8 @@ export const exportCatalogReviewPdf = async ({
     const pageHeight = doc.internal.pageSize.getHeight();
     doc.setFontSize(8);
     doc.setTextColor(120);
-    doc.text(`Revisao do acervo | ${filterLabel}`, 40, pageHeight - 18);
-    doc.text(`Pagina ${page} de ${totalPages}`, pageWidth - 40, pageHeight - 18, { align: 'right' });
+    doc.text(`Revisão do acervo | ${filterLabel}`, 40, pageHeight - 18);
+    doc.text(`Página ${page} de ${totalPages}`, pageWidth - 40, pageHeight - 18, { align: 'right' });
     doc.setTextColor(0);
   }
 
@@ -91,5 +91,5 @@ export const exportCatalogReviewPdf = async ({
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '') || 'todos';
 
-  doc.save(`relatorio-revisao-acervo-${suffix}.pdf`);
+  doc.save(`relatório-revisão-acervo-${suffix}.pdf`);
 };

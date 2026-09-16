@@ -240,7 +240,7 @@ export const CatalogReviewPage = () => {
             disabled={exportingPdf}
           >
             <FileDown className="w-4 h-4" />
-            {exportingPdf ? 'A gerar PDF...' : `Gerar relatório PDF (${reviewBooks.length})`}
+            {exportingPdf ? 'A gerar PDF...' : `Gerar pdf (${reviewBooks.length})`}
           </Button>
           <Link to="/admin/books">
             <Button variant="secondary" className="inline-flex items-center gap-2">
