@@ -89,8 +89,6 @@ export async function POST(req: NextRequest) {
 
   const existingUser = await db.select().from(schema.users).where(eq(schema.users.clerkId, clerkId)).limit(1);
 
-  // Keep Clerk and the application database synchronized. Clerk stores the
-  // identity/session metadata while the database remains the authorization source.
   try {
     const client = await clerkClient();
     const clerkUser = await client.users.getUser(clerkId);
@@ -98,7 +96,6 @@ export async function POST(req: NextRequest) {
       publicMetadata: {
         ...(clerkUser.publicMetadata ?? {}),
         role,
-        userType: role,
       },
     });
   } catch (error) {
@@ -127,8 +124,6 @@ export async function POST(req: NextRequest) {
         },
       });
   } catch (error) {
-    // Best-effort compensation: restore Clerk metadata to the previous DB role
-    // so a database failure does not intentionally leave two different roles.
     const previousRole = String(existingUser[0]?.role || "external").toLowerCase();
     try {
       const client = await clerkClient();
@@ -137,7 +132,6 @@ export async function POST(req: NextRequest) {
         publicMetadata: {
           ...(clerkUser.publicMetadata ?? {}),
           role: previousRole,
-          userType: previousRole,
         },
       });
     } catch (rollbackError) {
