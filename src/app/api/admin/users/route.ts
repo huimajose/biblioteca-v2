@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { clerkClient } from "@clerk/nextjs/server";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
@@ -39,9 +40,7 @@ export async function GET(req: NextRequest) {
     );
 
     if (approvedIds.size > 0) {
-      users = users.filter(
-        (u) => approvedIds?.has(u.clerkId)
-      );
+      users = users.filter((u) => approvedIds?.has(u.clerkId));
     }
   }
 
@@ -87,23 +86,66 @@ export async function POST(req: NextRequest) {
   if (actorRole !== "admin") {
     return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
   }
+
   const existingUser = await db.select().from(schema.users).where(eq(schema.users.clerkId, clerkId)).limit(1);
-  await db
-    .insert(schema.users)
-    .values({
-      clerkId,
-      fullName,
-      primaryEmail,
-      role,
-    })
-    .onConflictDoUpdate({
-      target: schema.users.clerkId,
-      set: {
+
+  // Keep Clerk and the application database synchronized. Clerk stores the
+  // identity/session metadata while the database remains the authorization source.
+  try {
+    const client = await clerkClient();
+    const clerkUser = await client.users.getUser(clerkId);
+    await client.users.updateUserMetadata(clerkId, {
+      publicMetadata: {
+        ...(clerkUser.publicMetadata ?? {}),
+        role,
+        userType: role,
+      },
+    });
+  } catch (error) {
+    console.error("Failed to synchronize user role with Clerk", { clerkId, role, error });
+    return NextResponse.json(
+      { error: "Nao foi possivel sincronizar o perfil com o Clerk. Nenhuma alteracao foi aplicada." },
+      { status: 502 }
+    );
+  }
+
+  try {
+    await db
+      .insert(schema.users)
+      .values({
+        clerkId,
         fullName,
         primaryEmail,
         role,
-      },
-    });
+      })
+      .onConflictDoUpdate({
+        target: schema.users.clerkId,
+        set: {
+          fullName,
+          primaryEmail,
+          role,
+        },
+      });
+  } catch (error) {
+    // Best-effort compensation: restore Clerk metadata to the previous DB role
+    // so a database failure does not intentionally leave two different roles.
+    const previousRole = String(existingUser[0]?.role || "external").toLowerCase();
+    try {
+      const client = await clerkClient();
+      const clerkUser = await client.users.getUser(clerkId);
+      await client.users.updateUserMetadata(clerkId, {
+        publicMetadata: {
+          ...(clerkUser.publicMetadata ?? {}),
+          role: previousRole,
+          userType: previousRole,
+        },
+      });
+    } catch (rollbackError) {
+      console.error("Failed to rollback Clerk role after database error", { clerkId, previousRole, rollbackError });
+    }
+    console.error("Failed to persist user role in database", { clerkId, role, error });
+    return NextResponse.json({ error: "Falha ao guardar o perfil do utilizador." }, { status: 500 });
+  }
 
   await notifyUser(
     db,
@@ -132,8 +174,9 @@ export async function POST(req: NextRequest) {
     metadata: {
       previousRole: existingUser[0]?.role || null,
       nextRole: role,
+      clerkMetadataSynced: true,
     },
   });
 
-  return NextResponse.json({ success: true });
+  return NextResponse.json({ success: true, role, clerkMetadataSynced: true });
 }
