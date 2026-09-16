@@ -1,10 +1,11 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AlertTriangle, BookOpenCheck, Filter, Pencil } from 'lucide-react';
+import { AlertTriangle, BookOpenCheck, FileDown, Filter, Pencil } from 'lucide-react';
 import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
 import { BookInfoModal } from '@/components/BookInfoModal.tsx';
 import { DEFAULT_BOOK_COVER } from '@/constants.ts';
+import { exportCatalogReviewPdf } from '@/utils/catalogReviewPdf.ts';
 
 type ReviewIssue =
   | 'general'
@@ -78,6 +79,7 @@ export const CatalogReviewPage = () => {
   const [page, setPage] = useState(1);
   const [isbnPage, setIsbnPage] = useState(1);
   const [probablePage, setProbablePage] = useState(1);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   useEffect(() => {
     fetch('/api/books')
@@ -199,6 +201,21 @@ export const CatalogReviewPage = () => {
     return counts;
   }, [reviewUniverse]);
 
+  const handleExportPdf = async () => {
+    if (exportingPdf) return;
+    setExportingPdf(true);
+    try {
+      await exportCatalogReviewPdf({
+        books: reviewBooks,
+        filterLabel: issueFilter === 'all' ? 'Todos os problemas' : ISSUE_LABELS[issueFilter],
+        search,
+        issueLabels: ISSUE_LABELS,
+      });
+    } finally {
+      setExportingPdf(false);
+    }
+  };
+
   const totalPages = Math.max(1, Math.ceil(reviewBooks.length / PAGE_SIZE));
   const paged = reviewBooks.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
 
@@ -215,7 +232,16 @@ export const CatalogReviewPage = () => {
           <h1 className="text-2xl font-bold">Revisão do acervo</h1>
           <p className="text-sm text-gray-500">Encontre livros em Geral, sem curso ou com metadados incompletos.</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            variant="secondary"
+            className="inline-flex items-center gap-2"
+            onClick={handleExportPdf}
+            disabled={exportingPdf}
+          >
+            <FileDown className="w-4 h-4" />
+            {exportingPdf ? 'A gerar PDF...' : `Gerar relatório PDF (${reviewBooks.length})`}
+          </Button>
           <Link to="/admin/books">
             <Button variant="secondary" className="inline-flex items-center gap-2">
               <BookOpenCheck className="w-4 h-4" />
@@ -226,49 +252,21 @@ export const CatalogReviewPage = () => {
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="p-5">
-          <p className="text-xs uppercase text-gray-400">Livros a rever</p>
-          <p className="mt-2 text-3xl font-black">{reviewUniverse.length}</p>
-        </Card>
-        <Card className="p-5">
-          <p className="text-xs uppercase text-gray-400">Curso Geral</p>
-          <p className="mt-2 text-3xl font-black">{summary.general || 0}</p>
-        </Card>
-        <Card className="p-5">
-          <p className="text-xs uppercase text-gray-400">Sem curso</p>
-          <p className="mt-2 text-3xl font-black">{summary['missing-genre'] || 0}</p>
-        </Card>
-        <Card className="p-5">
-          <p className="text-xs uppercase text-gray-400">Sem catálogo</p>
-          <p className="mt-2 text-3xl font-black">{summary['missing-catalog'] || 0}</p>
-        </Card>
-        <Card className="p-5">
-          <p className="text-xs uppercase text-gray-400">Sem capa</p>
-          <p className="mt-2 text-3xl font-black">{summary['missing-cover'] || 0}</p>
-        </Card>
-        <Card className="p-5">
-          <p className="text-xs uppercase text-gray-400">ISBN duplicado</p>
-          <p className="mt-2 text-3xl font-black">{summary['duplicate-isbn'] || 0}</p>
-        </Card>
-        <Card className="p-5">
-          <p className="text-xs uppercase text-gray-400">Título/autor parecido</p>
-          <p className="mt-2 text-3xl font-black">{summary['duplicate-title-author'] || 0}</p>
-        </Card>
+        <Card className="p-5"><p className="text-xs uppercase text-gray-400">Livros a rever</p><p className="mt-2 text-3xl font-black">{reviewUniverse.length}</p></Card>
+        <Card className="p-5"><p className="text-xs uppercase text-gray-400">Curso Geral</p><p className="mt-2 text-3xl font-black">{summary.general || 0}</p></Card>
+        <Card className="p-5"><p className="text-xs uppercase text-gray-400">Sem curso</p><p className="mt-2 text-3xl font-black">{summary['missing-genre'] || 0}</p></Card>
+        <Card className="p-5"><p className="text-xs uppercase text-gray-400">Sem catálogo</p><p className="mt-2 text-3xl font-black">{summary['missing-catalog'] || 0}</p></Card>
+        <Card className="p-5"><p className="text-xs uppercase text-gray-400">Sem capa</p><p className="mt-2 text-3xl font-black">{summary['missing-cover'] || 0}</p></Card>
+        <Card className="p-5"><p className="text-xs uppercase text-gray-400">ISBN duplicado</p><p className="mt-2 text-3xl font-black">{summary['duplicate-isbn'] || 0}</p></Card>
+        <Card className="p-5"><p className="text-xs uppercase text-gray-400">Título/autor parecido</p><p className="mt-2 text-3xl font-black">{summary['duplicate-title-author'] || 0}</p></Card>
       </div>
 
       <Card className="p-4">
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-[1.4fr_1fr]">
-          <input
-            className="px-4 py-2 border rounded-lg"
-            placeholder="Pesquisar por título, autor, curso, ISBN ou catálogo"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
+          <input className="px-4 py-2 border rounded-lg" placeholder="Pesquisar por título, autor, curso, ISBN ou catálogo" value={search} onChange={(e) => setSearch(e.target.value)} />
           <select className="px-4 py-2 border rounded-lg" value={issueFilter} onChange={(e) => setIssueFilter(e.target.value as 'all' | ReviewIssue)}>
             <option value="all">Todos os problemas</option>
-            {Object.entries(ISSUE_LABELS).map(([issue, label]) => (
-              <option key={issue} value={issue}>{label}</option>
-            ))}
+            {Object.entries(ISSUE_LABELS).map(([issue, label]) => <option key={issue} value={issue}>{label}</option>)}
           </select>
         </div>
       </Card>
@@ -276,17 +274,8 @@ export const CatalogReviewPage = () => {
       <Card className="p-4">
         <div className="flex flex-wrap gap-2">
           {Object.entries(ISSUE_LABELS).map(([issue, label]) => (
-            <button
-              key={issue}
-              className={`rounded-full px-3 py-2 text-xs font-bold transition-colors ${
-                issueFilter === issue
-                  ? 'bg-lime-600 text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-              }`}
-              onClick={() => setIssueFilter(issue as ReviewIssue)}
-            >
-              <Filter className="mr-2 inline-block w-3 h-3" />
-              {label}: {summary[issue] || 0}
+            <button key={issue} className={`rounded-full px-3 py-2 text-xs font-bold transition-colors ${issueFilter === issue ? 'bg-lime-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`} onClick={() => setIssueFilter(issue as ReviewIssue)}>
+              <Filter className="mr-2 inline-block w-3 h-3" />{label}: {summary[issue] || 0}
             </button>
           ))}
         </div>
@@ -294,143 +283,47 @@ export const CatalogReviewPage = () => {
 
       <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
         <Card className="overflow-hidden">
-          <div className="p-4 border-b border-gray-100 bg-rose-50">
-            <h2 className="text-sm font-bold text-rose-700 uppercase tracking-wider">Grupos com ISBN duplicado</h2>
-          </div>
+          <div className="p-4 border-b border-gray-100 bg-rose-50"><h2 className="text-sm font-bold text-rose-700 uppercase tracking-wider">Grupos com ISBN duplicado</h2></div>
           <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
-            {duplicateInfo.duplicateIsbnGroups.length === 0 ? (
-              <p className="p-6 text-sm text-gray-400">Nenhum duplicado por ISBN encontrado.</p>
-            ) : (
-              pagedIsbnGroups.map((group, index) => (
-                <div key={`isbn-${index}`} className="p-4">
-                  <p className="text-xs font-bold text-rose-700">ISBN {group[0]?.isbn || 'N/D'}</p>
-                  <div className="mt-3 space-y-2">
-                    {group.map((book) => (
-                      <button key={book.id} className="w-full rounded-xl border border-gray-100 px-3 py-2 text-left hover:bg-gray-50" onClick={() => setSelectedBook(book)}>
-                        <p className="text-sm font-semibold">{book.title}</p>
-                        <p className="text-xs text-gray-500">{book.author || 'Autor em falta'} | ID {book.id}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))
-            )}
+            {duplicateInfo.duplicateIsbnGroups.length === 0 ? <p className="p-6 text-sm text-gray-400">Nenhum duplicado por ISBN encontrado.</p> : pagedIsbnGroups.map((group, index) => (
+              <div key={`isbn-${index}`} className="p-4"><p className="text-xs font-bold text-rose-700">ISBN {group[0]?.isbn || 'N/D'}</p><div className="mt-3 space-y-2">{group.map((book) => (
+                <button key={book.id} className="w-full rounded-xl border border-gray-100 px-3 py-2 text-left hover:bg-gray-50" onClick={() => setSelectedBook(book)}><p className="text-sm font-semibold">{book.title}</p><p className="text-xs text-gray-500">{book.author || 'Autor em falta'} | ID {book.id}</p></button>
+              ))}</div></div>
+            ))}
           </div>
-          {duplicateInfo.duplicateIsbnGroups.length > PAGE_SIZE && (
-            <div className="flex items-center justify-between border-t border-gray-100 p-4 text-sm text-gray-500">
-              <span>Página {isbnPage} de {totalIsbnPages}</span>
-              <div className="flex items-center gap-2">
-                <Button variant="secondary" onClick={() => setIsbnPage((current) => Math.max(1, current - 1))} disabled={isbnPage <= 1}>Anterior</Button>
-                <Button variant="secondary" onClick={() => setIsbnPage((current) => Math.min(totalIsbnPages, current + 1))} disabled={isbnPage >= totalIsbnPages}>Seguinte</Button>
-              </div>
-            </div>
-          )}
+          {duplicateInfo.duplicateIsbnGroups.length > PAGE_SIZE && <div className="flex items-center justify-between border-t border-gray-100 p-4 text-sm text-gray-500"><span>Página {isbnPage} de {totalIsbnPages}</span><div className="flex items-center gap-2"><Button variant="secondary" onClick={() => setIsbnPage((current) => Math.max(1, current - 1))} disabled={isbnPage <= 1}>Anterior</Button><Button variant="secondary" onClick={() => setIsbnPage((current) => Math.min(totalIsbnPages, current + 1))} disabled={isbnPage >= totalIsbnPages}>Seguinte</Button></div></div>}
         </Card>
 
         <Card className="overflow-hidden">
-          <div className="p-4 border-b border-gray-100 bg-amber-50">
-            <h2 className="text-sm font-bold text-amber-700 uppercase tracking-wider">Título parecido e mesmo autor</h2>
-          </div>
+          <div className="p-4 border-b border-gray-100 bg-amber-50"><h2 className="text-sm font-bold text-amber-700 uppercase tracking-wider">Título parecido e mesmo autor</h2></div>
           <div className="max-h-80 overflow-y-auto divide-y divide-gray-50">
-            {duplicateInfo.probableGroups.length === 0 ? (
-              <p className="p-6 text-sm text-gray-400">Nenhum duplicado provável por título/autor.</p>
-            ) : (
-              pagedProbableGroups.map((group, index) => (
-                <div key={`probable-${index}`} className="p-4">
-                  <p className="text-xs font-bold text-amber-700">{group[0]?.author || 'Autor em falta'}</p>
-                  <div className="mt-3 space-y-2">
-                    {group.map((book) => (
-                      <button key={book.id} className="w-full rounded-xl border border-gray-100 px-3 py-2 text-left hover:bg-gray-50" onClick={() => setSelectedBook(book)}>
-                        <p className="text-sm font-semibold">{book.title}</p>
-                        <p className="text-xs text-gray-500">{book.catalogCode || 'Sem catálogo'} | ID {book.id}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              ))
-            )}
+            {duplicateInfo.probableGroups.length === 0 ? <p className="p-6 text-sm text-gray-400">Nenhum duplicado provável por título/autor.</p> : pagedProbableGroups.map((group, index) => (
+              <div key={`probable-${index}`} className="p-4"><p className="text-xs font-bold text-amber-700">{group[0]?.author || 'Autor em falta'}</p><div className="mt-3 space-y-2">{group.map((book) => (
+                <button key={book.id} className="w-full rounded-xl border border-gray-100 px-3 py-2 text-left hover:bg-gray-50" onClick={() => setSelectedBook(book)}><p className="text-sm font-semibold">{book.title}</p><p className="text-xs text-gray-500">{book.catalogCode || 'Sem catálogo'} | ID {book.id}</p></button>
+              ))}</div></div>
+            ))}
           </div>
-          {duplicateInfo.probableGroups.length > PAGE_SIZE && (
-            <div className="flex items-center justify-between border-t border-gray-100 p-4 text-sm text-gray-500">
-              <span>Página {probablePage} de {totalProbablePages}</span>
-              <div className="flex items-center gap-2">
-                <Button variant="secondary" onClick={() => setProbablePage((current) => Math.max(1, current - 1))} disabled={probablePage <= 1}>Anterior</Button>
-                <Button variant="secondary" onClick={() => setProbablePage((current) => Math.min(totalProbablePages, current + 1))} disabled={probablePage >= totalProbablePages}>Seguinte</Button>
-              </div>
-            </div>
-          )}
+          {duplicateInfo.probableGroups.length > PAGE_SIZE && <div className="flex items-center justify-between border-t border-gray-100 p-4 text-sm text-gray-500"><span>Página {probablePage} de {totalProbablePages}</span><div className="flex items-center gap-2"><Button variant="secondary" onClick={() => setProbablePage((current) => Math.max(1, current - 1))} disabled={probablePage <= 1}>Anterior</Button><Button variant="secondary" onClick={() => setProbablePage((current) => Math.min(totalProbablePages, current + 1))} disabled={probablePage >= totalProbablePages}>Seguinte</Button></div></div>}
         </Card>
       </div>
 
       <Card className="overflow-hidden">
-        <div className="overflow-x-auto">
-        <table className="min-w-[860px] w-full text-left border-collapse">
-          <thead className="bg-gray-50 border-b border-gray-100">
-            <tr>
-              <th className="p-4 text-xs uppercase text-gray-400">Livro</th>
-              <th className="p-4 text-xs uppercase text-gray-400">Curso</th>
-              <th className="p-4 text-xs uppercase text-gray-400">Catálogo</th>
-              <th className="p-4 text-xs uppercase text-gray-400">Localização</th>
-              <th className="p-4 text-xs uppercase text-gray-400">Problemas</th>
-              <th className="p-4 text-xs uppercase text-gray-400 text-right">Ações</th>
+        <div className="overflow-x-auto"><table className="min-w-[860px] w-full text-left border-collapse">
+          <thead className="bg-gray-50 border-b border-gray-100"><tr><th className="p-4 text-xs uppercase text-gray-400">Livro</th><th className="p-4 text-xs uppercase text-gray-400">Curso</th><th className="p-4 text-xs uppercase text-gray-400">Catálogo</th><th className="p-4 text-xs uppercase text-gray-400">Localização</th><th className="p-4 text-xs uppercase text-gray-400">Problemas</th><th className="p-4 text-xs uppercase text-gray-400 text-right">Ações</th></tr></thead>
+          <tbody className="divide-y divide-gray-50">{paged.length === 0 ? <tr><td colSpan={6} className="p-10 text-center text-sm text-gray-400">Nenhum livro pendente de revisão.</td></tr> : paged.map((book) => (
+            <tr key={book.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedBook(book)}>
+              <td className="p-4"><p className="text-sm font-semibold">{book.title}</p><p className="text-xs text-gray-500">{book.author || 'Autor em falta'}</p></td>
+              <td className="p-4 text-sm">{book.genre || 'Sem curso'}</td><td className="p-4 text-xs font-mono text-gray-500">{book.catalogCode || 'Sem catálogo'}</td><td className="p-4 text-xs text-gray-500">ARM {book.armario || '-'} | PRAT {book.prateleira ?? '-'}</td>
+              <td className="p-4"><div className="flex flex-wrap gap-2">{book.reviewIssues.map((issue: ReviewIssue) => <span key={issue} className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700"><AlertTriangle className="mr-1 inline-block w-3 h-3" />{ISSUE_LABELS[issue]}</span>)}</div></td>
+              <td className="p-4 text-right"><Link to={`/admin/books/edit?id=${book.id}`} onClick={(e) => e.stopPropagation()}><Button variant="secondary" className="inline-flex items-center gap-2"><Pencil className="w-4 h-4" />Editar</Button></Link></td>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-50">
-            {paged.length === 0 ? (
-              <tr>
-                <td colSpan={6} className="p-10 text-center text-sm text-gray-400">
-                  Nenhum livro pendente de revisão.
-                </td>
-              </tr>
-            ) : (
-              paged.map((book) => (
-                <tr key={book.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => setSelectedBook(book)}>
-                  <td className="p-4">
-                    <p className="text-sm font-semibold">{book.title}</p>
-                    <p className="text-xs text-gray-500">{book.author || 'Autor em falta'}</p>
-                  </td>
-                  <td className="p-4 text-sm">{book.genre || 'Sem curso'}</td>
-                  <td className="p-4 text-xs font-mono text-gray-500">{book.catalogCode || 'Sem catálogo'}</td>
-                  <td className="p-4 text-xs text-gray-500">
-                    ARM {book.armario || '-'} | PRAT {book.prateleira ?? '-'}
-                  </td>
-                  <td className="p-4">
-                    <div className="flex flex-wrap gap-2">
-                      {book.reviewIssues.map((issue: ReviewIssue) => (
-                        <span key={issue} className="rounded-full bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700">
-                          <AlertTriangle className="mr-1 inline-block w-3 h-3" />
-                          {ISSUE_LABELS[issue]}
-                        </span>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="p-4 text-right">
-                    <Link to={`/admin/books/edit?id=${book.id}`} onClick={(e) => e.stopPropagation()}>
-                      <Button variant="secondary" className="inline-flex items-center gap-2">
-                        <Pencil className="w-4 h-4" />
-                        Editar
-                      </Button>
-                    </Link>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-        </div>
+          ))}</tbody>
+        </table></div>
       </Card>
 
-      <div className="flex flex-col gap-3 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between">
-        <span>Página {page} de {totalPages}</span>
-        <div className="flex flex-wrap items-center gap-2">
-          <Button variant="secondary" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page <= 1}>Anterior</Button>
-          <Button variant="secondary" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page >= totalPages}>Seguinte</Button>
-        </div>
-      </div>
+      <div className="flex flex-col gap-3 text-sm text-gray-500 sm:flex-row sm:items-center sm:justify-between"><span>Página {page} de {totalPages}</span><div className="flex flex-wrap items-center gap-2"><Button variant="secondary" onClick={() => setPage((current) => Math.max(1, current - 1))} disabled={page <= 1}>Anterior</Button><Button variant="secondary" onClick={() => setPage((current) => Math.min(totalPages, current + 1))} disabled={page >= totalPages}>Seguinte</Button></div></div>
 
-      {selectedBook && (
-        <BookInfoModal book={selectedBook} onClose={() => setSelectedBook(null)} />
-      )}
+      {selectedBook && <BookInfoModal book={selectedBook} onClose={() => setSelectedBook(null)} />}
     </div>
   );
 };
