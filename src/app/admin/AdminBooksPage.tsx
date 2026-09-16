@@ -30,6 +30,7 @@ export const AdminBooksPage = () => {
   const [pdfOpen, setPdfOpen] = useState(false);
   const [genres, setGenres] = useState<any[]>([]);
   const [genreFilter, setGenreFilter] = useState<string>('all');
+  const [bookTypeFilter, setBookTypeFilter] = useState<'all' | 'physical' | 'digital'>('all');
   const [selectedBook, setSelectedBook] = useState<any | null>(null);
   const [deletingBookId, setDeletingBookId] = useState<number | null>(null);
 
@@ -89,7 +90,7 @@ export const AdminBooksPage = () => {
 
   useEffect(() => {
     setPage(1);
-  }, [search, catalogCodeFilter, armarioFilter, prateleiraFilter, sortBy, sortOrder, genreFilter]);
+  }, [search, catalogCodeFilter, armarioFilter, prateleiraFilter, sortBy, sortOrder, genreFilter, bookTypeFilter]);
 
   const armarioOptions = useMemo(
     () =>
@@ -127,7 +128,10 @@ export const AdminBooksPage = () => {
       const matchesCatalogCode = !catalogQuery || catalogCode.includes(catalogQuery);
       const matchesArmario = armarioFilter === 'all' || String(b.armario || '').trim() === armarioFilter;
       const matchesPrateleira = prateleiraFilter === 'all' || String(b.prateleira ?? '').trim() === prateleiraFilter;
-      return matchesSearch && matchesCatalogCode && matchesArmario && matchesPrateleira;
+      const isDigital = Boolean(b.isDigital || b.fileUrl);
+      const matchesType = bookTypeFilter === 'all' ||
+        (bookTypeFilter === 'digital' ? isDigital : !isDigital);
+      return matchesSearch && matchesCatalogCode && matchesArmario && matchesPrateleira && matchesType;
     });
     const genreFiltered =
       genreFilter === 'all'
@@ -146,7 +150,7 @@ export const AdminBooksPage = () => {
       return av.localeCompare(bv) * dir;
     });
     return sorted;
-  }, [books, search, catalogCodeFilter, armarioFilter, prateleiraFilter, sortBy, sortOrder, genreFilter]);
+  }, [books, search, catalogCodeFilter, armarioFilter, prateleiraFilter, sortBy, sortOrder, genreFilter, bookTypeFilter]);
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
@@ -486,6 +490,16 @@ export const AdminBooksPage = () => {
             {prateleiraOptions.map((prateleira) => (
               <option key={prateleira} value={prateleira}>Prateleira {prateleira}</option>
             ))}
+          </select>
+          <select
+            aria-label="Tipo de livro"
+            className="px-4 py-2 border rounded-lg"
+            value={bookTypeFilter}
+            onChange={(e) => { setBookTypeFilter(e.target.value as 'all' | 'physical' | 'digital'); setPage(1); }}
+          >
+            <option value="all">Todos os tipos</option>
+            <option value="physical">Físico</option>
+            <option value="digital">Digital</option>
           </select>
           <select className="px-4 py-2 border rounded-lg" value={sortBy} onChange={(e) => setSortBy(e.target.value as any)}>
             <option value="title">Ordenar por título</option>

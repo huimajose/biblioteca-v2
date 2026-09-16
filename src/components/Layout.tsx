@@ -33,6 +33,8 @@ interface LayoutProps {
   user: User;
   onLogout: () => void;
   children: React.ReactNode;
+  readerMode?: boolean;
+  onToggleReaderMode?: () => void;
 }
 
 interface MenuItem {
@@ -48,7 +50,8 @@ interface MenuSection {
   items: MenuItem[];
 }
 
-export const Layout = ({ user, onLogout, children }: LayoutProps) => {
+export const Layout = ({ user, onLogout, children, readerMode = false, onToggleReaderMode }: LayoutProps) => {
+  const isStaffMode = user.isStaff && !readerMode;
   const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -85,7 +88,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
   };
 
   const refreshStaffBadges = async () => {
-    if (!user.isStaff) return;
+    if (!isStaffMode) return;
 
     const [stats, pendingUsers] = await Promise.all([
       fetch('/api/admin/stats').then((res) => res.json()).catch(() => null),
@@ -102,12 +105,12 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
   }, [user.id]);
 
   useEffect(() => {
-    if (user.isStaff) return;
+    if (isStaffMode) return;
     fetch('/api/user/student-info', { headers: { 'x-user-id': user.id } })
       .then(res => res.json())
       .then(data => setVerificationStatus(data?.status ?? null))
       .catch(() => setVerificationStatus(null));
-  }, [user.id, user.isStaff]);
+  }, [user.id, isStaffMode]);
 
   useEffect(() => {
     initPushNotifications(user.id);
@@ -137,7 +140,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
               ...prev,
             ].slice(0, 10));
             setUnreadCount((c) => c + 1);
-            if (user.isStaff) {
+            if (isStaffMode) {
               refreshStaffBadges();
             }
           }
@@ -188,14 +191,14 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
   }, [user.id]);
 
   useEffect(() => {
-    if (!user.isStaff) return undefined;
+    if (!isStaffMode) return undefined;
 
     refreshStaffBadges();
     const intervalId = window.setInterval(() => {
       refreshStaffBadges();
     }, 15000);
     return () => window.clearInterval(intervalId);
-  }, [user.id, user.isStaff]);
+  }, [user.id, isStaffMode]);
 
   const adminMenuItems = [
     canAccessAdminSection(user.role, 'dashboard') ? { icon: LayoutDashboard, label: 'Painel', path: '/admin' } : null,
@@ -210,7 +213,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
     { icon: UserCircle, label: 'Perfil', path: '/profile' },
   ].filter(Boolean) as Array<{ icon: any; label: string; path: string; badge?: number }>;
 
-  const menuItems = user.isStaff ? adminMenuItems : [
+  const menuItems = isStaffMode ? adminMenuItems : [
     { icon: LayoutDashboard, label: 'Dashboard', path: '/dashboard' },
     { icon: Library, label: 'Biblioteca', path: '/' },
     { icon: BookMarked, label: 'A Minha Estante', path: '/shelf' },
@@ -223,7 +226,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
   ];
 
   const menuSections = useMemo<MenuSection[]>(() => {
-    if (user.isStaff) {
+    if (isStaffMode) {
       return [
         {
           id: 'admin-core',
@@ -272,7 +275,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
         ),
       },
     ].filter((section) => section.items.length > 0);
-  }, [adminMenuItems, menuItems, user.isStaff]);
+  }, [adminMenuItems, menuItems, isStaffMode]);
 
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
 
@@ -283,7 +286,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
         return acc;
       }, {} as Record<string, boolean>)
     );
-  }, [user.role, user.isStaff]);
+  }, [user.role, isStaffMode]);
 
   useEffect(() => {
     setIsMobileMenuOpen(false);
@@ -299,7 +302,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
     '/student-verification': 'Esta área é importante para validar que é estudante. Depois da verificação, o sistema consegue aplicar corretamente os acessos, benefícios e regras da sua conta académica.',
   };
 
-  const userTourSteps = !user.isStaff
+  const userTourSteps = !isStaffMode
     ? [
         ...menuItems.map((item) => ({
           key: `menu-${item.path === '/' ? 'home' : item.path.replace(/[^a-z0-9]+/gi, '-')}`,
@@ -367,13 +370,13 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       setIsMobileMenuOpen(false);
     }
-    if (markSeen && !user.isStaff && typeof window !== 'undefined') {
+    if (markSeen && !isStaffMode && typeof window !== 'undefined') {
       window.localStorage.setItem(`user-tour-seen:${user.id}`, '1');
     }
   };
 
   const startTour = () => {
-    if (user.isStaff) return;
+    if (isStaffMode) return;
     setIsSidebarOpen(true);
     if (typeof window !== 'undefined' && window.innerWidth < 768) {
       setIsMobileMenuOpen(true);
@@ -383,7 +386,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
   };
 
   useEffect(() => {
-    if (user.isStaff || typeof window === 'undefined') return;
+    if (isStaffMode || typeof window === 'undefined') return;
     const seen = window.localStorage.getItem(`user-tour-seen:${user.id}`);
     if (!seen) {
       const timer = window.setTimeout(() => {
@@ -395,7 +398,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
       }, 300);
       return () => window.clearTimeout(timer);
     }
-  }, [user.id, user.isStaff]);
+  }, [user.id, isStaffMode]);
 
   useEffect(() => {
     if (!tourActive || !currentTourStep || typeof window === 'undefined') return;
@@ -431,7 +434,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
       <Link
         key={item.path}
         to={item.path}
-        data-user-tour={!user.isStaff ? `menu-${item.path === '/' ? 'home' : item.path.replace(/[^a-z0-9]+/gi, '-')}` : undefined}
+        data-user-tour={!isStaffMode ? `menu-${item.path === '/' ? 'home' : item.path.replace(/[^a-z0-9]+/gi, '-')}` : undefined}
         className={cn(
           'relative flex items-center gap-3 rounded-xl p-3 transition-all group',
           isActive
@@ -512,6 +515,20 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
         </nav>
 
         <div className="p-4 border-t border-gray-100">
+          {user.isStaff && onToggleReaderMode && (
+            <button
+              type="button"
+              onClick={onToggleReaderMode}
+              title={readerMode ? 'Voltar à administração' : 'Modo leitor'}
+              aria-label={readerMode ? 'Voltar à administração' : 'Modo leitor'}
+              className="mb-2 flex w-full items-center gap-3 rounded-xl bg-lime-50 p-3 text-lime-800 transition-all hover:bg-lime-100"
+            >
+              {readerMode ? <LayoutDashboard className="h-5 w-5 shrink-0" /> : <BookOpen className="h-5 w-5 shrink-0" />}
+              {(isSidebarOpen || isMobileMenuOpen) && (
+                <span className="font-medium">{readerMode ? 'Voltar à administração' : 'Modo leitor'}</span>
+              )}
+            </button>
+          )}
           <button 
             onClick={onLogout}
             className="flex items-center gap-3 p-3 w-full rounded-xl text-red-600 hover:bg-red-50 transition-all"
@@ -534,7 +551,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
             </button>
           </div>
           <div className="flex items-center gap-2 sm:gap-4">
-            {!user.isStaff && (
+            {!isStaffMode && (
               <button
                 className="inline-flex items-center gap-2 rounded-full border border-lime-200 bg-lime-50 px-3 py-1.5 text-xs font-bold text-lime-700 hover:bg-lime-100"
                 onClick={startTour}
@@ -545,7 +562,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
             )}
             <div className="relative">
               <button
-                data-user-tour={!user.isStaff ? 'notifications' : undefined}
+                data-user-tour={!isStaffMode ? 'notifications' : undefined}
                 className="p-2 rounded-full hover:bg-gray-100 relative"
                 onClick={() => {
                   const next = !notifOpen;
@@ -599,12 +616,12 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
                 </div>
               )}
             </div>
-            <div data-user-tour={!user.isStaff ? 'profile-summary' : undefined}>
+            <div data-user-tour={!isStaffMode ? 'profile-summary' : undefined}>
               <div className="hidden text-right sm:block">
                 <p className="max-w-[10rem] truncate text-sm font-bold lg:max-w-none">{displayName}</p>
                 <div className="flex items-center justify-end gap-2">
                   <p className="text-[10px] text-gray-500 uppercase tracking-widest">{roleLabel}</p>
-                  {user.role === 'student' && !user.isStaff && (
+                  {user.role === 'student' && !isStaffMode && (
                     <span className="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase bg-lime-100 text-lime-700">
                       Estudante
                     </span>
@@ -681,7 +698,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
         </div>
       )}
 
-      {tourActive && !user.isStaff && currentTourStep && (
+      {tourActive && !isStaffMode && currentTourStep && (
         <div className="fixed inset-0 z-[60]">
           <div className="absolute inset-0 bg-black/55" />
           {tourRect && (

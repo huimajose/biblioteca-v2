@@ -30,3 +30,18 @@ pelos utilizadores), `CLERK_SECRET_KEY` e `DATABASE_URL` no ambiente de publica�
 Depois do deploy, um GET sem autenticação para `/api/user/profile` deve devolver
 401 em JSON, não 404. Confirme também a gravação do nome com uma sessão iniciada
 e volte a carregar a página para verificar a persistência.
+
+## Envio de PDF e capas
+
+No formulário de livros, o separador **Ficheiros** permite selecionar PDF
+(até 50 MB) e capas JPG, PNG ou WebP (até 50 MB). O ficheiro é enviado antes
+de guardar o livro; a base de dados recebe o endereço devolvido pelo ImageKit.
+Os ficheiros antigos permanecem acessíveis e não são apagados ao substituir.
+
+A rota `/api/admin/books/upload-auth` valida a sessão Clerk e a permissão de
+gestão de livros antes de gerar credenciais temporárias, sem cache.
+Configure `IMAGEKIT_PRIVATE_KEY`, `NEXT_PUBLIC_IMAGEKIT_PUBLIC_KEY` e
+`NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT` no servidor. Também são aceites os nomes
+existentes `PRIVATE_KEY`, `NEXT_IMAGEKIT_PUBLIC_KEY` e `NEXT_IMAGEKIT_URL_ENDPOINT`.
+Nenhuma chave privada é enviada ao navegador.
+O plano ImageKit da conta também precisa de permitir ficheiros de 50 MB.

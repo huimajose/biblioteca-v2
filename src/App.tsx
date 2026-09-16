@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { useState, type ReactElement } from 'react';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { SignIn, SignUp, SignedIn, SignedOut } from '@clerk/clerk-react';
 import { useAuth } from './hooks/useAuth.ts';
 import { Layout } from './components/Layout.tsx';
@@ -28,12 +29,28 @@ import { canAccessAdminSection } from './utils/roles.ts';
 
 export default function App() {
   const { auth, logout, isLoaded } = useAuth();
+  const navigate = useNavigate();
+  const [readerModeUserId, setReaderModeUserId] = useState<string | null>(() => {
+    try { return window.sessionStorage.getItem('reader-mode-user'); } catch { return null; }
+  });
+  const readerMode = Boolean(auth?.isStaff && readerModeUserId === auth.id);
 
   if (!isLoaded) return null;
 
   const staffHome = auth?.role === 'operator' ? '/admin/transactions' : auth?.role === 'catalogador' ? '/admin/books' : '/admin';
-  const staffRoute = (section: Parameters<typeof canAccessAdminSection>[1], element: JSX.Element) =>
+  const staffRoute = (section: Parameters<typeof canAccessAdminSection>[1], element: ReactElement) =>
     auth && canAccessAdminSection(auth.role, section) ? element : <Navigate to={staffHome} replace />;
+
+  const toggleReaderMode = () => {
+    if (!auth?.isStaff) return;
+    const nextUserId = readerMode ? null : auth.id;
+    setReaderModeUserId(nextUserId);
+    try {
+      if (nextUserId) window.sessionStorage.setItem('reader-mode-user', nextUserId);
+      else window.sessionStorage.removeItem('reader-mode-user');
+    } catch { /* Navigation still works when browser storage is unavailable. */ }
+    navigate(readerMode ? staffHome : '/', { replace: true });
+  };
 
   const clerkAppearance = {
     variables: {
@@ -99,9 +116,10 @@ export default function App() {
 
       <SignedIn>
         {auth && (
-          <Layout user={auth} onLogout={logout}>
+          <Layout key={`${auth.id}:${readerMode}`} user={auth} onLogout={logout}
+            readerMode={readerMode} onToggleReaderMode={toggleReaderMode}>
             <Routes>
-              {auth.isStaff ? (
+              {auth.isStaff && !readerMode ? (
                 <>
                   <Route path="/admin" element={staffRoute('dashboard', <AdminDashboard />)} />
                   <Route path="/admin/books" element={staffRoute('books', <AdminBooksPage />)} />
