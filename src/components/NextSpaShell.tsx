@@ -19,7 +19,8 @@ export default function NextSpaShell() {
         publishableKey={publishableKey}
         signInUrl="/sign-in"
         signUpUrl="/sign-up"
-        fallbackRedirectUrl="/"
+        signInFallbackRedirectUrl="/"
+        signUpFallbackRedirectUrl="/"
         afterSignOutUrl="/sign-in"
       >
         <App />

@@ -12,6 +12,7 @@ export const UserProfilePage = ({ user }: UserProfilePageProps) => {
   const [fullName, setFullName] = useState(user.fullName || '');
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     setFullName(user.fullName || '');
@@ -20,6 +21,7 @@ export const UserProfilePage = ({ user }: UserProfilePageProps) => {
   const handleSave = async () => {
     setSaving(true);
     setSaved(false);
+    setError('');
     try {
       const res = await fetch('/api/user/profile', {
         method: 'POST',
@@ -30,7 +32,10 @@ export const UserProfilePage = ({ user }: UserProfilePageProps) => {
           role: user.role,
         }),
       });
-      if (res.ok) setSaved(true);
+      if (!res.ok) throw new Error('Não foi possível guardar o nome.');
+      setSaved(true);
+    } catch {
+      setError('Não foi possível guardar o nome. Tente novamente.');
     } finally {
       setSaving(false);
     }
@@ -61,6 +66,7 @@ export const UserProfilePage = ({ user }: UserProfilePageProps) => {
           </Button>
           {saved && <span className="text-xs text-emerald-600 font-medium">Dados atualizados.</span>}
         </div>
+        {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
       </Card>
 
       <Card className="p-6">

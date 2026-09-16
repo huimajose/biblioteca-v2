@@ -63,6 +63,7 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
   const [fullNameRequired, setFullNameRequired] = useState(false);
   const [fullNameDraft, setFullNameDraft] = useState('');
   const [savingFullName, setSavingFullName] = useState(false);
+  const [fullNameError, setFullNameError] = useState('');
   const [tourActive, setTourActive] = useState(false);
   const [tourStepIndex, setTourStepIndex] = useState(0);
   const [tourRect, setTourRect] = useState<DOMRect | null>(null);
@@ -152,9 +153,16 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
   }, [user.id]);
 
   useEffect(() => {
+    let cancelled = false;
+    setFullNameRequired(false);
+    setFullNameError('');
     fetch('/api/user/profile', { headers: { 'x-user-id': user.id } })
-      .then(res => res.json())
+      .then(res => {
+        if (!res.ok) throw new Error('Não foi possível consultar o perfil.');
+        return res.json();
+      })
       .then((data) => {
+        if (cancelled) return;
         const existing = (data?.fullName || '').trim();
         if (existing) {
           setFullNameRequired(false);
@@ -165,9 +173,10 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
         }
       })
       .catch(() => {
-        setFullNameDraft((user.fullName || '').trim());
-        setFullNameRequired(true);
+        if (cancelled) return;
+        setToast({ title: 'Perfil indisponível', message: 'Não foi possível consultar o seu nome. Tente novamente na página Perfil.' });
       });
+    return () => { cancelled = true; };
   }, [user.id, user.fullName]);
 
   useEffect(() => {
@@ -639,11 +648,13 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
               </div>
             </div>
             <div className="flex gap-3 bg-gray-50 p-6">
+              {fullNameError && <p role="alert" className="text-sm text-red-600">{fullNameError}</p>}
               <Button
                 className="flex-1"
                 disabled={savingFullName || !fullNameDraft.trim()}
                 onClick={async () => {
                   setSavingFullName(true);
+                  setFullNameError('');
                   try {
                     const res = await fetch('/api/user/profile', {
                       method: 'POST',
@@ -654,7 +665,10 @@ export const Layout = ({ user, onLogout, children }: LayoutProps) => {
                         role: user.role,
                       }),
                     });
-                    if (res.ok) setFullNameRequired(false);
+                    if (!res.ok) throw new Error('Não foi possível guardar o nome. Tente novamente.');
+                    setFullNameRequired(false);
+                  } catch {
+                    setFullNameError('Não foi possível guardar o nome. Tente novamente.');
                   } finally {
                     setSavingFullName(false);
                   }
