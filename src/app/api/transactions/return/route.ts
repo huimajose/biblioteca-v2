@@ -1,3 +1,4 @@
+import { ensureTransactionTimes } from '@/app/api/_utils/transactionTimes';
 import { NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
@@ -22,6 +23,7 @@ export async function POST(req: Request) {
     }
 
     const db = getDb();
+    await ensureTransactionTimes(db);
     const actorUserId = req.headers.get("x-user-id") || "system";
     const actorRole = await resolveActorRole(db, actorUserId);
     if (!canAccessAdminSection(actorRole, "transactions")) {
@@ -41,7 +43,7 @@ export async function POST(req: Request) {
       .update(schema.transactions)
       .set({
         status: "RETURNED",
-        returnedDate: new Date(),
+        returnedDate: new Date().toISOString().slice(0, 10),
       })
       .where(eq(schema.transactions.tid, transactionId));
 

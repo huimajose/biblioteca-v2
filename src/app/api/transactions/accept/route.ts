@@ -1,3 +1,4 @@
+import { ensureTransactionTimes } from '@/app/api/_utils/transactionTimes';
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
@@ -27,6 +28,7 @@ export async function POST(req: Request) {
 
     const adminId = req.headers.get("x-admin-id") || req.headers.get("x-user-id") || "system";
     const db = getDb();
+    await ensureTransactionTimes(db);
     const actorRole = await resolveActorRole(db, adminId);
     if (!canAccessAdminSection(actorRole, "transactions")) {
       return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
@@ -125,7 +127,7 @@ export async function POST(req: Request) {
       .set({
         status: "BORROWED",
         adminId,
-        borrowedDate: now,
+        borrowedDate: now.toISOString().slice(0, 10),
         physicalBookId: availablePhysical[0].pid,
       })
       .where(eq(schema.transactions.tid, tid));
@@ -136,7 +138,7 @@ export async function POST(req: Request) {
         borrowed: true,
         userId,
         currTransactionId: tid,
-        returnDate: expectedReturnDate,
+        returnDate: expectedReturnDate.toISOString().slice(0, 10),
       })
       .where(eq(schema.physicalBooks.pid, availablePhysical[0].pid));
 

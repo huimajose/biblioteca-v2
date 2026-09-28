@@ -1,3 +1,4 @@
+import { getTransactionTimes } from '@/utils/transactionTime';
 import React, { useEffect, useState } from 'react';
 import { RotateCcw, Printer } from 'lucide-react';
 import { Card } from '@/components/ui/Card.tsx';
@@ -62,11 +63,12 @@ export const TransactionsPage = () => {
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   const exportTransactionsPdf = async () => {
-    const doc = new jsPDF('p', 'pt');
+    const doc = new jsPDF('landscape', 'pt');
     doc.setFontSize(16);
     doc.text('Relatório de transações', 40, 40);
     doc.setFontSize(10);
     doc.text(`Intervalo: ${startDate || 'Todos'} - ${endDate || 'Todos'}`, 40, 58);
+    doc.text('Horários: Africa/Luanda (UTC+1)', 480, 72);
     doc.text(`Estado: ${statusFilter === 'all' ? 'Todos' : statusFilter}`, 40, 72);
 
     const rows = filtered.map((t) => {
@@ -81,13 +83,15 @@ export const TransactionsPage = () => {
         getUserLabel(t),
         t.bookTitle || 'N/D',
         statusLabel,
+        getTransactionTimes(t).departure,
+        getTransactionTimes(t).arrival,
       ];
     });
 
     autoTable(doc, {
       startY: 90,
-      head: [['Data', 'Utilizador', 'Livro', 'Estado']],
-      body: rows.length ? rows : [['-', '-', '-', '-']],
+      head: [['Data', 'Utilizador', 'Livro', 'Estado', 'Saída (empréstimo)', 'Entrada (devolução)']],
+      body: rows.length ? rows : [['-', '-', '-', '-', '-', '-']],
       styles: { fontSize: 9 },
       headStyles: { fillColor: [101, 163, 13] },
     });
@@ -331,23 +335,25 @@ export const TransactionsPage = () => {
       <Card className="overflow-hidden">
         <div className="p-4 border-b border-gray-100 bg-gray-50">
           <h2 className="text-sm font-bold text-gray-600 uppercase tracking-wider">Histórico de transações</h2>
-          <p className="text-xs text-gray-500">Empréstimos aprovados, devolvidos e rejeitados.</p>
+          <p className="text-xs text-gray-500">Empréstimos aprovados, devolvidos e rejeitados. Horários de Angola (UTC+1).</p>
         </div>
         <div className="overflow-x-auto">
-        <table className="min-w-[780px] w-full text-left border-collapse">
+        <table className="min-w-[1100px] w-full text-left border-collapse">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
               <th className="p-4 text-xs uppercase text-gray-400">Data</th>
               <th className="p-4 text-xs uppercase text-gray-400">Utilizador</th>
               <th className="p-4 text-xs uppercase text-gray-400">Livro</th>
               <th className="p-4 text-xs uppercase text-gray-400">Estado</th>
+              <th className="p-4 text-xs uppercase text-gray-400">Saída (empréstimo)</th>
+              <th className="p-4 text-xs uppercase text-gray-400">Entrada (devolução)</th>
               <th className="p-4 text-xs uppercase text-gray-400 text-right">Ações</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-50">
             {paged.length === 0 ? (
               <tr>
-                <td colSpan={5} className="p-10 text-center text-sm text-gray-400">
+                <td colSpan={7} className="p-10 text-center text-sm text-gray-400">
                   Nenhuma transação encontrada.
                 </td>
               </tr>
@@ -398,6 +404,8 @@ export const TransactionsPage = () => {
                         {status === 'borrowed' ? 'emprestado' : status === 'returned' ? 'devolvido' : 'rejeitado'}
                       </span>
                     </td>
+                    <td className="p-4 text-sm">{getTransactionTimes(t).departure}</td>
+                    <td className="p-4 text-sm">{getTransactionTimes(t).arrival}</td>
                     <td className="p-4 text-right">
                     {status === 'borrowed' && (
                       <Button

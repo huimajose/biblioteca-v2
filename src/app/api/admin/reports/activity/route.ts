@@ -1,3 +1,4 @@
+import { ensureTransactionTimes } from '@/app/api/_utils/transactionTimes';
 import { NextRequest, NextResponse } from "next/server";
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
@@ -19,6 +20,7 @@ export async function GET(req: NextRequest) {
   const status = searchParams.get("status") || undefined;
 
   const db = getDb();
+  await ensureTransactionTimes(db);
   const borrowedDateOnly = sql<string>`date(${schema.transactions.borrowedDate})`;
 
   let query = db
@@ -31,10 +33,13 @@ export async function GET(req: NextRequest) {
       status: schema.transactions.status,
       borrowedDate: schema.transactions.borrowedDate,
       returnedDate: schema.transactions.returnedDate,
+      borrowedAt: sql<string | null>`borrowed_at`,
+      returnedAt: sql<string | null>`returned_at`,
       scoreApplied: schema.transactions.scoreApplied,
     })
     .from(schema.transactions)
-    .orderBy(desc(schema.transactions.borrowedDate));
+    .orderBy(desc(schema.transactions.borrowedDate))
+    .$dynamic();
 
   const dateFilters = [
     start ? gte(borrowedDateOnly, start) : undefined,
@@ -94,6 +99,9 @@ export async function GET(req: NextRequest) {
         adminName: adminInfo?.fullName || null,
         adminEmail: adminInfo?.primaryEmail || null,
         borrowedDate: t.borrowedDate,
+        returnedDate: t.returnedDate,
+        borrowedAt: t.borrowedAt,
+        returnedAt: t.returnedAt,
         dueDate: pbook[0]?.returnDate ?? null,
         status: normalizeStatus(t.status),
         physicalBookId: t.physicalBookId,
@@ -101,7 +109,7 @@ export async function GET(req: NextRequest) {
         bookTitle: book[0]?.title ?? "N/D",
         bookAuthor: book[0]?.author ?? "N/D",
         isbn: book[0]?.isbn ?? "N/D",
-        catalogCode: book[0]?.catalogCode ?? book[0]?.catalog_code ?? null,
+        catalogCode: book[0]?.catalogCode ?? null,
         bookArmario: book[0]?.armario ?? null,
         bookPrateleira: book[0]?.prateleira ?? null,
         bookGenre: book[0]?.genre ?? null,

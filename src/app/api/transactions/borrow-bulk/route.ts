@@ -1,3 +1,4 @@
+import { ensureTransactionTimes } from '@/app/api/_utils/transactionTimes';
 import { NextResponse } from "next/server";
 import { and, eq } from "drizzle-orm";
 import * as schema from "@/db/pgSchema";
@@ -31,6 +32,7 @@ export async function POST(req: Request) {
   }
 
   const db = getDb();
+  await ensureTransactionTimes(db);
   const sanctions = await applyLoanSanctions(db, userId);
   if (sanctions.blocked) {
     return NextResponse.json(
@@ -93,7 +95,7 @@ export async function POST(req: Request) {
         userId,
         adminId,
         status: "BORROWED",
-        borrowedDate: now,
+        borrowedDate: now.toISOString().slice(0, 10),
         returnedDate: null,
         scoreApplied: false,
         user_name: userName || userId,
@@ -106,7 +108,7 @@ export async function POST(req: Request) {
         borrowed: true,
         userId,
         currTransactionId: transaction[0].tid,
-        returnDate: expectedReturnDate,
+        returnDate: expectedReturnDate.toISOString().slice(0, 10),
       })
       .where(eq(schema.physicalBooks.pid, physical[0].pid));
 
