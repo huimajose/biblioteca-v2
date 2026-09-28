@@ -138,6 +138,7 @@ export const TransactionsPage = () => {
       if (status !== 'borrowed') return false;
       return [
         transaction.catalogCode,
+        transaction.legacyCatalogCode,
         transaction.isbn,
         transaction.physicalBookId,
         transaction.tid,

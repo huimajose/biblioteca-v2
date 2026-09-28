@@ -1,3 +1,4 @@
+import { formatBookCatalog } from '@/utils/bookCatalog';
 import { ensureBooksEditionUniqueConstraint } from '@/app/api/_utils/bookEdition';
 import { planBookInventory } from '@/utils/bookInventory';
 import { NextRequest, NextResponse } from 'next/server';
@@ -25,7 +26,7 @@ const mapBookRow = (row: any) => ({
   armario: row.armario ?? '',
   prateleira: row.prateleira ?? null,
   courseSequence: row.courseSequence ?? row.course_sequence ?? null,
-  catalogCode: row.catalogCode ?? row.catalog_code ?? null,
+  catalogCode: formatBookCatalog({ ...row, courseSequence: row.courseSequence ?? row.course_sequence, catalogCode: row.catalogCode ?? row.catalog_code }),
   anoEdicao: row.anoEdicao ?? null,
   edicao: row.edicao ?? null,
   isbn: row.isbn,
@@ -95,11 +96,9 @@ const logBookRouteError = (stage: string, error: any, extra: Record<string, unkn
 
 
 
-const formatCatalogCode = (code: string, sequence: number) =>
-  `${code}-${String(sequence).padStart(3, '0')}`;
-
 const resolveBookCatalogData = async (db: ReturnType<typeof getDb>, input: {
   genre: string;
+  author: string;
   armario?: string | null;
   currentBookId?: number;
   preserveSequence?: number | null;
@@ -119,11 +118,11 @@ const resolveBookCatalogData = async (db: ReturnType<typeof getDb>, input: {
   const courseCode = String(genreRow?.code || 'CUR').trim().toUpperCase();
   const armario = String(input.armario ?? genreRow?.defaultArmario ?? '').trim();
 
-  if (input.preserveSequence && input.preserveCatalogCode) {
+  if (input.preserveSequence) {
     return {
       armario,
       courseSequence: input.preserveSequence,
-      catalogCode: input.preserveCatalogCode,
+      catalogCode: formatBookCatalog({ id: 0, author: input.author, courseSequence: input.preserveSequence }, courseCode),
     };
   }
 
@@ -142,7 +141,7 @@ const resolveBookCatalogData = async (db: ReturnType<typeof getDb>, input: {
   return {
     armario,
     courseSequence: nextSequence,
-    catalogCode: formatCatalogCode(courseCode, nextSequence),
+    catalogCode: formatBookCatalog({ id: 0, author: input.author, courseSequence: nextSequence }, courseCode),
   };
 };
 
@@ -218,6 +217,7 @@ export async function PUT(
       nextDocumentType === 2;
     const catalogData = await resolveBookCatalogData(db, {
       genre: nextGenre,
+      author: String(body.author ?? existing[0].author),
       armario: body.armario ?? existing[0].armario ?? null,
       currentBookId: bookId,
       preserveSequence: genreChanged ? null : (existing[0].courseSequence ?? null),

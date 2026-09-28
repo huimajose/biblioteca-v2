@@ -1,5 +1,6 @@
-import React from 'react';
-import { Printer, X, Tag } from 'lucide-react';
+import React, { useState } from 'react';
+import { bookLabelLines, physicalCopyNumbers } from '@/utils/bookCatalog';
+import { Printer, X } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Button } from '@/components/ui/Button.tsx';
 import { LOGO_WATERMARK } from '@/constants.ts';
@@ -13,68 +14,26 @@ interface BookLabelProps {
     genre: string;
     cdu?: string | null;
     catalogCode?: string | null;
+    courseSequence?: number | null;
+    totalCopies?: number;
     prateleira?: number | string | null;
     armario?: number | string | null;
   };
   onClose: () => void;
 }
 
-const getBookLocationLabel = (book: BookLabelProps['book']) => {
-  const armario = String(book.armario ?? book.cdu ?? '').trim() || 'S/ARM';
-  const prateleira = String(book.prateleira ?? '').trim() || 'S/PRAT';
-  const code = String(book.catalogCode ?? '').trim() || `ID ${book.id}`;
-  return `ARM ${armario} | PRAT ${prateleira} | ${code}`;
-};
-
-export const BookLabelContent = ({ book }: { book: BookLabelProps['book'] }) => (
-  <div className="relative w-64 p-6 border-2 border-black rounded-lg space-y-3 bg-white overflow-hidden">
-    <img
-      src={LOGO_WATERMARK}
-      alt=""
-      className="pointer-events-none absolute inset-0 m-auto w-36 h-36 opacity-10"
-    />
-    <div className="border-b border-black pb-2">
-      <h2 className="text-lg font-black tracking-tighter uppercase">Biblioteca Virtual</h2>
-      <p className="text-[7px] font-bold uppercase tracking-widest">Propriedade da biblioteca</p>
-    </div>
-
-    <div className="rounded-md border border-black/10 bg-gray-50 px-3 py-2">
-      <p className="text-[7px] font-bold uppercase tracking-[0.25em] text-gray-500">Localizacao</p>
-      <p className="mt-1 font-mono text-[10px] font-bold leading-tight">{getBookLocationLabel(book)}</p>
-    </div>
-
-    <div className="space-y-1">
-      <p className="text-[9px] font-bold uppercase text-gray-500">Titulo</p>
-      <p className="font-bold text-[11px] leading-tight line-clamp-2">{book.title}</p>
-    </div>
-
-    <div className="grid grid-cols-2 gap-2 text-left">
-      <div>
-        <p className="text-[7px] font-bold uppercase text-gray-500">Autor</p>
-        <p className="text-[9px] font-medium truncate">{book.author}</p>
-      </div>
-      <div>
-        <p className="text-[7px] font-bold uppercase text-gray-500">curso</p>
-        <p className="text-[9px] font-medium truncate">{book.genre}</p>
-      </div>
-    </div>
-
-    <div className="pt-2 border-t border-black flex flex-col items-center gap-2">
-      <div className="w-full h-8 bg-black flex items-center justify-center">
-        <div className="flex gap-[1px] h-full bg-white px-2 items-center">
-          {[...Array(20)].map((_, i) => (
-            <div key={i} className="bg-black" style={{ width: Math.random() > 0.5 ? '2px' : '1px', height: '80%' }} />
-          ))}
-        </div>
-      </div>
-      <p className="font-mono text-[8px] font-bold tracking-wide text-center">{getBookLocationLabel(book)}</p>
-      <p className="font-mono text-[9px] font-bold tracking-widest">ISBN: {book.isbn || 'N/D'}</p>
-      <p className="font-mono text-[7px] text-gray-400">BOOK_ID: {book.id}</p>
-    </div>
+export const BookLabelContent = ({ book, copy = 1 }: { book: BookLabelProps['book']; copy?: number }) => (
+  <div className="relative w-64 border-2 border-black rounded-lg bg-white overflow-hidden text-center">
+    <img src={LOGO_WATERMARK} alt="" className="pointer-events-none absolute inset-0 m-auto w-36 opacity-10" />
+    {bookLabelLines(book, copy).map((line, index) => (
+      <p key={index} className={index === 0 ? 'relative border-b border-black px-3 py-3 text-lg font-bold' : 'relative py-2 font-mono text-xl font-bold'}>{line}</p>
+    ))}
   </div>
 );
 
 export const BookLabel = ({ book, onClose }: BookLabelProps) => {
+  const [copy, setCopy] = useState(1);
+  const copies = physicalCopyNumbers(book);
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-50 print:p-0 print:bg-white print:static print:inset-auto">
       <motion.div 
@@ -88,14 +47,21 @@ export const BookLabel = ({ book, onClose }: BookLabelProps) => {
         </div>
         
         <div className="p-8 flex flex-col items-center text-center">
-          <BookLabelContent book={book} />
+          {copies.length > 0 ? <>
+            <label className="mb-4 text-sm print:hidden">Exemplar
+              <select className="ml-2 border rounded p-2" value={copy} onChange={e => setCopy(Number(e.target.value))}>
+                {copies.map(number => <option key={number} value={number}>Ex. {number}</option>)}
+              </select>
+            </label>
+            <BookLabelContent book={book} copy={copy} />
+          </> : <p>Este livro não tem exemplares físicos para etiquetar.</p>}
 
           <p className="mt-6 text-xs text-gray-500 print:hidden italic">Esta etiqueta foi concebida para ser impressa e colocada na lombada do livro ou na capa interior.</p>
         </div>
 
         <div className="p-6 bg-gray-50 flex gap-3 print:hidden">
           <Button variant="secondary" className="flex-1" onClick={onClose}>Fechar</Button>
-          <Button className="flex-1 flex items-center justify-center gap-2" onClick={() => window.print()}>
+          <Button className="flex-1 flex items-center justify-center gap-2" disabled={!copies.length} onClick={() => window.print()}>
             <Printer className="w-4 h-4" /> Imprimir etiqueta
           </Button>
         </div>

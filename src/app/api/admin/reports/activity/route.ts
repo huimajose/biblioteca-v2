@@ -1,3 +1,4 @@
+import { formatBookCatalog } from '@/utils/bookCatalog';
 import { ensureTransactionTimes } from '@/app/api/_utils/transactionTimes';
 import { NextRequest, NextResponse } from "next/server";
 import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
@@ -109,7 +110,8 @@ export async function GET(req: NextRequest) {
         bookTitle: book[0]?.title ?? "N/D",
         bookAuthor: book[0]?.author ?? "N/D",
         isbn: book[0]?.isbn ?? "N/D",
-        catalogCode: book[0]?.catalogCode ?? null,
+        catalogCode: book[0] ? formatBookCatalog(book[0]) : null,
+        legacyCatalogCode: book[0]?.catalogCode ?? null,
         bookArmario: book[0]?.armario ?? null,
         bookPrateleira: book[0]?.prateleira ?? null,
         bookGenre: book[0]?.genre ?? null,

@@ -1,3 +1,4 @@
+import { formatBookCatalog } from '@/utils/bookCatalog';
 import { NextRequest, NextResponse } from "next/server";
 import * as schema from "@/db/pgSchema";
 import { getDb } from "@/app/api/_utils/db";
@@ -80,7 +81,7 @@ export async function GET(req: NextRequest) {
         title: book.title ?? "N/D",
         author: book.author ?? "N/D",
         genre: book.genre ?? "",
-        catalogCode: rawBook.catalogCode ?? rawBook.catalog_code ?? null,
+        catalogCode: formatBookCatalog(book),
         armario: book.armario ?? null,
         prateleira: book.prateleira ?? null,
         isDigital: rawBook.isDigital ?? rawBook.is_digital ?? false,

@@ -1,3 +1,4 @@
+import { bookLabelLines, physicalCopyNumbers } from '@/utils/bookCatalog';
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Pencil, PlusCircle, FileDown, ChevronDown, Tags, Trash2 } from 'lucide-react';
@@ -9,13 +10,6 @@ import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 import { LOGO_WATERMARK } from '@/constants.ts';
 import { addCenteredWatermarkToAllPages, loadWatermarkImage } from '@/utils/pdfWatermark.ts';
-
-const getBookLocationLabel = (book: any) => {
-  const armario = String(book.armario ?? book.cdu ?? '').trim() || 'S/ARM';
-  const prateleira = String(book.prateleira ?? '').trim() || 'S/PRAT';
-  const code = String(book.catalogCode ?? '').trim() || `ID ${book.id}`;
-  return `ARM ${armario} | PRAT ${prateleira} | ${code}`;
-};
 
 export const AdminBooksPage = () => {
   const [books, setBooks] = useState<any[]>([]);
@@ -260,154 +254,32 @@ export const AdminBooksPage = () => {
     setPdfOpen(false);
   };
 
-  const drawBarcode = (doc: jsPDF, x: number, y: number, width: number, height: number, seed: string) => {
-    const data = seed.replace(/\D/g, '') || '1234567890';
-    const totalBars = 60;
-    const barWidth = width / totalBars;
-    for (let i = 0; i < totalBars; i++) {
-      const digit = parseInt(data[i % data.length], 10);
-      if (digit % 2 === 0) {
-        doc.rect(x + i * barWidth, y, barWidth * 0.7, height, 'F');
-      }
+  const exportLabels = async (selectedBooks: any[], filename: string) => {
+    const labels = selectedBooks.flatMap(book => physicalCopyNumbers(book).map(copy => ({ book, copy })));
+    if (!labels.length) {
+      alert('Não existem exemplares físicos para etiquetar.');
+      return;
     }
-  };
-
-  const drawLabel = (doc: jsPDF, x: number, y: number, book: any, watermark?: HTMLImageElement) => {
-    const labelW = 180;
-    const labelH = 120;
-    const locationLabel = getBookLocationLabel(book);
-
-    doc.setDrawColor(20);
-    doc.setLineWidth(0.6);
-    doc.roundedRect(x, y, labelW, labelH, 4, 4);
-
-    if (watermark) {
-      const wmW = 80;
-      const wmH = wmW * (watermark.height / watermark.width);
-      const wmX = x + (labelW - wmW) / 2;
-      const wmY = y + (labelH - wmH) / 2;
-      if ((doc as any).GState && doc.setGState) {
-        doc.setGState(new (doc as any).GState({ opacity: 0.08 }));
-      }
-      doc.addImage(watermark, 'PNG', wmX, wmY, wmW, wmH);
-      if ((doc as any).GState && doc.setGState) {
-        doc.setGState(new (doc as any).GState({ opacity: 1 }));
-      }
-    }
-
-    doc.setFillColor(101, 163, 13);
-    doc.rect(x, y, labelW, 18, 'F');
-    doc.setTextColor(255, 255, 255);
-    doc.setFontSize(10);
-    doc.setFont('helvetica', 'bold');
-    doc.text('Biblioteca Digital', x + 8, y + 12);
-
-    doc.setTextColor(0);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(6);
-    
-    doc.setFontSize(8);
-    doc.text(locationLabel, x + 8, y + 38, { maxWidth: labelW - 16 });
-
-    doc.setFont('helvetica', 'normal');
-    const leftX = x + 8;
-    const rightX = x + 110;
-    doc.setDrawColor(230);
-    doc.line(x + 8, y + 44, x + labelW - 8, y + 44);
-    doc.line(x + 104, y + 50, x + 104, y + 84);
-
-    const rawTitle = String(book.title || 'N/D');
-    const rawAuthor = String(book.author || 'N/D');
-
-    const fitText = (text: string, maxWidth: number, maxLines: number, startSize: number, minSize: number) => {
-      let size = startSize;
-      let lines = doc.splitTextToSize(text, maxWidth);
-      while ((lines.length > maxLines) && size > minSize) {
-        size -= 1;
-        doc.setFontSize(size);
-        lines = doc.splitTextToSize(text, maxWidth);
-      }
-      return { size, lines: lines.slice(0, maxLines) };
-    };
-
-    doc.setFontSize(7);
-   
-
-    const titleFit = fitText(rawTitle, 88, 2, 9, 7);
-    doc.setFontSize(titleFit.size);
-    const titleStartY = y + 62;
-    doc.text(titleFit.lines, leftX, titleStartY);
-
-    const titleLineCount = titleFit.lines.length;
-    const authorLabelY = titleStartY + titleLineCount * 10 + 6;
-    const authorValueY = Math.min(authorLabelY + 10, y + 84);
-    doc.setFontSize(7);
-   
-    const authorFit = fitText(rawAuthor, 88, 1, 9, 7);
-    doc.setFontSize(authorFit.size);
-    doc.text(authorFit.lines, leftX, authorValueY);
-
-    doc.setFontSize(7);
-   
-    doc.setFontSize(8);
-    doc.text(String(book.genre || 'N/D'), rightX, y + 62, { maxWidth: 60 });
-
-    doc.setFontSize(7);
-   
-    doc.setFontSize(8);
-    doc.text(`${String(book.isbn || 'N/D')}`, rightX, y + 84, { maxWidth: 60 });
-
-    drawBarcode(doc, x + 8, y + 92, 160, 10, `${locationLabel}${book.isbn || ''}`);
-    doc.setFontSize(7);
-   
-  };
-
-  const exportLabelPdf = async (book: any) => {
     const doc = new jsPDF('p', 'pt', 'a4');
-    try {
-      const logo = await loadWatermarkImage(LOGO_WATERMARK);
-      drawLabel(doc, 40, 40, book, logo);
-    } catch {
-      drawLabel(doc, 40, 40, book);
-    }
-    doc.save(`etiqueta-${book.id}.pdf`);
-  };
-
-  const exportAllLabelsPdf = async () => {
-    const doc = new jsPDF('p', 'pt', 'a4');
-    const cols = 2;
-    const rows = 5;
-    const startX = 40;
-    const startY = 40;
-    const gapX = 10;
-    const gapY = 10;
-    const labelW = 180;
-    const labelH = 120;
-    let index = 0;
-
-    let logo: HTMLImageElement | null = null;
-    try {
-      logo = await loadWatermarkImage(LOGO_WATERMARK);
-    } catch {
-      logo = null;
-    }
-
-    filtered.forEach((book) => {
-      const pageIndex = Math.floor(index / (cols * rows));
-      if (index > 0 && index % (cols * rows) === 0) {
-        doc.addPage();
-      }
-      const pos = index % (cols * rows);
-      const col = pos % cols;
-      const row = Math.floor(pos / cols);
-      const x = startX + col * (labelW + gapX);
-      const y = startY + row * (labelH + gapY);
-      drawLabel(doc, x, y, book, logo || undefined);
-      index += 1;
+    labels.forEach(({ book, copy }, index) => {
+      if (index > 0 && index % 10 === 0) doc.addPage();
+      const position = index % 10;
+      const x = 40 + (position % 2) * 240;
+      const y = 40 + Math.floor(position / 2) * 145;
+      doc.setDrawColor(0);
+      doc.roundedRect(x, y, 220, 135, 4, 4);
+      bookLabelLines(book, copy, getGenreCode(book.genre)).forEach((line, lineIndex) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(lineIndex === 0 ? 13 : 16);
+        doc.text(line, x + 110, y + 22 + lineIndex * 24, { align: 'center' });
+      });
+      doc.line(x, y + 30, x + 220, y + 30);
     });
-
-    doc.save('etiquetas-livros.pdf');
+    doc.save(filename);
   };
+
+  const exportLabelPdf = (book: any) => exportLabels([book], `etiquetas-${book.id}.pdf`);
+  const exportAllLabelsPdf = () => exportLabels(filtered, 'etiquetas-livros.pdf');
 
   return (
     <div className="space-y-6">

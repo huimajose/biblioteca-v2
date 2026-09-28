@@ -1,3 +1,4 @@
+import { formatBookCatalog } from '@/utils/bookCatalog';
 import type { NextApiRequest, NextApiResponse } from "next";
 import { drizzle } from "drizzle-orm/neon-http";
 import { asc } from "drizzle-orm";
@@ -19,7 +20,7 @@ const mapBookRow = (row: any) => ({
   armario: row.armario ?? "",
   prateleira: row.prateleira ?? null,
   courseSequence: row.courseSequence ?? row.course_sequence ?? null,
-  catalogCode: row.catalogCode ?? row.catalog_code ?? null,
+  catalogCode: formatBookCatalog({ ...row, courseSequence: row.courseSequence ?? row.course_sequence, catalogCode: row.catalogCode ?? row.catalog_code }),
   anoEdicao: row.anoEdicao ?? null,
   edicao: row.edicao ?? null,
   isbn: row.isbn,
