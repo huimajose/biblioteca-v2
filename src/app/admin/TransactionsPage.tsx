@@ -5,8 +5,7 @@ import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
 import { cn } from '@/utils/cn.ts';
 import { BookInfoModal } from '@/components/BookInfoModal.tsx';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { createTransactionReportPdf } from '@/utils/transactionReportPdf';
 import { LOGO_WATERMARK } from '@/constants.ts';
 import { addCenteredWatermarkToAllPages, loadWatermarkImage } from '@/utils/pdfWatermark.ts';
 
@@ -63,37 +62,8 @@ export const TransactionsPage = () => {
   const paged = filtered.slice((page - 1) * pageSize, page * pageSize);
 
   const exportTransactionsPdf = async () => {
-    const doc = new jsPDF('landscape', 'pt');
-    doc.setFontSize(16);
-    doc.text('Relatório de transações', 40, 40);
-    doc.setFontSize(10);
-    doc.text(`Intervalo: ${startDate || 'Todos'} - ${endDate || 'Todos'}`, 40, 58);
-    doc.text('Horários: Africa/Luanda (UTC+1)', 480, 72);
-    doc.text(`Estado: ${statusFilter === 'all' ? 'Todos' : statusFilter}`, 40, 72);
-
-    const rows = filtered.map((t) => {
-      const status = (t.status || '').toLowerCase();
-      const statusLabel =
-        status === 'borrowed' ? 'emprestado' :
-        status === 'returned' ? 'devolvido' :
-        status === 'rejected' ? 'rejeitado' :
-        status;
-      return [
-        t.borrowedDate ? new Date(t.borrowedDate).toLocaleDateString() : 'N/D',
-        getUserLabel(t),
-        t.bookTitle || 'N/D',
-        statusLabel,
-        getTransactionTimes(t).departure,
-        getTransactionTimes(t).arrival,
-      ];
-    });
-
-    autoTable(doc, {
-      startY: 90,
-      head: [['Data', 'Utilizador', 'Livro', 'Estado', 'Saída (empréstimo)', 'Entrada (devolução)']],
-      body: rows.length ? rows : [['-', '-', '-', '-', '-', '-']],
-      styles: { fontSize: 9 },
-      headStyles: { fillColor: [101, 163, 13] },
+    const doc = createTransactionReportPdf(filtered, {
+      start: startDate, end: endDate, status: statusFilter,
     });
 
     try {
@@ -346,8 +316,8 @@ export const TransactionsPage = () => {
               <th className="p-4 text-xs uppercase text-gray-400">Utilizador</th>
               <th className="p-4 text-xs uppercase text-gray-400">Livro</th>
               <th className="p-4 text-xs uppercase text-gray-400">Estado</th>
-              <th className="p-4 text-xs uppercase text-gray-400">Saída (empréstimo)</th>
-              <th className="p-4 text-xs uppercase text-gray-400">Entrada (devolução)</th>
+              <th className="p-4 text-xs uppercase text-gray-400">Hora de saída (empréstimo)</th>
+              <th className="p-4 text-xs uppercase text-gray-400">Hora de entrada (devolução)</th>
               <th className="p-4 text-xs uppercase text-gray-400 text-right">Ações</th>
             </tr>
           </thead>
