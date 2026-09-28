@@ -187,18 +187,18 @@ export const AdminBooksPage = () => {
       let y = 80;
       Object.entries(grouped).forEach(([genre, list]) => {
         doc.setFontSize(12);
-        doc.text(`${getGenreCode(genre)} | ${genre} (${list.length})`, 40, y);
+        doc.text(`${getGenreCode(genre)} | ${genre} (${list.length} títulos; ${list.reduce((sum, book) => sum + Number(book.totalCopies || 0), 0)} exemplares)`, 40, y);
         y += 8;
         autoTable(doc, {
           startY: y + 8,
-          head: [['Seq', 'Codigo', 'Titulo', 'Autor', 'ISBN', 'Disponivel']],
+          head: [['Seq', 'Codigo', 'Titulo', 'Autor', 'ISBN', 'Disp. / Total']],
           body: list.map((b) => [
             b.courseSequence ?? '-',
             b.catalogCode || `${getGenreCode(genre)}-${String(b.courseSequence ?? '').padStart(3, '0')}`,
             b.title,
             b.author,
             b.isbn,
-            b.isDigital ? '-' : `${b.availableCopies}`,
+            `${b.availableCopies ?? 0} / ${b.totalCopies ?? 0}`,
           ]),
           styles: { fontSize: 9 },
           headStyles: { fillColor: [101, 163, 13] },
@@ -208,7 +208,7 @@ export const AdminBooksPage = () => {
     } else {
       autoTable(doc, {
         startY: 80,
-        head: [['Curso', 'Seq', 'Codigo', 'Titulo', 'Autor', 'ISBN', 'Disponivel']],
+        head: [['Curso', 'Seq', 'Codigo', 'Titulo', 'Autor', 'ISBN', 'Disp. / Total']],
         body: orderedInventoryBooks.map((b) => [
           getGenreCode(b.genre),
           b.courseSequence ?? '-',
@@ -216,7 +216,7 @@ export const AdminBooksPage = () => {
           b.title,
           b.author,
           b.isbn,
-          b.isDigital ? '-' : `${b.availableCopies}`,
+          `${b.availableCopies ?? 0} / ${b.totalCopies ?? 0}`,
         ]),
         styles: { fontSize: 9 },
         headStyles: { fillColor: [101, 163, 13] },
@@ -244,14 +244,14 @@ export const AdminBooksPage = () => {
             grouped[key].push(b);
           });
           return Object.entries(grouped).flatMap(([genre, list]) =>
-            list.map((b) => [`${genre} (${list.length})`, b.courseSequence ?? '-', b.catalogCode || '-', b.title, b.author, b.isbn, b.isDigital ? '-' : `${b.availableCopies}`])
+            list.map((b) => [`${genre} (${list.length} títulos; ${list.reduce((sum, book) => sum + Number(book.totalCopies || 0), 0)} exemplares)`, b.courseSequence ?? '-', b.catalogCode || '-', b.title, b.author, b.isbn, `${b.availableCopies ?? 0} / ${b.totalCopies ?? 0}`])
           );
         })()
-      : orderedInventoryBooks.map((b) => [getGenreCode(b.genre), b.courseSequence ?? '-', b.catalogCode || '-', b.title, b.author, b.isbn, b.isDigital ? '-' : `${b.availableCopies}`]);
+      : orderedInventoryBooks.map((b) => [getGenreCode(b.genre), b.courseSequence ?? '-', b.catalogCode || '-', b.title, b.author, b.isbn, `${b.availableCopies ?? 0} / ${b.totalCopies ?? 0}`]);
 
     const header = byGenre
-      ? [['Curso', 'Seq', 'Código', 'Título', 'Autor', 'ISBN', 'Disponível']]
-      : [['Curso', 'Seq', 'Código', 'Título', 'Autor', 'ISBN', 'Disponível']];
+      ? [['Curso', 'Seq', 'Código', 'Título', 'Autor', 'ISBN', 'Disp. / Total']]
+      : [['Curso', 'Seq', 'Código', 'Título', 'Autor', 'ISBN', 'Disp. / Total']];
 
     const worksheet = XLSX.utils.aoa_to_sheet([...header, ...rows]);
     const workbook = XLSX.utils.book_new();
@@ -526,6 +526,9 @@ export const AdminBooksPage = () => {
       </Card>
 
       <Card className="overflow-hidden">
+        <p className="border-b p-4 text-sm text-gray-600">
+          {filtered.length} títulos · {filtered.reduce((sum, book) => sum + Number(book.totalCopies || 0), 0)} exemplares físicos · {filtered.reduce((sum, book) => sum + Number(book.availableCopies || 0), 0)} disponíveis
+        </p>
         <div className="overflow-x-auto">
         <table className="min-w-[760px] w-full text-left border-collapse">
           <thead className="bg-gray-50 border-b border-gray-100">
@@ -559,7 +562,7 @@ export const AdminBooksPage = () => {
                     {book.isDigital && (book.totalCopies ?? 0) > 0 ? 'Digital + Físico' : (book.isDigital ? 'Digital' : 'Físico')}
                   </td>
                   <td className="p-4 text-sm text-right font-mono">
-                    {book.isDigital ? 'inf.' : `${book.availableCopies} / ${book.totalCopies}`}
+                    {`${book.availableCopies ?? 0} / ${book.totalCopies ?? 0}${book.isDigital ? ' + digital' : ''}`}
                   </td>
                   <td className="p-4 text-right">
                     <div className="flex items-center justify-end gap-2">

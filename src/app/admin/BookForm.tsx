@@ -37,7 +37,7 @@ export const BookForm = () => {
     armario: '',
     prateleira: '',
     anoEdicao: '',
-    edicao: '',
+    edicao: '1',
     addCopies: 0,
   });
 
@@ -98,7 +98,7 @@ export const BookForm = () => {
           armario: data.armario?.toString() ?? '',
           prateleira: apiPrateleira?.toString() ?? '',
           anoEdicao: apiAnoEdicao?.toString() ?? '',
-          edicao: apiEdicao?.toString() ?? '',
+          edicao: apiEdicao?.toString() ?? '1',
           addCopies: 0,
         });
       })
@@ -317,7 +317,6 @@ export const BookForm = () => {
                   value={formData.edicao}
                   onChange={e => setFormData({ ...formData, edicao: e.target.value })}
                 >
-                  <option value="">Selecionar edição</option>
                   {Array.from({ length: 100 }, (_, index) => {
                     const edition = String(index + 1);
                     return (
@@ -327,6 +326,7 @@ export const BookForm = () => {
                     );
                   })}
                 </select>
+                <p className="mt-1 text-xs text-gray-500">O mesmo ISBN pode ser usado em edições diferentes. Para mais exemplares da mesma edição, edite o livro existente.</p>
               </div>
             </div>
           )}
@@ -350,7 +350,7 @@ export const BookForm = () => {
                 <div>
                   <label className="block text-sm font-medium mb-1">Adicionar exemplares</label>
                   <input type="number" min="0" className="w-full px-4 py-2 border rounded-lg" value={formData.addCopies} onChange={e => setFormData({ ...formData, addCopies: parseInt(e.target.value) || 0 })} />
-                  <p className="text-xs text-gray-400 mt-1">Cria novas instâncias físicas.</p>
+                  <p className="text-xs text-gray-400 mt-1">Soma esta quantidade ao total indicado e cria os exemplares físicos correspondentes.</p>
                 </div>
               )}
               <div className="col-span-2">

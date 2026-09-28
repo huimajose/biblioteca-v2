@@ -1,3 +1,5 @@
+import { ensureBooksEditionUniqueConstraint } from '@/app/api/_utils/bookEdition';
+import { planBookInventory } from '@/utils/bookInventory';
 import { NextRequest, NextResponse } from 'next/server';
 import { and, asc, eq, sql } from 'drizzle-orm';
 import * as schema from '@/db/pgSchema';
@@ -53,7 +55,7 @@ const resolveDbErrorMessage = (error: any, fallback: string) => {
 
   if (/duplicate key value/i.test(normalized) || /unique constraint/i.test(normalized)) {
     if (/isbn/i.test(normalized) || /edicao/i.test(normalized)) {
-      return 'Ja existe um livro com este ISBN e edição.';
+      return 'Já existe um livro com este ISBN e edição. Para somar exemplares, edite esse livro e use Adicionar exemplares.';
     }
     return 'Ja existe um registo com estes dados.';
   }
@@ -111,42 +113,6 @@ const syncBooksIdSequence = async (db: ReturnType<typeof getDb>) => {
   `);
 };
 
-const ensureBooksEditionUniqueConstraint = async (db: ReturnType<typeof getDb>) => {
-  await db.execute(sql`
-    UPDATE books_temp
-    SET edicao = 1
-    WHERE edicao IS NULL
-  `);
-
-  await db.execute(sql`
-    ALTER TABLE books_temp
-    ALTER COLUMN edicao SET DEFAULT 1
-  `);
-
-  await db.execute(sql`
-    DO $$
-    DECLARE
-      idx RECORD;
-    BEGIN
-      FOR idx IN
-        SELECT indexname
-        FROM pg_indexes
-        WHERE schemaname = current_schema()
-          AND tablename = 'books_temp'
-          AND indexdef ILIKE '%UNIQUE%'
-          AND indexdef ILIKE '%(isbn)%'
-          AND indexdef NOT ILIKE '%edicao%'
-      LOOP
-        EXECUTE format('DROP INDEX IF EXISTS %I', idx.indexname);
-      END LOOP;
-    END $$;
-  `);
-
-  await db.execute(sql`
-    CREATE UNIQUE INDEX IF NOT EXISTS books_temp_isbn_edicao_unique
-    ON books_temp (isbn, edicao)
-  `);
-};
 
 const insertBookWithSequenceRecovery = async (
   db: ReturnType<typeof getDb>,
@@ -271,14 +237,19 @@ export async function POST(req: NextRequest) {
         edition,
         existingBookId: existingByIsbnEdition[0].id,
       });
-      return NextResponse.json({ error: 'Ja existe um livro com este ISBN e edição.' }, { status: 409 });
+      return NextResponse.json({ error: 'Já existe um livro com este ISBN e edição. Para somar exemplares, edite esse livro e use Adicionar exemplares.' }, { status: 409 });
     }
 
     const hasDigital =
       Boolean(body.fileUrl) || body.hasDigital === true || body.isDigital === true || body.documentType === 2;
     const isPhysical = (body.documentType ?? 1) !== 2;
     const totalCopies = isPhysical ? Number(body.totalCopies ?? 1) : 0;
-    const availableCopies = isPhysical ? totalCopies : 0;
+    try {
+      planBookInventory({ total: totalCopies, additional: 0, physicalCount: 0, borrowedCount: 0 });
+    } catch (error) {
+      return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+    }
+    const availableCopies = totalCopies;
     const catalogData = await resolveBookCatalogData(db, {
       genre: body.genre ?? '',
       armario: body.armario ?? null,
@@ -344,7 +315,7 @@ export async function POST(req: NextRequest) {
           entityId: created.id,
           details: `Livro "${created.title}" criado no curso ${created.genre || 'Sem curso'}.`,
           metadata: {
-            catalogCode: created.catalogCode ?? created.catalog_code ?? null,
+            catalogCode: created.catalogCode ?? null,
             isDigital: created.is_digital ?? false,
           },
         });

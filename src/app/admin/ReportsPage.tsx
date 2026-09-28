@@ -622,8 +622,8 @@ export const ReportsPage = () => {
     digitalBooks: books.filter(b => b.isDigital).length,
     outOfStock: books.filter(b => !b.isDigital && b.availableCopies === 0).length,
     lowStock: books.filter(b => !b.isDigital && b.availableCopies > 0 && b.availableCopies < 2).length,
-    totalCopies: books.reduce((acc, b) => acc + (b.totalCopies || 0), 0),
-    availableCopies: books.reduce((acc, b) => acc + (b.availableCopies || 0), 0),
+    totalCopies: books.reduce((acc, b) => acc + Number(b.totalCopies || 0), 0),
+    availableCopies: books.reduce((acc, b) => acc + Number(b.availableCopies || 0), 0),
   };
 
   const fetchNeverBorrowedBooks = async () => {
@@ -683,7 +683,7 @@ export const ReportsPage = () => {
         }
 
         doc.setFontSize(12);
-        doc.text(`${genre} (${genreBooks.length} livros)`, 40, currentY);
+        doc.text(`${genre} (${(genreBooks as any[]).length} títulos; ${(genreBooks as any[]).reduce((sum, book) => sum + Number(book.totalCopies || 0), 0)} exemplares)`, 40, currentY);
 
         autoTable(doc, {
           startY: currentY + 10,
@@ -693,7 +693,7 @@ export const ReportsPage = () => {
             book.author || 'N/D',
             book.isbn || 'N/D',
             book.isDigital ? 'Digital' : 'Fisico',
-            book.isDigital ? 'Sempre disponível' : String(book.availableCopies ?? 0),
+            `${book.availableCopies ?? 0} / ${book.totalCopies ?? 0}${book.isDigital ? ' + digital' : ''}`,
           ]),
           styles: { fontSize: 9 },
           headStyles: { fillColor: [101, 163, 13] },
@@ -736,7 +736,7 @@ export const ReportsPage = () => {
         book.author || 'N/D',
         book.isbn || 'N/D',
         book.isDigital ? 'Digital' : 'Fisico',
-        book.isDigital ? '-' : String(book.availableCopies ?? 0),
+        `${book.availableCopies ?? 0} / ${book.totalCopies ?? 0}${book.isDigital ? ' + digital' : ''}`,
         book.isDigital
           ? 'Sempre disponivel'
           : book.availableCopies === 0
@@ -1423,7 +1423,7 @@ export const ReportsPage = () => {
                       <h3 className="font-bold text-lime-600 uppercase tracking-wider text-sm">
                         {genre} ({genreBooks.length})
                       </h3>
-                      <span className="text-xs font-bold bg-white px-2 py-1 rounded-lg border border-gray-200">{genreBooks.length} Livros</span>
+                      <span className="text-xs font-bold bg-white px-2 py-1 rounded-lg border border-gray-200">{genreBooks.length} títulos · {genreBooks.reduce((sum: number, book: any) => sum + Number(book.totalCopies || 0), 0)} exemplares</span>
                     </div>
                     <table className="w-full text-left border-collapse">
                       <thead className="bg-white border-b border-gray-100">
@@ -1445,11 +1445,11 @@ export const ReportsPage = () => {
                             <td className="p-4 text-sm text-gray-600">{book.author}</td>
                             <td className="p-4 text-xs font-mono text-gray-400">{book.isbn}</td>
                             <td className="p-4 text-sm text-right font-bold">
-                              {book.isDigital ? (
+                              {book.isDigital && !Number(book.totalCopies) ? (
                                 <span className="text-purple-600 uppercase text-[10px]">Digital</span>
                               ) : (
                                 <span className={cn(book.availableCopies > 0 ? "text-green-600" : "text-red-600")}>
-                                  {book.availableCopies}
+                                  {book.availableCopies ?? 0} / {book.totalCopies ?? 0}
                                 </span>
                               )}
                             </td>
@@ -1549,7 +1549,7 @@ export const ReportsPage = () => {
                       </span>
                     </td>
                     <td className="p-4 text-sm text-right font-mono">
-                      {book.isDigital ? '-' : `${book.availableCopies}`}
+                      {`${book.availableCopies ?? 0} / ${book.totalCopies ?? 0}${book.isDigital ? ' + digital' : ''}`}
                     </td>
                     <td className="p-4 text-right">
                       {!book.isDigital && (

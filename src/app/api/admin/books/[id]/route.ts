@@ -1,3 +1,5 @@
+import { ensureBooksEditionUniqueConstraint } from '@/app/api/_utils/bookEdition';
+import { planBookInventory } from '@/utils/bookInventory';
 import { NextRequest, NextResponse } from 'next/server';
 import { and, eq, inArray, sql } from 'drizzle-orm';
 import * as schema from '@/db/pgSchema';
@@ -53,7 +55,7 @@ const resolveDbErrorMessage = (error: any, fallback: string) => {
 
   if (/duplicate key value/i.test(normalized) || /unique constraint/i.test(normalized)) {
     if (/isbn/i.test(normalized) || /edicao/i.test(normalized)) {
-      return 'Ja existe um livro com este ISBN e edição.';
+      return 'Já existe um livro com este ISBN e edição. Para somar exemplares, edite esse livro e use Adicionar exemplares.';
     }
     return 'Ja existe um registo com estes dados.';
   }
@@ -91,54 +93,7 @@ const logBookRouteError = (stage: string, error: any, extra: Record<string, unkn
   });
 };
 
-const ensureBooksEditionUniqueConstraint = async (db: ReturnType<typeof getDb>) => {
-  await db.execute(sql`
-    UPDATE books_temp
-    SET edicao = 1
-    WHERE edicao IS NULL
-  `);
 
-  await db.execute(sql`
-    ALTER TABLE books_temp
-    ALTER COLUMN edicao SET DEFAULT 1
-  `);
-
-  await db.execute(sql`
-    DO $$
-    DECLARE
-      idx RECORD;
-    BEGIN
-      FOR idx IN
-        SELECT indexname
-        FROM pg_indexes
-        WHERE schemaname = current_schema()
-          AND tablename = 'books_temp'
-          AND indexdef ILIKE '%UNIQUE%'
-          AND indexdef ILIKE '%(isbn)%'
-          AND indexdef NOT ILIKE '%edicao%'
-      LOOP
-        EXECUTE format('DROP INDEX IF EXISTS %I', idx.indexname);
-      END LOOP;
-    END $$;
-  `);
-
-  await db.execute(sql`
-    CREATE UNIQUE INDEX IF NOT EXISTS books_temp_isbn_edicao_unique
-    ON books_temp (isbn, edicao)
-  `);
-};
-
-const createPhysicalCopies = async (db: ReturnType<typeof getDb>, bookId: number, copies: number) => {
-  if (copies <= 0) return;
-  const rows = Array.from({ length: copies }).map(() => ({
-    bookId,
-    borrowed: false,
-    returnDate: null,
-    userId: null,
-    currTransactionId: 0,
-  }));
-  await db.insert(schema.physicalBooks).values(rows);
-};
 
 const formatCatalogCode = (code: string, sequence: number) =>
   `${code}-${String(sequence).padStart(3, '0')}`;
@@ -248,7 +203,7 @@ export async function PUT(
         edition: nextEdition,
         existingBookId: existingByIsbnEdition[0].id,
       });
-      return NextResponse.json({ error: 'Ja existe um livro com este ISBN e edição.' }, { status: 409 });
+      return NextResponse.json({ error: 'Já existe um livro com este ISBN e edição. Para somar exemplares, edite esse livro e use Adicionar exemplares.' }, { status: 409 });
     }
 
     const addCopies = Number(body.addCopies ?? 0);
@@ -265,8 +220,8 @@ export async function PUT(
       genre: nextGenre,
       armario: body.armario ?? existing[0].armario ?? null,
       currentBookId: bookId,
-      preserveSequence: genreChanged ? null : (existing[0].courseSequence ?? existing[0].course_sequence ?? null),
-      preserveCatalogCode: genreChanged ? null : (existing[0].catalogCode ?? existing[0].catalog_code ?? null),
+      preserveSequence: genreChanged ? null : (existing[0].courseSequence ?? null),
+      preserveCatalogCode: genreChanged ? null : (existing[0].catalogCode ?? null),
     });
     console.info('[admin/books][PUT] catalog data resolved', {
       actorUserId: actorUserId || null,
@@ -277,13 +232,25 @@ export async function PUT(
       genreChanged,
     });
 
-    const baseTotal = Number(body.totalCopies ?? existing[0].totalCopies ?? 0);
-    const totalCopies = isPhysical ? baseTotal + Math.max(addCopies, 0) : 0;
-    const availableCopies = isPhysical
-      ? (existing[0].availableCopies ?? 0) + Math.max(addCopies, 0)
-      : 0;
+    const physicalCopies = await db.select().from(schema.physicalBooks)
+      .where(eq(schema.physicalBooks.bookId, bookId));
+    if (!isPhysical && physicalCopies.length > 0) {
+      return NextResponse.json({ error: 'Este livro tem exemplares físicos. Mantenha o tipo Físico e ative a versão digital.' }, { status: 400 });
+    }
+    let inventory;
+    try {
+      inventory = planBookInventory({
+        total: isPhysical ? Number(body.totalCopies ?? existing[0].totalCopies ?? 0) : 0,
+        additional: isPhysical ? addCopies : 0,
+        physicalCount: physicalCopies.length,
+        borrowedCount: physicalCopies.filter(copy => copy.borrowed).length,
+      });
+    } catch (error) {
+      return NextResponse.json({ error: (error as Error).message }, { status: 400 });
+    }
+    const { totalCopies, availableCopies, copiesToCreate } = inventory;
 
-    const updated = await db
+    const updateBook = db
       .update(schema.books)
       .set({
         title: body.title ?? existing[0].title,
@@ -307,29 +274,14 @@ export async function PUT(
       })
       .where(eq(schema.books.id, bookId))
       .returning();
-    console.info('[admin/books][PUT] book updated', {
-      actorUserId: actorUserId || null,
-      bookId,
-      isbn: nextIsbn,
-      edition: nextEdition,
-      addCopies,
-    });
-
-    if (isPhysical && addCopies > 0) {
-      await createPhysicalCopies(db, bookId, addCopies);
-      console.info('[admin/books][PUT] physical copies created', {
-        actorUserId: actorUserId || null,
-        bookId,
-        copies: addCopies,
-      });
-    }
-    if (!isPhysical) {
-      await db.delete(schema.physicalBooks).where(eq(schema.physicalBooks.bookId, bookId));
-      console.info('[admin/books][PUT] physical copies removed for digital conversion', {
-        actorUserId: actorUserId || null,
-        bookId,
-      });
-    }
+    // Both the counters and the physical copies commit together.
+    const [updated] = await db.batch([
+      updateBook,
+      db.execute(sql`
+        INSERT INTO physical_books (book_id, borrowed, return_date, user_id, curr_transaction_id)
+        SELECT ${bookId}, false, NULL, NULL, 0 FROM generate_series(1, ${copiesToCreate}::integer)
+      `),
+    ]);
     if (actorUserId) {
       try {
         await notifyUser(
