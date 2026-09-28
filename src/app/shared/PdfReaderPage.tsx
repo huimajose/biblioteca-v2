@@ -4,6 +4,8 @@ import { ArrowLeft } from 'lucide-react';
 import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
 import { resolveBookFileFallback } from '@/utils/file.ts';
+import { EpubViewer } from '@/components/EpubViewer';
+import { isEpub } from '@/utils/bookFormat';
 import { PdfViewer } from '@/components/PdfViewer.tsx';
 import { User } from '@/hooks/useAuth.ts';
 import { Toast } from '@/components/Toast.tsx';
@@ -50,6 +52,7 @@ export const PdfReaderPage = ({ user }: PdfReaderPageProps) => {
         setInShelf(Boolean(progressData?.inShelf));
         setPreviewLimit(Math.max(1, Number(progressData?.previewLimit || 5)));
       })
+      .catch(() => setBook(null))
       .finally(() => {
         setProgressReady(true);
         setLoading(false);
@@ -77,6 +80,8 @@ export const PdfReaderPage = ({ user }: PdfReaderPageProps) => {
   }, [bookId, currentPage, progressReady, totalPages, user.id]);
 
   const { primary, fallback } = resolveBookFileFallback(book?.fileUrl, book?.id);
+  const epub = isEpub(book?.fileUrl);
+  const Reader = epub ? EpubViewer : PdfViewer;
   const watermarkText = useMemo(() => {
     const name = user.fullName || user.email || user.id;
     const date = new Date().toLocaleString();
@@ -128,7 +133,7 @@ export const PdfReaderPage = ({ user }: PdfReaderPageProps) => {
           <Button variant="secondary" onClick={() => navigate(-1)} className="flex items-center gap-2">
             <ArrowLeft className="w-4 h-4" /> Voltar
           </Button>
-          <h1 className="text-xl font-bold">Leitor PDF</h1>
+          <h1 className="text-xl font-bold">Leitor digital</h1>
         </div>
         <Card className="p-10 text-center text-gray-400">A carregar...</Card>
       </div>
@@ -142,10 +147,10 @@ export const PdfReaderPage = ({ user }: PdfReaderPageProps) => {
           <Button variant="secondary" onClick={() => navigate(-1)} className="flex items-center gap-2">
             <ArrowLeft className="w-4 h-4" /> Voltar
           </Button>
-          <h1 className="text-xl font-bold">Leitor PDF</h1>
+          <h1 className="text-xl font-bold">Leitor digital</h1>
         </div>
         <Card className="p-10 text-center text-gray-500">
-          PDF indisponivel no momento. Verifique se o ficheiro foi enviado corretamente ou tente mais tarde.
+          Ficheiro indisponivel no momento. Verifique se o ficheiro foi enviado corretamente ou tente mais tarde.
         </Card>
       </div>
     );
@@ -157,19 +162,19 @@ export const PdfReaderPage = ({ user }: PdfReaderPageProps) => {
         <Button variant="secondary" onClick={() => navigate(-1)} className="flex items-center gap-2">
           <ArrowLeft className="w-4 h-4" /> Voltar
         </Button>
-        <h1 className="text-xl font-bold">Leitor PDF</h1>
+        <h1 className="text-xl font-bold">Leitor digital</h1>
       </div>
 
       {!inShelf && (
         <Card className="p-4 border border-amber-200 bg-amber-50">
           <p className="text-sm font-semibold text-amber-900">
-            Pre-visualizacao ativa: pode ler ate a pagina {previewLimit} antes de adicionar este livro a estante.
+            Pre-visualizacao ativa: pode ler até à {epub ? 'secção' : 'página'} {previewLimit} antes de adicionar este livro a estante.
           </p>
         </Card>
       )}
 
       <Card className="overflow-hidden">
-        <PdfViewer
+        <Reader key={`${bookId}:${book?.fileUrl}`}
           url={primary}
           fallbackUrl={fallback}
           watermarkText={`${watermarkText} - NAO COPIAR`}
@@ -183,7 +188,7 @@ export const PdfReaderPage = ({ user }: PdfReaderPageProps) => {
           onBlockedPageAttempt={() => setShowUnlockPrompt(true)}
         />
         <div className="p-3 border-t border-gray-100 bg-white text-[10px] text-gray-400">
-          Este leitor bloqueia download direto. Capturas de ecra ainda sao possiveis no dispositivo do utilizador.
+          Leitura para uso pessoal. Respeite os direitos de autor.
         </div>
       </Card>
 
@@ -193,7 +198,7 @@ export const PdfReaderPage = ({ user }: PdfReaderPageProps) => {
             <div>
               <h2 className="text-lg font-bold">Continuar a leitura</h2>
               <p className="text-sm text-gray-500 mt-1">
-                Ja leu {previewLimit} paginas. Para continuar, adicione este livro a sua estante digital.
+                Ja leu {previewLimit} {epub ? 'secções' : 'páginas'}. Para continuar, adicione este livro a sua estante digital.
               </p>
             </div>
             <div className="flex gap-3">

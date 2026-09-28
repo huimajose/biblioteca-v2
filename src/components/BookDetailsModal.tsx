@@ -123,7 +123,7 @@ export const BookDetailsModal = ({
                     className="text-xs uppercase bg-purple-600 hover:bg-purple-700"
                     onClick={() => onReadPdf(book)}
                   >
-                    <BookOpen className="w-4 h-4" /> Ler PDF
+                    <BookOpen className="w-4 h-4" /> Ler livro
                   </Button>
                   {hasReadingProgress && (
                     <Button

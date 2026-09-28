@@ -178,7 +178,7 @@ export const UserReadingListsPage = ({ user }: UserReadingListsPageProps) => {
                               onClick={() => navigate(`/reader/${item.book.id}`)}
                             >
                               <BookOpen className="w-3 h-3" />
-                              Ler PDF
+                              Ler livro
                             </button>
                           )}
                           <button

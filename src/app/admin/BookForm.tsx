@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/Card.tsx';
 import { Button } from '@/components/ui/Button.tsx';
 import { DEFAULT_BOOK_COVER } from '@/constants.ts';
 import { resolveBookFileUrl } from '@/utils/file.ts';
+import { isEpub, isReadingFile } from '@/utils/bookFormat';
 import { getUploadError } from '@/utils/uploadError';
 
 export const BookForm = () => {
@@ -16,10 +17,10 @@ export const BookForm = () => {
 
   const [activeTab, setActiveTab] = useState<'dados' | 'disponibilidade' | 'media'>('dados');
   const [genres, setGenres] = useState<any[]>([]);
-  const [uploading, setUploading] = useState<'pdf' | 'cover' | null>(null);
+  const [uploading, setUploading] = useState<'document' | 'cover' | null>(null);
   const [saving, setSaving] = useState(false);
   const [mediaError, setMediaError] = useState('');
-  const [pdfName, setPdfName] = useState('');
+  const [documentName, setDocumentName] = useState('');
   const [formData, setFormData] = useState({
     title: '',
     author: '',
@@ -127,15 +128,15 @@ export const BookForm = () => {
   const resolveStorageUrl = (fileUrl?: string | null) =>
     resolveBookFileUrl(fileUrl, bookId ? Number(bookId) : undefined);
 
-  const handleFileUpload = async (file: File, kind: 'pdf' | 'cover') => {
+  const handleFileUpload = async (file: File, kind: 'document' | 'cover') => {
     if (uploading || saving) return;
     setMediaError('');
-    const validType = kind === 'pdf'
-      ? file.type === 'application/pdf' || (!file.type && /\.pdf$/i.test(file.name))
+    const validType = kind === 'document'
+      ? isReadingFile(file)
       : ['image/jpeg', 'image/png', 'image/webp'].includes(file.type);
     const limit = 50 * 1024 * 1024;
     if (!validType || !file.size || file.size > limit) {
-      setMediaError(kind === 'pdf' ? 'Selecione um PDF até 50 MB.' : 'Selecione uma imagem JPG, PNG ou WebP até 50 MB.');
+      setMediaError(kind === 'document' ? 'Selecione um EPUB ou PDF até 50 MB.' : 'Selecione uma imagem JPG, PNG ou WebP até 50 MB.');
       return;
     }
     setUploading(kind);
@@ -153,7 +154,7 @@ export const BookForm = () => {
       const body = new FormData();
       body.append('file', file);
       body.append('fileName', file.name);
-      body.append('folder', kind === 'pdf' ? '/books/documents' : '/books/covers');
+      body.append('folder', kind === 'document' ? '/books/documents' : '/books/covers');
       body.append('publicKey', auth.publicKey);
       body.append('signature', auth.signature);
       body.append('expire', String(auth.expire));
@@ -164,10 +165,10 @@ export const BookForm = () => {
       if (typeof uploaded.url !== 'string' || !uploaded.url.startsWith('https://')) {
         throw new Error('O serviço recebeu o ficheiro, mas não devolveu um endereço válido. Tente novamente.');
       }
-      setFormData(prev => kind === 'pdf'
+      setFormData(prev => kind === 'document'
         ? { ...prev, fileUrl: uploaded.url, hasDigital: true }
         : { ...prev, cover: uploaded.url });
-      if (kind === 'pdf') setPdfName(file.name);
+      if (kind === 'document') setDocumentName(file.name);
     } catch (error) {
       setMediaError(error instanceof Error ? error.message : 'Falha ao enviar o ficheiro.');
     } finally {
@@ -185,7 +186,7 @@ export const BookForm = () => {
     }
     if ((formData.hasDigital || formData.documentType === 2) && !formData.fileUrl) {
       setActiveTab('media');
-      setMediaError('Selecione e envie o PDF antes de guardar o livro.');
+      setMediaError('Selecione e envie o EPUB ou PDF antes de guardar o livro.');
       return;
     }
     setSaving(true);
@@ -360,11 +361,11 @@ export const BookForm = () => {
                     checked={formData.hasDigital}
                     onChange={(e) => setFormData({ ...formData, hasDigital: e.target.checked })}
                   />
-                  <span className="text-sm text-gray-500">Ativar PDF para este livro</span>
+                  <span className="text-sm text-gray-500">Ativar EPUB ou PDF para este livro</span>
                 </div>
                 {(formData.hasDigital || formData.documentType === 2) && (
                   <Button type="button" variant="secondary" onClick={() => setActiveTab('media')}>
-                    {formData.fileUrl ? 'Ver ou substituir PDF' : 'Selecionar PDF'}
+                    {formData.fileUrl ? 'Ver ou substituir EPUB ou PDF' : 'Selecionar EPUB ou PDF'}
                   </Button>
                 )}
               </div>
@@ -385,38 +386,40 @@ export const BookForm = () => {
                   referrerPolicy="no-referrer"
                 />
                 {formData.fileUrl ? (
-                  resolveStorageUrl(formData.fileUrl) ? (
+                  isEpub(formData.fileUrl) ? (
+                    <p className="rounded-lg border p-4 text-sm text-gray-600">EPUB associado. Abra o livro na biblioteca para iniciar a leitura.</p>
+                  ) : resolveStorageUrl(formData.fileUrl) ? (
                     <iframe
-                      title="PDF preview"
+                      title="Pré-visualização do PDF"
                       src={resolveStorageUrl(formData.fileUrl) || ''}
                       className="w-full h-56 border rounded-lg"
                     />
                   ) : (
                     <div className="w-full h-56 border rounded-lg bg-gray-50 flex items-center justify-center text-xs text-gray-400">
-                      PDF indisponível para pré-visualização.
+                      EPUB ou PDF indisponível para pré-visualização.
                     </div>
                   )
                 ) : (
                   <div className="w-full h-56 border rounded-lg bg-gray-50 flex items-center justify-center text-xs text-gray-400">
-                    Nenhum PDF associado.
+                    Nenhum EPUB ou PDF associado.
                   </div>
                 )}
               </div>
               <div className="space-y-4">
                 <div className="rounded-xl border border-dashed p-4 space-y-2">
-                  <label htmlFor="book-pdf" className="block text-sm font-medium">Ficheiro PDF</label>
-                  <input id="book-pdf" type="file" accept="application/pdf,.pdf"
+                  <label htmlFor="book-document" className="block text-sm font-medium">Ficheiro EPUB ou PDF</label>
+                  <input id="book-document" type="file" accept="application/epub+zip,.epub,application/pdf,.pdf"
                     disabled={Boolean(uploading) || saving}
                     onChange={e => {
                       const file = e.target.files?.[0];
-                      if (file) void handleFileUpload(file, 'pdf');
+                      if (file) void handleFileUpload(file, 'document');
                       e.target.value = '';
                     }} />
-                  <p className="text-xs text-gray-500">Selecione um PDF do seu dispositivo, até 50 MB. O envio começa automaticamente.</p>
+                  <p className="text-xs text-gray-500">Selecione um EPUB ou PDF do seu dispositivo, até 50 MB. O envio começa automaticamente.</p>
                   <p role="status" className="text-sm text-gray-600">
-                    {uploading === 'pdf' ? 'A enviar PDF…' : formData.fileUrl
-                      ? (pdfName ? 'PDF enviado: ' + pdfName : 'Este livro já tem um PDF. Selecione outro para o substituir.')
-                      : 'Nenhum PDF selecionado.'}
+                    {uploading === 'document' ? 'A enviar ficheiro…' : formData.fileUrl
+                      ? (documentName ? 'Ficheiro enviado: ' + documentName : 'Este livro já tem um EPUB ou PDF. Selecione outro para o substituir.')
+                      : 'Nenhum EPUB ou PDF selecionado.'}
                   </p>
                 </div>
                 <div className="rounded-xl border border-dashed p-4 space-y-2">

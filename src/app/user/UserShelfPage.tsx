@@ -1,3 +1,4 @@
+import { isEpub } from '@/utils/bookFormat';
 import React, { useEffect, useState } from 'react';
 import { Card } from '@/components/ui/Card.tsx';
 import { BookOpen, Star } from 'lucide-react';
@@ -175,7 +176,7 @@ export const UserShelfPage = ({ user }: UserShelfPageProps) => {
                 <p className="text-sm text-gray-500">{entry.book.author}</p>
                 {readingProgressMap[entry.book.id] && (
                   <p className="mt-1 text-[11px] font-semibold text-lime-700">
-                    Parou na pagina {readingProgressMap[entry.book.id]?.currentPage || 1}
+                    Parou na {isEpub(entry.book.fileUrl) ? 'secção' : 'página'} {readingProgressMap[entry.book.id]?.currentPage || 1}
                     {readingProgressMap[entry.book.id]?.progressPercent ? ` · ${readingProgressMap[entry.book.id].progressPercent}%` : ''}
                   </p>
                 )}
@@ -188,7 +189,7 @@ export const UserShelfPage = ({ user }: UserShelfPageProps) => {
                     onClick={(e) => { e.stopPropagation(); openReader(entry.book); }}
                   >
                     <BookOpen className="w-3 h-3" />
-                    {readingProgressMap[entry.book.id] ? 'Continuar leitura' : 'Ler PDF'}
+                    {readingProgressMap[entry.book.id] ? 'Continuar leitura' : 'Ler livro'}
                   </button>
                 )}
               </div>

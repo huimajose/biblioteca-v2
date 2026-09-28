@@ -294,7 +294,7 @@ export const Layout = ({ user, onLogout, children, readerMode = false, onToggleR
 
   const userTourDescriptions: Record<string, string> = {
     '/dashboard': 'Este é o seu painel principal. Aqui vê um resumo rápido da conta, continua livros que deixou a meio, acompanha metas de leitura e percebe logo o que está pendente sem precisar de procurar em várias páginas.',
-    '/': 'Esta é a Biblioteca, ou seja, a área para procurar livros. Pode pesquisar por título ou autor, abrir os detalhes de qualquer livro, marcar para ler depois, adicionar à estante e iniciar leitura digital quando o livro tiver PDF.',
+    '/': 'Esta é a Biblioteca, ou seja, a área para procurar livros. Pode pesquisar por título ou autor, abrir os detalhes de qualquer livro, marcar para ler depois, adicionar à estante e iniciar leitura digital quando o livro tiver EPUB ou PDF.',
     '/shelf': 'A Minha Estante guarda os seus livros digitais desbloqueados. Entre aqui quando quiser voltar a um livro que já abriu, organizar favoritos ou continuar uma leitura sem ter de procurar outra vez no catálogo.',
     '/lists': 'As Listas de leitura servem para organizar o que pretende ler. Pode criar listas como "Provas", "Ler este mês" ou "Direito" para separar livros por objetivo e manter tudo mais arrumado.',
     '/history': 'No Histórico acompanha tudo o que já aconteceu com a sua conta. Aqui aparecem pedidos aceites, livros devolvidos e também pedidos rejeitados, para não ficar com dúvidas sobre o estado das suas requisições.',

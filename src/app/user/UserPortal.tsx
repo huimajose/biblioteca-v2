@@ -1,3 +1,4 @@
+import { isEpub } from '@/utils/bookFormat';
 import React, { useState, useEffect } from 'react';
 import { Search, BookOpen, Loader2, Star, Clock3 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
@@ -544,7 +545,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
                     <p className="line-clamp-2 text-sm font-bold text-gray-900">{entry.book?.title}</p>
                     <p className="mt-1 line-clamp-1 text-xs text-gray-500">{entry.book?.author}</p>
                     <p className="mt-2 text-[11px] font-semibold text-lime-700">
-                      Pagina {entry.currentPage || 1}
+                      {isEpub(entry.book?.fileUrl) ? 'Secção' : 'Página'} {entry.currentPage || 1}
                       {entry.totalPages ? ` de ${entry.totalPages}` : ''}
                     </p>
                     <p className="text-[11px] text-gray-500">{entry.progressPercent || 0}% concluido</p>
@@ -680,7 +681,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
                 <p className="text-sm text-gray-500 mb-3">{book.author}</p>
                 {readingProgressMap[book.id] && (
                   <p className="mb-3 text-[11px] font-semibold text-lime-700">
-                    Continuar da pagina {readingProgressMap[book.id]?.currentPage || 1}
+                    Continuar da {isEpub(book.fileUrl) ? 'secção' : 'página'} {readingProgressMap[book.id]?.currentPage || 1}
                     {readingProgressMap[book.id]?.progressPercent ? ` | ${readingProgressMap[book.id].progressPercent}%` : ''}
                   </p>
                 )}
@@ -704,7 +705,7 @@ export const UserPortal = ({ user }: UserPortalProps) => {
                           className="text-[10px] bg-purple-600 text-white px-3 py-1.5 rounded-lg hover:bg-purple-700 transition-colors font-bold uppercase flex items-center gap-1"
                         >
                           <BookOpen className="w-3 h-3" />
-                          {readingProgressMap[book.id] ? 'Continuar' : 'Ler PDF'}
+                          {readingProgressMap[book.id] ? 'Continuar' : 'Ler livro'}
                         </button>
                       )}
                       <button

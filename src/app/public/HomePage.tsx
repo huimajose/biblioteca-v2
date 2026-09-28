@@ -96,7 +96,7 @@ export const HomePage = () => {
     },
     {
       title: '3. Requisite ou leia online',
-      description: 'Quando o livro tiver PDF pode iniciar a leitura digital. Se for fisico, faz o pedido e acompanha o estado no sistema.',
+      description: 'Quando o livro tiver EPUB ou PDF pode iniciar a leitura digital. Se for fisico, faz o pedido e acompanha o estado no sistema.',
     },
   ];
 
