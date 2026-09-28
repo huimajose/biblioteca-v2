@@ -5,6 +5,7 @@ export interface CatalogBook {
   courseSequence?: number | null;
   catalogCode?: string | null;
   totalCopies?: number;
+  prateleira?: number | string | null;
 }
 
 const letters = (value: string) => value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().replace(/[^A-Z]/g, '');
@@ -33,7 +34,8 @@ export function formatBookCatalog(book: CatalogBook, courseCode?: string) {
 
 export function bookLabelLines(book: CatalogBook, copy = 1, courseCode?: string) {
   const parts = catalogParts(book, courseCode);
-  return ['ISPI - Biblioteca', parts.number, parts.author, parts.course, `Ex. ${copy}`];
+  const shelf = String(book.prateleira ?? '').trim();
+  return ['ISPI - Biblioteca', parts.number, parts.author, parts.course, `Ex. ${copy}`, `Prateleira: ${shelf || 'não definida'}`];
 }
 
 export function physicalCopyNumbers(book: CatalogBook): number[] {

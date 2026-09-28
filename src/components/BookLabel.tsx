@@ -26,7 +26,7 @@ export const BookLabelContent = ({ book, copy = 1 }: { book: BookLabelProps['boo
   <div className="relative w-64 border-2 border-black rounded-lg bg-white overflow-hidden text-center">
     <img src={LOGO_WATERMARK} alt="" className="pointer-events-none absolute inset-0 m-auto w-36 opacity-10" />
     {bookLabelLines(book, copy).map((line, index) => (
-      <p key={index} className={index === 0 ? 'relative border-b border-black px-3 py-3 text-lg font-bold' : 'relative py-2 font-mono text-xl font-bold'}>{line}</p>
+      <p key={index} className={index === 0 ? 'relative border-b border-black px-3 py-3 text-lg font-bold' : index === 5 ? 'relative border-t border-black px-3 py-2 text-sm font-bold break-words' : 'relative py-2 font-mono text-xl font-bold'}>{line}</p>
     ))}
   </div>
 );

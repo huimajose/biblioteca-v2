@@ -270,8 +270,8 @@ export const AdminBooksPage = () => {
       doc.roundedRect(x, y, 220, 135, 4, 4);
       bookLabelLines(book, copy, getGenreCode(book.genre)).forEach((line, lineIndex) => {
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(lineIndex === 0 ? 13 : 16);
-        doc.text(line, x + 110, y + 22 + lineIndex * 24, { align: 'center' });
+        doc.setFontSize(lineIndex === 0 ? 13 : lineIndex === 5 ? 10 : 16);
+        doc.text(line, x + 110, y + 22 + lineIndex * 20, { align: 'center', maxWidth: 200 });
       });
       doc.line(x, y + 30, x + 220, y + 30);
     });

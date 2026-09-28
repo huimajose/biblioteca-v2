@@ -2,12 +2,19 @@ import { strict as assert } from 'node:assert';
 import { test } from 'node:test';
 import { authorAbbreviation, bookLabelLines, formatBookCatalog, physicalCopyNumbers } from './bookCatalog';
 
-const book = { id: 27, courseSequence: 5, author: 'João dos Santos', catalogCode: 'GES-005', totalCopies: 3 };
+const book = { id: 27, courseSequence: 5, author: 'João dos Santos', catalogCode: 'GES-005', totalCopies: 3, prateleira: 2 };
 
-test('uses the requested five lines and preserves course numbering', () => {
-  assert.deepEqual(bookLabelLines(book, 1), ['ISPI - Biblioteca', '005', 'SAN', 'GES', 'Ex. 1']);
+test('includes the shelf after the catalog and preserves course numbering', () => {
+  assert.deepEqual(bookLabelLines(book, 1), ['ISPI - Biblioteca', '005', 'SAN', 'GES', 'Ex. 1', 'Prateleira: 2']);
   assert.equal(formatBookCatalog(book), '005-SAN-GES');
-  assert.deepEqual(bookLabelLines({ ...book, catalogCode: '005-SAN-GES' }, 2), ['ISPI - Biblioteca', '005', 'SAN', 'GES', 'Ex. 2']);
+  assert.deepEqual(bookLabelLines({ ...book, catalogCode: '005-SAN-GES' }, 2), ['ISPI - Biblioteca', '005', 'SAN', 'GES', 'Ex. 2', 'Prateleira: 2']);
+});
+
+test('handles missing shelves and preserves shelf zero', () => {
+  for (const prateleira of [null, undefined, ' ']) {
+    assert.equal(bookLabelLines({ ...book, prateleira }).at(-1), 'Prateleira: não definida');
+  }
+  assert.equal(bookLabelLines({ ...book, prateleira: 0 }).at(-1), 'Prateleira: 0');
 });
 
 test('normalizes surnames, inverted names, accents and multiple authors', () => {
